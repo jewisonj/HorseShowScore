@@ -37,6 +37,13 @@ Read `README.md` first. The requirements, decision log and scoring references li
 - Scoring never waits on the server. A failed read leaves the device with what it had.
 - The pattern book reader is `supabase/functions/read-pattern-book`. Its logic is in `handler.ts` (web-standard APIs only, tested from `src/cloud/reader.test.ts`). Check the Anthropic docs before changing the request: forced tool use is refused by the current models, so it uses `output_config.format`.
 
+## The public side
+
+- `#/public` and `#/public/<show id>` are for riders, coaches and spectators (`src/ui/PublicScreens.tsx`). Read only: classes in running order, the draw and the patterns with their pictures.
+- They show exactly what is published on the server. Never a sample, never a copy being worked on in setup, and nothing from this device's own scores.
+- Results are not shown yet. When they are: placings only, never a score or a card, and only what a show admin has published.
+- The live server can be reached from the development sandbox with the publishable key in `.env`: reads, and checking that unsigned writes are refused. Test against it instead of assuming.
+
 ## This repo is public
 
 Do not commit any of these unless the owner says so:

@@ -1564,3 +1564,67 @@ h2 {
   border: 1px solid var(--rule);
   border-radius: 6px;
 }
+
+/* ---------- The public side: classes, draws and patterns, read only ---------- */
+
+.public-class {
+  margin: 8px 0;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.public-class > summary {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.public-class-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.public-class[open] > summary {
+  border-bottom: 1px solid var(--rule);
+}
+
+.public-class > :not(summary) {
+  margin-left: 12px;
+  margin-right: 12px;
+}
+
+.public-class h3 {
+  margin: 12px 12px 6px;
+  font-size: 1rem;
+}
+
+.public-draw {
+  list-style: none;
+  padding: 0;
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.public-draw li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.public-draw li:first-child {
+  border-top: 0;
+}
+
+.public-draw-order {
+  flex: none;
+  width: 1.6rem;
+  text-align: right;
+  font-weight: 700;
+  color: var(--ink-2);
+}

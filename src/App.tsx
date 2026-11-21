@@ -6,6 +6,7 @@ import { Home } from './ui/Home'
 import { MeetScreen } from './ui/MeetScreen'
 import { PlacingsScreen } from './ui/PlacingsScreen'
 import { RailScreen } from './ui/RailScreen'
+import { PublicHome, PublicShow } from './ui/PublicScreens'
 import { ScoreCard } from './ui/ScoreCard'
 import { SetupScreen } from './ui/SetupScreen'
 import { ShowScreen } from './ui/ShowScreen'
@@ -46,6 +47,7 @@ function Route() {
   }
   if (p[0] === 'new') return <SetupScreen key="new" />
   if (p[0] === 'account') return <AccountScreen />
+  if (p[0] === 'public') return p[1] ? <PublicShow key={p[1]} showId={p[1]} /> : <PublicHome />
   return <Home />
 }
 

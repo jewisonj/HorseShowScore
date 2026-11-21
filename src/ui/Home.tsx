@@ -82,6 +82,9 @@ export function Home() {
             <button className="btn" disabled={cloud.check === 'checking'} onClick={() => void refreshShows()}>
               Check for new shows
             </button>
+            <button className="btn" onClick={() => go('/public')}>
+              Open the public view
+            </button>
           </div>
         </>
       )}

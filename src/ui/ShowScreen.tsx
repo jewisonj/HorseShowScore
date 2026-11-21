@@ -10,6 +10,7 @@ import { classState, judgeName, removeClassStates, useAppState } from '../store'
 import { Screen, go } from './bits'
 import { download, slug } from './files'
 import { showDates } from './Home'
+import { publicLink } from './PublicScreens'
 
 /** One show: its days, and what can be done with the show as a whole. */
 export function ShowScreen({ showId }: { showId: string }) {
@@ -126,6 +127,22 @@ export function ShowScreen({ showId }: { showId: string }) {
                 }}
               >
                 Drop my changes and use the published show
+              </button>
+            )}
+            {published && onServer && (
+              <button
+                className="btn"
+                onClick={async () => {
+                  const link = publicLink(show.id)
+                  try {
+                    await navigator.clipboard.writeText(link)
+                    setMessage('The public link is copied. Anyone who opens it sees the classes, draws and patterns.')
+                  } catch {
+                    setMessage(`The public link is ${link}`)
+                  }
+                }}
+              >
+                Copy the public link
               </button>
             )}
             {cloud.admin && onServer && (
