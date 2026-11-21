@@ -173,14 +173,18 @@ describe('the draw', () => {
     const key = classKey('meet-5', REINING)
     addRiders(key, ['576', '1025', '999'], 8)
     scoreRun(key, '1025', [1, 1, 1, 1, 1, 1, 1, 1], [{ half: 2, box: 3 }], 'none', { fe: 6 })
-    expect(loadDraw()).toBe(70) // the other eleven classes
+    // The other eleven classes, and the three riders of this class's draw the device did not have yet.
+    expect(loadDraw()).toBe(73)
     const entries = getClass('meet-5', REINING)!.entries
     const runs = classState(getState(), key).runs
-    expect(runs.map((r) => [r.backNo, r.draw, r.horse, r.rider])).toEqual([
+    expect(runs.slice(0, 3).map((r) => [r.backNo, r.draw, r.horse, r.rider])).toEqual([
       ['576', 5, 'George', entries[4].rider],
       ['1025', 1, 'George', entries[0].rider],
+      // Typed in by hand and not in the draw: left as it is.
       ['999', undefined, undefined, undefined],
     ])
+    expect(runs.slice(3).map((r) => r.draw)).toEqual([2, 3, 4])
+    expect(runs.slice(3).every((r) => !r.scored && r.boxes.every((b) => b === null))).toBe(true)
     expect(runs[1].boxes).toEqual([1, 1, 1, 1, 1, 1, 1, 1])
     expect(runs[1].penalties).toEqual([{ half: 2, box: 3 }])
     expect(runs[1].extras).toEqual({ fe: 6 })

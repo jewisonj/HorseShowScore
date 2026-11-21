@@ -44,6 +44,8 @@ export interface ClassState {
   runs: Run[]
   /** Run ids in the judge's placing order, first place first */
   placings: string[]
+  /** Back numbers taken out of this class by hand on this device. The draw does not put them back. */
+  removed?: string[]
 }
 
 export interface AppState {
@@ -207,13 +209,49 @@ export function updateDetails(key: string, riders: NewRider[]): number {
   return changed
 }
 
-/** Add riders by back number alone. */
+/** Add riders by back number alone, by hand. A number taken out by hand earlier is welcome back. */
 export function addRiders(key: string, backNos: string[], boxCount: number): number {
-  return addEntries(
+  const added = addEntries(
     key,
     backNos.map((backNo) => ({ backNo })),
     boxCount,
   )
+  const current = classState(state, key)
+  if (current.removed?.some((b) => backNos.includes(b))) {
+    updateClass(key, (c) => ({ ...c, removed: (c.removed ?? []).filter((b) => !backNos.includes(b)) }))
+  }
+  return added
+}
+
+/**
+ * Bring a class this device already has in line with the draw.
+ *
+ *  - A rider new to the draw is added, unless this device took that back number out by hand.
+ *  - A rider who came from the draw, is no longer in it, and has nothing entered is dropped.
+ *    One with a score, penalty, mark or placing stays.
+ *  - A rider added here by hand is left alone.
+ *  - Everyone still in the draw gets their order, name and horse brought up to date.
+ *
+ * Nothing that was entered is ever changed or removed. Returns how many riders were added.
+ */
+export function syncDraw(key: string, riders: NewRider[], boxCount: number): number {
+  const current = classState(state, key)
+  const inDraw = new Set(riders.map((r) => r.backNo))
+  const removed = new Set(current.removed ?? [])
+  const placed = new Set(current.placings)
+  const kept = current.runs.filter((r) => inDraw.has(r.backNo) || r.draw === undefined || hasWork(r) || placed.has(r.id))
+  const have = new Set(kept.map((r) => r.backNo))
+  const fresh: Run[] = []
+  for (const rider of riders) {
+    if (have.has(rider.backNo) || removed.has(rider.backNo)) continue
+    have.add(rider.backNo)
+    fresh.push(blankRun(rider, boxCount))
+  }
+  if (fresh.length > 0 || kept.length !== current.runs.length) {
+    updateClass(key, (c) => ({ ...c, runs: [...kept, ...fresh] }))
+  }
+  updateDetails(key, riders)
+  return fresh.length
 }
 
 export function saveRun(key: string, run: Run) {
@@ -224,10 +262,16 @@ export function saveRun(key: string, run: Run) {
 }
 
 export function removeRun(key: string, runId: string) {
-  updateClass(key, (c) => ({
-    runs: c.runs.filter((r) => r.id !== runId),
-    placings: c.placings.filter((id) => id !== runId),
-  }))
+  updateClass(key, (c) => {
+    const gone = c.runs.find((r) => r.id === runId)
+    return {
+      ...c,
+      runs: c.runs.filter((r) => r.id !== runId),
+      placings: c.placings.filter((id) => id !== runId),
+      // Remember it, so reading the draw again does not put this rider back.
+      ...(gone ? { removed: [...new Set([...(c.removed ?? []), gone.backNo])] } : {}),
+    }
+  })
 }
 
 /** True when a run holds anything the operator entered. */

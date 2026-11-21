@@ -1,13 +1,14 @@
 import { allShows, classKey, findPattern } from './data/fixture'
-import { addEntries, getState, hasClass, resizeRuns, updateDetails } from './store'
+import { addEntries, getState, hasClass, resizeRuns, syncDraw } from './store'
 
 /**
  * Put the draw of every show this device knows onto this device.
  *
- * A class this device has never touched gets its riders in draw order.
- * A class it has touched keeps its riders and scores as they are: a rider
- * removed by hand stays removed. Riders still in it get their draw position,
- * name and horse brought up to date.
+ * A class this device has never seen gets its riders in draw order.
+ * A class it already has is brought in line with the draw: riders new to the
+ * draw are added, riders gone from it are dropped if nothing was entered for
+ * them, and everyone else gets their order, name and horse brought up to date.
+ * A rider taken out by hand stays out. Nothing that was entered is changed.
  *
  * Returns how many riders were added.
  */
@@ -25,7 +26,7 @@ export function loadDraw(): number {
       if (hasClass(getState(), key)) {
         // A pattern that gained or lost a maneuver: rides with nothing entered yet follow it.
         resizeRuns(key, pattern.boxes.length)
-        updateDetails(key, riders)
+        added += syncDraw(key, riders, pattern.boxes.length)
       } else added += addEntries(key, riders, pattern.boxes.length)
     }
   }
