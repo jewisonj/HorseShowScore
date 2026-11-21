@@ -21,6 +21,7 @@ import { readXlsx } from '../setup/xlsx'
 import { classState, getState, hasWork, resizeRuns } from '../store'
 import { Code, Screen, go } from './bits'
 import { PatternBookReader } from './PatternBookReader'
+import { PatternPagePicker } from './PatternPagePicker'
 
 const KINDS: { value: Division['kind']; label: string }[] = [
   { value: 'reining', label: 'Reining' },
@@ -28,7 +29,13 @@ const KINDS: { value: Division['kind']; label: string }[] = [
   { value: 'horsemanship', label: 'Horsemanship' },
 ]
 
-function PatternEditor(props: { pattern: Pattern; onChange: (p: Pattern) => void; onClose: () => void }) {
+function PatternEditor(props: {
+  pattern: Pattern
+  onChange: (p: Pattern) => void
+  onClose: () => void
+  book: Uint8Array | null
+  onBook: (bytes: Uint8Array) => void
+}) {
   const { pattern, onChange } = props
   const [pasted, setPasted] = useState('')
   const setBox = (i: number, patch: Partial<Pattern['boxes'][number]>) =>
@@ -115,6 +122,7 @@ function PatternEditor(props: { pattern: Pattern; onChange: (p: Pattern) => void
         </button>
       </div>
 
+      <PatternPagePicker pattern={pattern} onChange={onChange} book={props.book} onBook={props.onBook} />
       <details className="paste">
         <summary>Paste a list instead</summary>
         <p className="hint">
@@ -153,6 +161,8 @@ export function SetupScreen({ showId }: { showId?: string }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const cloud = useCloud()
   const [link, setLink] = useState(() => sheetLinkFor(draft.id))
+  // The pattern book, once chosen, for making pictures of its pages during this visit.
+  const [book, setBook] = useState<Uint8Array | null>(null)
   const [fetching, setFetching] = useState(false)
   useEffect(() => {
     void startCloud()
@@ -481,7 +491,7 @@ export function SetupScreen({ showId }: { showId?: string }) {
       </div>
 
       <h2>Patterns</h2>
-      <PatternBookReader show={draft} onAdd={setDraft} />
+      <PatternBookReader show={draft} onAdd={setDraft} onBook={setBook} />
       {draft.patterns.length === 0 ? (
         <p className="empty">No patterns yet. Choose one for a class above, or start a new one there.</p>
       ) : (
@@ -495,6 +505,7 @@ export function SetupScreen({ showId }: { showId?: string }) {
                     <strong>{p.name.trim() || 'New pattern'}</strong>
                     <span className="muted">
                       {p.boxes.length} maneuvers, used by {uses === 1 ? '1 class' : `${uses} classes`}
+                      {p.page_image ? `, with a picture of page ${p.source_page}` : ''}
                     </span>
                     <span className="pattern-codes">
                       {p.boxes.map((b, i) => (
@@ -514,7 +525,7 @@ export function SetupScreen({ showId }: { showId?: string }) {
                     </button>
                   )}
                 </div>
-                {open && open.id === p.id && <PatternEditor pattern={open} onChange={setPattern} onClose={() => setEditing(null)} />}
+                {open && open.id === p.id && <PatternEditor pattern={open} onChange={setPattern} onClose={() => setEditing(null)} book={book} onBook={setBook} />}
               </li>
             )
           })}

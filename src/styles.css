@@ -1508,3 +1508,59 @@ h2 {
   margin: 2px 0 0;
   accent-color: var(--ink);
 }
+
+/* ---------- Picture of a pattern book page ---------- */
+
+.pattern-page {
+  margin: 12px 0 4px;
+}
+
+.pattern-page a {
+  display: block;
+}
+
+.pattern-page img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+
+.pattern-page figcaption {
+  margin-top: 4px;
+  font-size: 0.9rem;
+}
+
+.page-picker {
+  margin: 14px 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+}
+
+.page-picker h4 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.page-picker .pattern-page {
+  max-width: 420px;
+}
+
+.reader-page {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+}
+
+.reader-page input {
+  width: 4.5rem;
+  min-height: 40px;
+  padding: 4px 8px;
+  font: inherit;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+}

@@ -62,6 +62,14 @@ await db.exec(`
   $$;
   grant usage on schema public, auth to anon, authenticated;
   grant execute on function auth.uid() to anon, authenticated;
+  -- Supabase Storage keeps its files as rows here, with row-level security on.
+  create schema storage;
+  create table storage.buckets (id text primary key, name text not null, public boolean default false, file_size_limit bigint, allowed_mime_types text[]);
+  create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets (id), name text, owner uuid);
+  alter table storage.objects enable row level security;
+  insert into storage.buckets (id, name) values ('something-else', 'something-else');
+  grant usage on schema storage to anon, authenticated;
+  grant all on storage.objects to anon, authenticated;
   insert into auth.users (id, email) values ('${ADMIN}', 'admin@example.com'), ('${OTHER}', 'other@example.com');
 `)
 
@@ -127,6 +135,19 @@ await allowed('sees no admin rows but their own', OTHER, `select * from public.s
 await allowed('is told it is not an admin', OTHER, `select public.is_show_admin() as yes`, (r) => r.rows[0].yes === false)
 await allowed('while the admin is told yes', ADMIN, `select public.is_show_admin() as yes`, (r) => r.rows[0].yes === true)
 
+console.log('\n  Pictures of pattern book pages')
+const page = (name, bucket = 'pattern-pages') => `insert into storage.objects (bucket_id, name) values ('${bucket}', '${name}') returning id`
+await allowed('a show admin adds a picture', ADMIN, page('pages/pg-admin1.jpg'), (r) => r.rows.length === 1)
+await refused('a show admin cannot put files in any other bucket', ADMIN, page('x.jpg', 'something-else'), /row-level security/)
+await refused('a signed-in person off the list cannot add a picture', OTHER, page('pages/pg-other1.jpg'), /row-level security/)
+await refused('a phone with only the app key cannot add a picture', 'anon', page('pages/pg-anon1.jpg'), /row-level security/)
+await refused('nor remove one', 'anon', `delete from storage.objects where name = 'pages/pg-admin1.jpg' returning id`, /row-level security/)
+await refused('nor can a signed-in person off the list', OTHER, `delete from storage.objects where name = 'pages/pg-admin1.jpg' returning id`, /row-level security/)
+await allowed('a show admin removes a picture', ADMIN, `delete from storage.objects where name = 'pages/pg-admin1.jpg' returning id`, (r) => r.rows.length === 1)
+const bucket = await db.query(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'pattern-pages'`)
+if (bucket.rows[0]?.public === true && Number(bucket.rows[0].file_size_limit) === 1048576) ok('the bucket is public to read and takes pictures up to 1 MB')
+else fail('the bucket is public to read and takes pictures up to 1 MB', JSON.stringify(bucket.rows))
+
 console.log('\n  A second show admin')
 await db.exec(`insert into public.show_admins (user_id, note) values ('${OTHER}', 'show secretary');`)
 await allowed('can publish over a show someone else set up', OTHER, `insert into public.shows (id, name, definition) values (${show('s-abc123', 'Spring show, revised')}) on conflict (id) do update set name = excluded.name, definition = excluded.definition returning id`, (r) => r.rows.length === 1)
@@ -139,7 +160,7 @@ await db.exec(`
   insert into public.shows (id, name, definition, owner) values ('s-older01', 'Older', '{"format":"hss-show","id":"s-older01","meets":[{"id":"m1","label":"Saturday","judges":["Pat Example"]},{"id":"m2","label":"Sunday","judges":[]}]}'::jsonb, '${ADMIN}');
 `)
 try {
-  await db.exec(readFileSync(join(migrationsDir, files[files.length - 1]), 'utf8'))
+  await db.exec(readFileSync(join(migrationsDir, files.find((f) => f.includes('no_judges'))), 'utf8'))
   const older = await db.query(`select definition from public.shows where id = 's-older01'`)
   const meets = older.rows[0].definition.meets
   if (meets.length === 2 && meets[0].label === 'Saturday' && meets[1].label === 'Sunday' && meets.every((m) => m.judges.length === 0)) ok('has its judges removed, and keeps its days in order')

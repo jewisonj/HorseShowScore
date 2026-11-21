@@ -22,6 +22,10 @@ export interface CloudBackend {
   listShows(): Promise<unknown[]>
   publishShow(show: ShowFile): Promise<void>
   removeShow(id: string): Promise<void>
+  /** Store a picture of a pattern book page at this path. Throws when the server refuses. */
+  uploadPatternPage(path: string, image: Blob): Promise<void>
+  /** The public address of a stored picture. */
+  patternPageUrl(path: string): string
   /** Have the server fetch a link-shared Google Sheet as an Excel file. Returns the file's bytes. */
   fetchWorkbook(link: string): Promise<ArrayBuffer>
   /** Send a pattern book PDF, as base64, to the reader. Returns what it found, not yet checked. */

@@ -5,10 +5,12 @@ import { makeFakeBackend, type FakeBackend } from '../cloud/fakeBackend'
 import { clearCloudCache } from '../data/cloudShows'
 import type { ShowFile } from '../data/fixture'
 import { clearShows, saveShow, userShows } from '../data/shows'
+import { setPageRendererForTests } from '../setup/pdfPages'
 import { sampleShowWorkbook } from '../setup/testWorkbook'
 import { resultsCsv } from '../results'
 import { clearAll, getState } from '../store'
 import { AccountScreen } from './AccountScreen'
+import { ClassScreen } from './ClassScreen'
 import { Home } from './Home'
 import { MeetScreen } from './MeetScreen'
 import { SetupScreen } from './SetupScreen'
@@ -52,8 +54,17 @@ function show(id: string, patternId = ''): ShowFile {
 }
 
 let server: FakeBackend
+/** The pages of the pattern book the app asked to have turned into pictures. */
+let renderedPages: number[]
 
 beforeEach(() => {
+  renderedPages = []
+  // Tests have no canvas to draw a PDF page on. Stand in for the renderer.
+  setPageRendererForTests(async (_pdf, page) => {
+    renderedPages.push(page)
+    if (page > 14) throw new Error(`The pattern book has 14 pages. There is no page ${page}.`)
+    return new Blob([`picture of page ${page}`], { type: 'image/jpeg' })
+  })
   clearAll()
   clearShows()
   clearCloudCache()
@@ -138,6 +149,40 @@ describe('publishing from the show screen', () => {
     expect(screen.queryByRole('button', { name: 'Take it off the server' })).toBeNull()
     expect(screen.queryByRole('button', { name: /Publish/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /Remove this show/ })).toBeNull()
+  })
+})
+
+describe('the picture of the pattern on the class screen', () => {
+  function withPicture(path: string): ShowFile {
+    const s = show('s-fall00001', 'p-fall-1')
+    s.patterns[0].page_image = path
+    return s
+  }
+
+  it('shows the pattern book page under the written maneuvers, on a phone that is not signed in', async () => {
+    server.shows = [withPicture('pages/pg-abc123def4.jpg')]
+    await startCloud()
+    render(<ClassScreen meetId="s-fall00001-m1" classId="1" />)
+    expect(screen.queryByRole('img', { name: /Pattern book page/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Made-up pattern/ }))
+    const picture = screen.getByRole('img', { name: 'Pattern book page for Made-up pattern' }) as HTMLImageElement
+    expect(picture.src).toBe('https://fake.example/storage/v1/object/public/pattern-pages/pages/pg-abc123def4.jpg')
+    // If it cannot be fetched, the screen says so and the written maneuvers stay.
+    fireEvent.error(picture)
+    expect(screen.getByText(/did not load/)).toBeTruthy()
+    expect(screen.getByText('Maneuver 1')).toBeTruthy()
+  })
+
+  it('never loads a picture from an address the app did not make', async () => {
+    for (const bad of ['https://evil.example/track.png', '../../auth/v1/user', 'pages/../x.jpg', 'pages/x.svg']) {
+      server.shows = [withPicture(bad)]
+      setBackendForTests(server)
+      await startCloud()
+      render(<ClassScreen meetId="s-fall00001-m1" classId="1" />)
+      fireEvent.click(screen.getByRole('button', { name: /Made-up pattern/ }))
+      expect(screen.queryByRole('img')).toBeNull()
+      cleanup()
+    }
   })
 })
 
@@ -287,11 +332,54 @@ describe('reading a pattern book in setup', () => {
     const trail = screen.getByText('Made-up Trail 1').closest('li')!
     fireEvent.click(within(trail).getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: 'Add the ticked patterns' }))
-    expect(await screen.findByText(/Added 2 patterns\. 2 classes were given a pattern\./)).toBeTruthy()
+    expect(await screen.findByText(/Added 2 patterns\. Saved 2 pictures of the book's pages\. 2 classes were given a pattern\./)).toBeTruthy()
     expect(screen.queryByText('Made-up Trail 1')).toBeNull()
+    // A picture of each added pattern's page went to the server. The page left out was not drawn.
+    expect(renderedPages).toEqual([2, 3])
+    expect(Object.keys(server.pages)).toHaveLength(2)
+    expect(screen.getByText(/with a picture of page 2/)).toBeTruthy()
     const reining = screen.getAllByDisplayValue('Open Reining').find((el) => el.tagName === 'INPUT')!.closest('li')!
     const select = within(reining).getByLabelText('Pattern') as HTMLSelectElement
     expect(select.options[select.selectedIndex].text).toMatch(/Made-up Reining 3/)
+  })
+
+  it('uses the page number a person corrects, and still adds the pattern when a picture cannot be made', async () => {
+    await startCloud()
+    await signIn('admin@example.com', 'right')
+    saveShow(show('s-fall00001'))
+    const boxes = [{ code: 'W', words: 'Walk' }]
+    server.reader = {
+      patterns: [
+        { name: 'Made-up Reining 3', kind: 'reining', page: 2, classes: [], boxes, unsure: '' },
+        { name: 'Made-up Level II M', kind: 'horsemanship', page: 99, classes: [], boxes, unsure: '' },
+      ],
+      notes: '',
+    }
+    render(<SetupScreen showId="s-fall00001" />)
+    fireEvent.change(screen.getByLabelText('Pattern book PDF'), { target: { files: [pdf()] } })
+    fireEvent.change(await screen.findByLabelText('Page of the book for Made-up Reining 3'), { target: { value: '5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add the ticked patterns' }))
+    expect(await screen.findByText(/Added 2 patterns\. Saved 1 picture of the book's pages\. Some pictures could not be saved: The pattern book has 14 pages/)).toBeTruthy()
+    expect(renderedPages).toEqual([5, 99])
+    expect(screen.getByText('Made-up Level II M')).toBeTruthy()
+  })
+
+  it('a pattern typed by hand can be given its page of the book, and the picture can be taken away', async () => {
+    await startCloud()
+    await signIn('admin@example.com', 'right')
+    saveShow(show('s-fall00001', 'p-fall-1'))
+    render(<SetupScreen showId="s-fall00001" />)
+    fireEvent.click(screen.getByRole('button', { name: /^Edit/ }))
+    fireEvent.change(screen.getByLabelText('Page of the book'), { target: { value: '7' } })
+    fireEvent.change(screen.getByLabelText('Pattern book for the picture'), { target: { files: [pdf()] } })
+    expect(await screen.findByRole('img', { name: /Pattern book page for Made-up pattern/ })).toBeTruthy()
+    expect(renderedPages).toEqual([7])
+    // The book is kept for this visit, so the next change needs no file.
+    fireEvent.change(screen.getByLabelText('Page of the book'), { target: { value: '8' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Use this page' }))
+    await waitFor(() => expect(renderedPages).toEqual([7, 8]))
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove the picture' }))
+    expect(screen.queryByRole('img', { name: /Pattern book page/ })).toBeNull()
   })
 
   it('shows what went wrong when the reader fails', async () => {

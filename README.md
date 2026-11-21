@@ -111,6 +111,7 @@ What the server does today:
 - **Published shows.** A show admin sets a show up, signs in and chooses Publish. Every phone lists it the next time it is online, and keeps it for when there is no signal. Anyone with the app can read a published show: classes, draw and patterns. Judges' names are never published: the database refuses a show that names one. Each judge types a name on the day screen of the device they score on, and it goes in that device's results file.
 - **Setup is for signed-in show admins.** A phone that is not signed in can pick a show, score it and open a show file. It is not offered Create a show.
 - **The workbook from its link.** In setup, paste the Google Sheets link and the server fetches an Excel copy (function `fetch-workbook`). The sheet must be shared so anyone with the link can view. It is only read.
+- **The pattern book's page with each pattern.** When patterns are added from the book, setup also saves a picture of each one's page. Judges see it under the written maneuvers on the class screen, and a phone keeps it for when there is no signal. A page can be changed or added by hand in the pattern editor.
 - **Pattern book reader.** In setup, a signed-in show admin hands over the pattern book as a PDF. An Edge Function sends it to Claude and answers with each pattern as boxes with short codes. A person ticks what to keep and checks it against the book.
 - **Scores are not on the server yet.** They stay on each device. `supabase/drafts/full-schema-draft.sql` is a sketch for that step, not a migration.
 

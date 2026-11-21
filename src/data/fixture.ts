@@ -17,6 +17,8 @@ export interface Pattern {
   kind: string
   source_page: number
   boxes: PatternBox[]
+  /** Where the picture of this pattern's page of the pattern book is kept on the server, e.g. "pages/pg-1a2b3c.jpg". */
+  page_image?: string
 }
 
 export type CardFamily = 'pattern' | 'placings'

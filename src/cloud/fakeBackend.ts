@@ -10,6 +10,8 @@ export interface FakeBackend extends CloudBackend {
   signedIn: CloudUser | null
   /** Set true to act like a server that cannot be reached. */
   down: boolean
+  /** Pictures of pattern book pages "on the server", by path. */
+  pages: Record<string, Blob>
   /** The Excel file the server hands back for a sheet link. Null acts like a sheet that is not shared. */
   workbook: Uint8Array | null
   workbookLinks: string[]
@@ -25,6 +27,7 @@ export function makeFakeBackend(): FakeBackend {
     accounts: {},
     signedIn: null,
     down: false,
+    pages: {},
     workbook: null,
     workbookLinks: [],
     reader: { patterns: [], notes: '' },
@@ -63,6 +66,14 @@ export function makeFakeBackend(): FakeBackend {
     async removeShow(id) {
       if (fake.down) throw new Error('Failed to fetch')
       if (await fake.isShowAdmin()) fake.shows = fake.shows.filter((s) => s.id !== id)
+    },
+    async uploadPatternPage(path, image) {
+      if (fake.down) throw new Error('Failed to fetch')
+      if (!(await fake.isShowAdmin())) throw new Error('new row violates row-level security policy')
+      fake.pages[path] = image
+    },
+    patternPageUrl(path) {
+      return `https://fake.example/storage/v1/object/public/pattern-pages/${path}`
     },
     async fetchWorkbook(link) {
       fake.workbookLinks.push(link)

@@ -6,6 +6,7 @@ import { PLACINGS_FIRST_CELL } from '../setup/workbook'
 import { ruleSetFor } from '../rules/rulesets'
 import { addRiders, classState, parseBackNumbers, useAppState } from '../store'
 import { BackNumber, Code, Ribbon, Screen, go, pts } from './bits'
+import { PatternPagePicture } from './PatternPagePicture'
 
 export function ClassScreen({ meetId, classId }: { meetId: string; classId: string }) {
   const state = useAppState()
@@ -81,6 +82,7 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
                 </li>
               ))}
             </ol>
+            <PatternPagePicture path={pattern.page_image} name={pattern.name} />
             {rules.extras.length > 0 && (
               <p>Then {rules.extras.map((e) => e.label.toLowerCase().replace('form and effectiveness', 'F&E')).join(' and ')}, added to the score.</p>
             )}
@@ -164,6 +166,12 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
             )
           })}
         </ul>
+      )}
+
+      {hasRail && cs.runs.length > 0 && (
+        <button className="btn btn-wide" onClick={() => go(`${base}/rail`)}>
+          {railLeft === 0 ? 'Open the rail work scores' : 'Score the rail work'}
+        </button>
       )}
 
       {cls.card_family === 'placings' && cs.runs.length > 0 && (

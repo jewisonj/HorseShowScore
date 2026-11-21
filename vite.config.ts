@@ -28,6 +28,21 @@ export default defineConfig({
       workbox: {
         // Precache everything the cards need so a scribe can work with no signal.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // The PDF renderer is only used in setup, on a computer. Phones do not need to store it.
+        globIgnores: ['**/pdf*.js'],
+        // Pictures of pattern book pages: keep each one the first time it is fetched, so it
+        // is there with no signal. Every picture has its own address and never changes.
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/pattern-pages\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'pattern-pages',
+              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 180 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],

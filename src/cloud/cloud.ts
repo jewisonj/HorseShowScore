@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { cloudCache, setCloudCache } from '../data/cloudShows'
 import { classKey, type ShowFile } from '../data/fixture'
-import { isShowFile, removeShow as removeLocalShow, saveShow, userShows } from '../data/shows'
+import { isShowFile, newId, removeShow as removeLocalShow, saveShow, userShows } from '../data/shows'
 import { loadDraw } from '../seed'
 import { classState, getState, hasWork } from '../store'
 import type { CloudBackend, CloudUser } from './backend'
@@ -225,6 +225,8 @@ export async function refreshShows(): Promise<boolean> {
   setCloudCache({ shows: [...shows, ...kept], onServer: [...ids], held, checkedAt: new Date().toISOString() })
   loadDraw()
   set({ check: 'ok' })
+  // In tests there is no real network to ask.
+  if (import.meta.env.MODE !== 'test') fetchPagePictures(shows)
   return true
 }
 
@@ -305,6 +307,51 @@ export async function takeOffServer(show: ShowFile): Promise<string | null> {
   })
   return null
 }
+
+/** Only paths this app makes are ever turned into an address, so a show file cannot point a phone anywhere else. */
+const PAGE_PATH = /^pages\/[A-Za-z0-9_-]{4,40}\.(jpg|png)$/
+
+/** The address of a pattern's page picture, or null when it has none or this build has no server. */
+export function pageImageUrl(path: string | undefined): string | null {
+  if (!path || !PAGE_PATH.test(path)) return null
+  if (override !== undefined) return override ? override.patternPageUrl(path) : null
+  const at = serverAddress()
+  return at ? `${at.url}/storage/v1/object/public/pattern-pages/${path}` : null
+}
+
+export type PageResult = { ok: true; path: string } | { ok: false; error: string }
+
+/** Store a picture of a pattern book page on the server. Only show admins can. Returns where it was put. */
+export async function savePatternPage(image: Blob): Promise<PageResult> {
+  const b = await backend()
+  if (!b) return { ok: false, error: 'This copy of the app is not connected to a server.' }
+  const path = `pages/${newId('pg')}.${image.type === 'image/png' ? 'png' : 'jpg'}`
+  try {
+    await b.uploadPatternPage(path, image)
+    return { ok: true, path }
+  } catch (e) {
+    const said = explain(e)
+    return { ok: false, error: said === 'This account is not allowed to publish shows.' ? 'This account is not allowed to add pattern pictures.' : said }
+  }
+}
+
+/**
+ * Ask for each page picture of these shows once, so the phone has them when
+ * there is no signal. The app's offline worker keeps what comes back.
+ */
+function fetchPagePictures(shows: ShowFile[]) {
+  if (typeof fetch !== 'function') return
+  for (const show of shows) {
+    for (const pattern of show.patterns) {
+      const url = pageImageUrl(pattern.page_image)
+      if (url && !asked.has(url)) {
+        asked.add(url)
+        void fetch(url, { mode: 'no-cors' }).catch(() => asked.delete(url))
+      }
+    }
+  }
+}
+const asked = new Set<string>()
 
 export type WorkbookResult = { ok: true; bytes: Uint8Array } | { ok: false; error: string }
 

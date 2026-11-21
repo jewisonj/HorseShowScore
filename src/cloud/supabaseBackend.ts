@@ -63,6 +63,18 @@ export function createSupabaseBackend(url: string, key: string): CloudBackend {
       const { error } = await sb.from('shows').delete().eq('id', id)
       if (error) throw new Error(error.message)
     },
+    async uploadPatternPage(path, image) {
+      const { error } = await sb.storage.from('pattern-pages').upload(path, image, {
+        contentType: image.type || 'image/jpeg',
+        // The path is new for every picture, so a phone may keep its copy for good.
+        cacheControl: '31536000',
+        upsert: false,
+      })
+      if (error) throw new Error(error.message)
+    },
+    patternPageUrl(path) {
+      return `${url}/storage/v1/object/public/pattern-pages/${path}`
+    },
     async fetchWorkbook(link) {
       const { data } = await sb.auth.getSession()
       const token = data.session?.access_token

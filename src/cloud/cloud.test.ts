@@ -3,7 +3,7 @@ import { clearCloudCache, cloudCache } from '../data/cloudShows'
 import { allShows, classKey, getShow, type ShowFile } from '../data/fixture'
 import { clearShows, saveShow, userShows } from '../data/shows'
 import { classState, clearAll, getState, saveRun } from '../store'
-import { cloudState, publishShow, readPatternBook, refreshShows, sameShow, setBackendForTests, signIn, startCloud, takeOffServer } from './cloud'
+import { cloudState, pageImageUrl, publishShow, readPatternBook, refreshShows, sameShow, savePatternPage, setBackendForTests, signIn, startCloud, takeOffServer } from './cloud'
 import { makeFakeBackend, type FakeBackend } from './fakeBackend'
 
 /** A small made-up show: one day, one class of two riders, one pattern of `boxes` maneuvers. */
@@ -221,6 +221,32 @@ describe('publishing', () => {
     expect(JSON.stringify(a)).not.toBe(JSON.stringify(b))
     expect(sameShow(a, b)).toBe(true)
     expect(sameShow(a, show('s-same0001', 4))).toBe(false)
+  })
+})
+
+describe('pictures of pattern book pages', () => {
+  const picture = new Blob(['x'], { type: 'image/jpeg' })
+
+  it('a show admin stores one and gets back where it is', async () => {
+    await startCloud()
+    await signIn('admin@example.com', 'right')
+    const got = await savePatternPage(picture)
+    expect(got.ok && /^pages\/pg-[A-Za-z0-9]+\.jpg$/.test(got.path)).toBe(true)
+    expect(got.ok && server.pages[got.path]).toBe(picture)
+    expect(got.ok && pageImageUrl(got.path)).toMatch(/\/storage\/v1\/object\/public\/pattern-pages\/pages\/pg-/)
+  })
+
+  it('anyone else is refused', async () => {
+    await startCloud()
+    await signIn('judge@example.com', 'right')
+    expect(await savePatternPage(picture)).toEqual({ ok: false, error: 'This account is not allowed to add pattern pictures.' })
+    expect(server.pages).toEqual({})
+  })
+
+  it('only paths the app makes become addresses', () => {
+    for (const bad of [undefined, '', 'https://evil.example/a.jpg', '//evil.example/a.jpg', 'pages/../a.jpg', 'pages/a b.jpg', 'pages/abcd.svg', 'other/abcd.jpg']) {
+      expect(pageImageUrl(bad)).toBeNull()
+    }
   })
 })
 
