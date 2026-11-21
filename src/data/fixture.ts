@@ -105,22 +105,30 @@ export const builtInShows: ShowFile[] = (raw.shows as { id: string; name: string
   }
 })
 
-/** True for a sample show that ships with the app. It cannot be changed, removed or published. */
+/** True for a show that ships with the app, whether or not a changed or published copy now stands in for it. */
 export function isBuiltIn(showId: string): boolean {
   return builtInShows.some((s) => s.id === showId)
+}
+
+/** True while a show is still only the sample that ships with the app: nobody has changed or published it. */
+export function isSample(showId: string): boolean {
+  return isBuiltIn(showId) && !userShows().some((s) => s.id === showId) && !cloudShows().some((s) => s.id === showId)
 }
 
 const patternsById = new Map(patterns.map((p) => [p.id, p]))
 
 /**
  * The sample shows first, then the shows added on this device, then the published
- * shows read from the server. A show on this device stands in front of the
- * published show with the same id: it is the copy being worked on.
+ * shows read from the server. One show per id: a copy being worked on here stands
+ * in front of the published one, and either stands in front of a sample. That is
+ * how a show admin turns a sample into the real show: change it, publish it.
  */
 export function allShows(): ShowFile[] {
   const mine = userShows()
-  const taken = new Set([...builtInShows.map((s) => s.id), ...mine.map((s) => s.id)])
-  return [...builtInShows, ...mine, ...cloudShows().filter((s) => !taken.has(s.id))]
+  const mineIds = new Set(mine.map((s) => s.id))
+  const published = cloudShows().filter((s) => !mineIds.has(s.id))
+  const replaced = new Set([...mine, ...published].map((s) => s.id))
+  return [...builtInShows.filter((s) => !replaced.has(s.id)), ...mine, ...published]
 }
 
 export function getShow(showId: string): ShowFile | undefined {
@@ -144,13 +152,12 @@ export function getClass(meetId: string, classId: string): ShowClass | undefined
 }
 
 export function findPattern(patternId: string): Pattern | undefined {
-  const builtIn = patternsById.get(patternId)
-  if (builtIn) return builtIn
+  // Same order as allShows: this device's copy, then the published one, then the sample.
   for (const show of [...userShows(), ...cloudShows()]) {
     const p = show.patterns.find((x) => x.id === patternId)
     if (p) return p
   }
-  return undefined
+  return patternsById.get(patternId)
 }
 
 export function getPattern(patternId: string): Pattern {

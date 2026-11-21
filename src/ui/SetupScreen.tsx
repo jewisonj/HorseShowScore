@@ -12,6 +12,7 @@ import {
   boxesFromLines,
   copyPattern,
   finishShow,
+  keepMeetIds,
   patternLibrary,
   problemsIn,
 } from '../setup/draft'
@@ -21,7 +22,7 @@ import { readXlsx } from '../setup/xlsx'
 import { classState, getState, hasWork, resizeRuns } from '../store'
 import { Code, Screen, go } from './bits'
 import { PatternBookReader } from './PatternBookReader'
-import { PatternPagePicker } from './PatternPagePicker'
+import { PatternPagePicker, PatternPicturesButton } from './PatternPagePicker'
 
 const KINDS: { value: Division['kind']; label: string }[] = [
   { value: 'reining', label: 'Reining' },
@@ -258,7 +259,9 @@ export function SetupScreen({ showId }: { showId?: string }) {
       const read = readShowWorkbook(wb, draft.id)
       // Keep pattern choices already made, by class name and then by division.
       const before = draft.meets.flatMap((m) => m.classes)
-      const meets = read.meets.map((m) => ({
+      // A day already in this show keeps its id, matched by name and then by position.
+      // Scores are filed under the day's id, so this is what keeps them with their classes.
+      const meets = keepMeetIds(draft.meets, read.meets).map((m) => ({
         ...m,
         classes: m.classes.map((c) => {
           const same = before.find((b) => b.name === c.name && b.pattern_id) ?? before.find((b) => b.class_no === c.class_no && b.pattern_id)
@@ -492,6 +495,7 @@ export function SetupScreen({ showId }: { showId?: string }) {
 
       <h2>Patterns</h2>
       <PatternBookReader show={draft} onAdd={setDraft} onBook={setBook} />
+      <PatternPicturesButton patterns={draft.patterns} onPattern={setPattern} book={book} onBook={setBook} />
       {draft.patterns.length === 0 ? (
         <p className="empty">No patterns yet. Choose one for a class above, or start a new one there.</p>
       ) : (

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { publishShow, sameShow, startCloud, takeOffServer, useCloud } from '../cloud/cloud'
 import { useCloudCache } from '../data/cloudShows'
-import { classKey, formatDate, getShow, isBuiltIn } from '../data/fixture'
+import { classKey, formatDate, getShow, isBuiltIn, isSample as isSampleShow } from '../data/fixture'
 import { removeShow, useUserShows } from '../data/shows'
 import { resultsCsv } from '../results'
 import { loadDraw } from '../seed'
@@ -35,7 +35,8 @@ export function ShowScreen({ showId }: { showId: string }) {
       </Screen>
     )
   }
-  const isSample = isBuiltIn(show.id)
+  // Still only the sample that ships with the app. Once changed or published it is a show like any other.
+  const isSample = isSampleShow(show.id)
   const stamp = new Date().toISOString().slice(0, 10)
   // The copy being worked on here, and the copy every device reads from the server.
   const local = mine.find((s) => s.id === show.id)
@@ -167,12 +168,12 @@ export function ShowScreen({ showId }: { showId: string }) {
         <button className="btn" onClick={() => download(`${slug(show.name)}.show.json`, JSON.stringify(show), 'application/json')}>
           Download the show file
         </button>
-        {!isSample && (cloud.configured ? cloud.admin : local !== undefined) && (
+        {(isSample ? cloud.configured && cloud.admin : cloud.configured ? cloud.admin : local !== undefined) && (
           <button className="btn" onClick={() => go(`/s/${show.id}/setup`)}>
             Change the setup
           </button>
         )}
-        {!isSample && local !== undefined && !published && (
+        {!isBuiltIn(show.id) && local !== undefined && !published && (
           <button
             className="btn btn-danger"
             onClick={() => {
@@ -190,7 +191,7 @@ export function ShowScreen({ showId }: { showId: string }) {
         The show file holds the classes, the draw and the patterns. It can be opened on another phone or tablet from
         the first screen where there is no signal. It does not carry scores.
       </p>
-      {isSample && <p className="hint">This is a sample show that comes with the app. It cannot be changed, removed or published.</p>}
+      {isSample && <p className="hint">This is a sample show that comes with the app. A show admin can change its setup and publish it. The published show then takes its place on every phone, and scores already entered stay with it.</p>}
     </Screen>
   )
 }

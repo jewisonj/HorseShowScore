@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { allShows, builtInShows, classKey, getClass, getMeet, getPattern, showOfMeet, type ShowFile } from '../data/fixture'
+import { allShows, builtInShows, classKey, getClass, getMeet, getPattern, showOfMeet, type ShowFile, type Meet } from '../data/fixture'
 import { clearShows, readShowFile, saveShow, userShows } from '../data/shows'
 import { sheetPlacings } from '../results'
 import { loadDraw } from '../seed'
 import { classState, clearAll, getState, resizeRuns, saveRun, setPlacings } from '../store'
 import { dateIn, inferDivision, nextDay, sectionOf, tagsFor, titleCase } from './build'
-import { blankShow, boxesFromLines, copyPattern, finishShow, patternLibrary, problemsIn } from './draft'
+import { blankShow, boxesFromLines, copyPattern, finishShow, keepMeetIds, patternLibrary, problemsIn } from './draft'
 import { sampleShowWorkbook } from './testWorkbook'
 import { readShowWorkbook } from './workbook'
 import { readXlsx } from './xlsx'
@@ -31,6 +31,22 @@ function springShow(): ShowFile {
     patterns: [reining, hms, ranch],
   })
 }
+
+describe('reading a sheet again into a show that is already set up', () => {
+  const day = (id: string, label: string): Meet => ({ id, label, date: '', coach_meeting: '', start_time: '', judges: [], classes: [] })
+
+  it('keeps the ids of the days it already has, so scores stay with their classes', () => {
+    // The sample Saturday show files its scores under "meet-5". A sheet read into it must not change that.
+    expect(keepMeetIds([day('meet-5', 'Saturday')], [day('evt-m1', 'saturday ')]).map((m) => m.id)).toEqual(['meet-5'])
+    // Matched by name first, whatever the order.
+    expect(keepMeetIds([day('a', 'Saturday'), day('b', 'Sunday')], [day('x1', 'Sunday'), day('x2', 'Saturday')]).map((m) => m.id)).toEqual(['b', 'a'])
+    // Then by position, when the names changed but the number of days did not.
+    expect(keepMeetIds([day('a', 'Day 1')], [day('x1', 'Saturday')]).map((m) => m.id)).toEqual(['a'])
+    // A day the show never had gets the id it was read with, and no id is used twice.
+    expect(keepMeetIds([day('a', 'Saturday')], [day('x1', 'Saturday'), day('x2', 'Sunday')]).map((m) => m.id)).toEqual(['a', 'x2'])
+    expect(keepMeetIds([day('a', 'Saturday'), day('b', 'Saturday')], [day('x1', 'Saturday'), day('x2', 'Saturday')]).map((m) => m.id)).toEqual(['a', 'b'])
+  })
+})
 
 describe('the sample shows that ship with the app', () => {
   it('are one show per day, each with only its own classes and patterns', () => {

@@ -92,3 +92,84 @@ export function PatternPagePicker(props: {
     </div>
   )
 }
+
+/**
+ * Setup: make the picture for every pattern that has a page number and no
+ * picture yet, in one go. The patterns of a show set up from the pattern book
+ * already know their pages.
+ */
+export function PatternPicturesButton(props: {
+  patterns: Pattern[]
+  onPattern: (p: Pattern) => void
+  book: Uint8Array | null
+  onBook: (bytes: Uint8Array) => void
+}) {
+  const cloud = useCloud()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState('')
+  const [message, setMessage] = useState('')
+  const waiting = props.patterns.filter((p) => p.source_page > 0 && !p.page_image)
+
+  if (!cloud.configured || !cloud.admin) return null
+  if (waiting.length === 0 && !message) return null
+
+  async function run(bytes: Uint8Array) {
+    let saved = 0
+    let missed = ''
+    for (const pattern of waiting) {
+      setBusy(`Saving the picture of page ${pattern.source_page}`)
+      const got = await attachPatternPage(bytes, pattern.source_page)
+      if (got.ok) {
+        props.onPattern({ ...pattern, page_image: got.path })
+        saved++
+      } else missed = got.error
+    }
+    setBusy('')
+    setMessage(
+      [
+        saved > 0 ? `Saved ${saved === 1 ? '1 picture' : `${saved} pictures`}. Open a pattern to check its picture, then save the show.` : '',
+        missed ? `Some pictures could not be saved: ${missed}` : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+    )
+  }
+
+  return (
+    <div className="reader">
+      {waiting.length > 0 && (
+        <div className="stack">
+          <button className="btn" disabled={busy !== ''} onClick={() => (props.book ? void run(props.book) : fileRef.current?.click())}>
+            {busy || `Add the pattern book pictures (${waiting.length === 1 ? '1 pattern' : `${waiting.length} patterns`})`}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            aria-label="Pattern book for the pictures"
+            hidden
+            onChange={async (e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (!file) return
+              const bytes = new Uint8Array(await file.arrayBuffer())
+              props.onBook(bytes)
+              void run(bytes)
+            }}
+          />
+        </div>
+      )}
+      {waiting.length > 0 && !busy && !message && (
+        <p className="hint">
+          These patterns know which page of the pattern book they are on. Choose the book and a picture of each page is
+          saved for the judges.
+        </p>
+      )}
+      {message && (
+        <p className="hint" role="status">
+          {message}
+        </p>
+      )}
+    </div>
+  )
+}

@@ -1,9 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { setBackendForTests, signIn, signOut, startCloud } from '../cloud/cloud'
+import { publishShow, setBackendForTests, signIn, signOut, startCloud } from '../cloud/cloud'
 import { makeFakeBackend, type FakeBackend } from '../cloud/fakeBackend'
 import { clearCloudCache } from '../data/cloudShows'
-import type { ShowFile } from '../data/fixture'
+import { findPattern, getShow, isSample, type ShowFile } from '../data/fixture'
 import { clearShows, saveShow, userShows } from '../data/shows'
 import { setPageRendererForTests } from '../setup/pdfPages'
 import { sampleShowWorkbook } from '../setup/testWorkbook'
@@ -183,6 +183,54 @@ describe('the picture of the pattern on the class screen', () => {
       expect(screen.queryByRole('img')).toBeNull()
       cleanup()
     }
+  })
+})
+
+describe('turning a sample show into the real, published show', () => {
+  const SUNDAY = 'evt-bhc-2026-11-22'
+
+  it('is not offered to a phone that is not signed in', async () => {
+    await startCloud()
+    render(<ShowScreen showId={SUNDAY} />)
+    expect(screen.queryByRole('button', { name: 'Change the setup' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Publish/ })).toBeNull()
+  })
+
+  it('a show admin adds the pattern book pictures, saves and publishes, and it takes the sample\'s place', async () => {
+    await startCloud()
+    await signIn('admin@example.com', 'right')
+    render(<ShowScreen showId={SUNDAY} />)
+    expect(screen.getByRole('button', { name: 'Change the setup' })).toBeTruthy()
+    cleanup()
+
+    render(<SetupScreen showId={SUNDAY} />)
+    // The sample's patterns know their pages of the book, so one file gives every picture.
+    expect(screen.getByRole('button', { name: 'Add the pattern book pictures (6 patterns)' })).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Pattern book for the pictures'), {
+      target: { files: [new File([new Uint8Array([0x25, 0x50, 0x44, 0x46]).buffer as ArrayBuffer], 'book.pdf', { type: 'application/pdf' })] },
+    })
+    expect(await screen.findByText(/Saved 6 pictures/)).toBeTruthy()
+    expect(renderedPages).toEqual([9, 10, 11, 12, 13, 14])
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }))
+    cleanup()
+
+    // Saved here: a working copy stands in front of the sample, with the same days and classes.
+    expect(isSample(SUNDAY)).toBe(false)
+    const copy = getShow(SUNDAY)!
+    expect(copy.meets.map((m) => m.id)).toEqual(['meet-6'])
+    expect(copy.patterns.every((p) => /^pages\/pg-/.test(p.page_image ?? ''))).toBe(true)
+    expect(findPattern('nrha-8')?.page_image).toBe(copy.patterns.find((p) => p.id === 'nrha-8')?.page_image)
+
+    expect(await publishShow(copy)).toBeNull()
+    expect(server.shows.map((s) => s.id)).toEqual([SUNDAY])
+    expect(userShows()).toHaveLength(0)
+    expect(getShow(SUNDAY)?.patterns[0].page_image).toMatch(/^pages\/pg-/)
+    render(<Home />)
+    // One Sunday show in the list, no longer marked as a sample. Saturday still is.
+    const sunday = screen.getAllByRole('button', { name: /IHSA Western Show, November 22/ })
+    expect(sunday).toHaveLength(1)
+    expect(sunday[0].textContent).not.toMatch(/Sample/)
+    expect(screen.getByRole('button', { name: /November 21.*Sample that comes with the app/ })).toBeTruthy()
   })
 })
 

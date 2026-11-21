@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { refreshShows, refreshShowsIfStale, startCloud, useCloud } from '../cloud/cloud'
 import { useCloudCache } from '../data/cloudShows'
-import { allShows, classKey, formatDate, isBuiltIn, type ShowFile } from '../data/fixture'
+import { allShows, classKey, formatDate, isSample, type ShowFile } from '../data/fixture'
 import { isShowFile, readShowFile, saveShow, useUserShows, userShows } from '../data/shows'
 import { loadDraw } from '../seed'
 import { classState, clearAll, restoreBackup, useAppState } from '../store'
@@ -55,7 +55,7 @@ export function Home() {
                   <strong>{show.name}</strong>
                   {show.host && <span>{show.host}</span>}
                   <span>{showDates(show)}</span>
-                  {isBuiltIn(show.id) && <span className="muted">Sample that comes with the app</span>}
+                  {isSample(show.id) && <span className="muted">Sample that comes with the app</span>}
                 </span>
                 <span className="row-side">
                   {classes.length} classes

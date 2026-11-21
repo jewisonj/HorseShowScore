@@ -79,6 +79,22 @@ export function boxesFromLines(text: string): PatternBox[] {
     })
 }
 
+/**
+ * Days read again from a workbook keep the ids of the days already in the show,
+ * matched by name and then by position. Scores are filed under a day's id, so
+ * this is what keeps them with their classes when a sheet is read again.
+ */
+export function keepMeetIds(before: Meet[], read: Meet[]): Meet[] {
+  const used = new Set<string>()
+  return read.map((m, i) => {
+    const byName = before.find((d) => d.label.trim().toLowerCase() === m.label.trim().toLowerCase())?.id
+    const byPlace = before.length === read.length ? before[i].id : undefined
+    const id = [byName, byPlace, m.id].find((x): x is string => x !== undefined && !used.has(x)) ?? m.id
+    used.add(id)
+    return { ...m, id }
+  })
+}
+
 /** What still stops this show from being saved, in plain words. Empty when it is ready. */
 export function problemsIn(show: ShowFile): string[] {
   const problems: string[] = []
