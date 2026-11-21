@@ -100,6 +100,9 @@ describe('the first screen asks who is using the device', () => {
     expect(currentSeat()).toMatchObject({ role: 'judge', seatNo: 2 })
     // The judge's own show only: no setup, no publishing.
     expect(screen.queryByRole('button', { name: /Change the setup|Publish|Judges and PINs/ })).toBeNull()
+    // Nor files: a judge has nothing to export or download. The show is kept on the device by itself.
+    expect(screen.queryByRole('button', { name: /Export|Download/ })).toBeNull()
+    expect(screen.getByText(/kept on this device/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Sign off' }))
     expect(await screen.findByRole('button', { name: /^Judge or scribe/ })).toBeTruthy()
     expect(currentSeat()).toBeNull()
@@ -139,6 +142,10 @@ describe('the first screen asks who is using the device', () => {
     await signIn('admin@example.com', 'right')
     await open('')
     expect(await screen.findByRole('button', { name: 'Create a show' })).toBeTruthy()
+    cleanup()
+    await open(`#/s/${SHOW}`)
+    expect(await screen.findByRole('button', { name: 'Export results as CSV' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Download the show file' })).toBeTruthy()
     cleanup()
     await open(`#/m/${SHOW}-m1/c/1`)
     expect(await screen.findByText('Avery Example')).toBeTruthy()

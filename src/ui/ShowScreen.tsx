@@ -38,6 +38,8 @@ export function ShowScreen({ showId }: { showId: string }) {
   }
   // Still only the sample that ships with the app. Once changed or published it is a show like any other.
   const isSample = isSampleShow(show.id)
+  // A show admin, or anyone where the app has no server and so no sign-on.
+  const staff = !cloud.configured || cloud.admin
   const stamp = new Date().toISOString().slice(0, 10)
   // The copy being worked on here, and the copy every device reads from the server.
   const local = mine.find((s) => s.id === show.id)
@@ -187,37 +189,41 @@ export function ShowScreen({ showId }: { showId: string }) {
         </>
       )}
 
-      <h2>This show</h2>
-      <div className="stack">
-        <button className="btn" onClick={() => download(`${slug(show.name)}-results-${stamp}.csv`, resultsCsv(state, show.meets), 'text/csv')}>
-          Export results as CSV
-        </button>
-        <button className="btn" onClick={() => download(`${slug(show.name)}.show.json`, JSON.stringify(show), 'application/json')}>
-          Download the show file
-        </button>
-        {(isSample ? cloud.configured && cloud.admin : cloud.configured ? cloud.admin : local !== undefined) && (
-          <button className="btn" onClick={() => go(`/s/${show.id}/setup`)}>
-            Change the setup
-          </button>
-        )}
-        {!isBuiltIn(show.id) && local !== undefined && !published && (
-          <button
-            className="btn btn-danger"
-            onClick={() => {
-              if (!window.confirm(`Remove "${show.name}" and every score entered for it from this device? This cannot be undone.`)) return
-              removeClassStates(show.meets.flatMap((m) => m.classes.map((c) => classKey(m.id, c.id))))
-              removeShow(show.id)
-              go('/')
-            }}
-          >
-            Remove this show from this device
-          </button>
-        )}
-      </div>
-      <p className="hint">
-        The show file holds the classes, the draw and the patterns. It can be opened on another phone or tablet from
-        the first screen where there is no signal. It does not carry scores.
-      </p>
+      {/* Files are for whoever runs the show. A judge or the office needs neither. */}
+      {staff ? (
+        <>
+          <h2>This show</h2>
+          <div className="stack">
+            <button className="btn" onClick={() => download(`${slug(show.name)}-results-${stamp}.csv`, resultsCsv(state, show.meets), 'text/csv')}>
+              Export results as CSV
+            </button>
+            <button className="btn" onClick={() => download(`${slug(show.name)}.show.json`, JSON.stringify(show), 'application/json')}>
+              Download the show file
+            </button>
+            {(isSample ? cloud.configured && cloud.admin : cloud.configured ? cloud.admin : local !== undefined) && (
+              <button className="btn" onClick={() => go(`/s/${show.id}/setup`)}>
+                Change the setup
+              </button>
+            )}
+            {!isBuiltIn(show.id) && local !== undefined && !published && (
+              <button
+                className="btn btn-danger"
+                onClick={() => {
+                  if (!window.confirm(`Remove "${show.name}" and every score entered for it from this device? This cannot be undone.`)) return
+                  removeClassStates(show.meets.flatMap((m) => m.classes.map((c) => classKey(m.id, c.id))))
+                  removeShow(show.id)
+                  go('/')
+                }}
+              >
+                Remove this show from this device
+              </button>
+            )}
+          </div>
+          <p className="hint">The show file is a copy of the setup, to keep or to open on a device with no connection. It holds no scores.</p>
+        </>
+      ) : (
+        <p className="hint">This show is kept on this device. Once it has been opened here it works with no signal.</p>
+      )}
       {isSample && <p className="hint">This is a sample show that comes with the app. A show admin can change its setup and publish it. The published show then takes its place on every phone, and scores already entered stay with it.</p>}
     </Screen>
   )
