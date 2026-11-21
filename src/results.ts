@@ -162,6 +162,7 @@ export const CSV_HEADER = [
   'mark',
   'points',
   'status',
+  'note',
 ]
 
 /** Every rider in every class, placed or not. Status is always unverified in this prototype. */
@@ -202,6 +203,7 @@ export function resultsCsv(state: AppState, meetList: Meet[] = allShows().flatMa
             row.run.mark === 'none' ? '' : row.run.mark,
             row.place === null ? '' : row.points,
             'unverified',
+            (row.run.note ?? '').trim(),
           ]
             .map(csvCell)
             .join(','),

@@ -175,6 +175,7 @@ const publish = (pin, extra = '') => `select public.office_publish('s-abc123', '
 await allowed('a judge PIN cannot publish placings', 'anon', publish('111111'), said('wrong_pin'))
 await allowed('nor can no PIN at all', 'anon', publish(''), said('wrong_pin'))
 await refused('placings that carry a score are refused, even from the office', 'anon', publish('333333', ',"score":141'), /class_results_no_scores/)
+await refused('so are placings that carry a judge\'s note', 'anon', publish('333333', ',"note":"Watch your legs"'), /class_results_no_scores/)
 await allowed('the office PIN publishes a class', 'anon', publish('333333'), said('ok'))
 await allowed('and publishes it again after a correction', 'anon', publish('333333'), said('ok'))
 await allowed('a show admin publishes with no PIN', ADMIN, publish(''), said('ok'))

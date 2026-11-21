@@ -389,6 +389,18 @@ export function ScoreCard({ meetId, classId, runId }: { meetId: string; classId:
           })}
         </div>
 
+        <label className="note-field">
+          <span>Note for the rider</span>
+          {/* Saved as it is typed. It is not a scoring step, so it stays out of Undo. */}
+          <input
+            value={run.note ?? ''}
+            maxLength={200}
+            placeholder="Nice ride. Watch your legs."
+            autoComplete="off"
+            enterKeyHint="done"
+            onChange={(e) => saveRun(key, { ...run, note: e.target.value.slice(0, 200) })}
+          />
+        </label>
         <p className="hint">{rules.note}</p>
         <button className="textbtn" onClick={remove}>
           Remove this rider from the class

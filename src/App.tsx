@@ -104,6 +104,9 @@ function Route() {
 
 export default function App() {
   const saveFailed = useSaveFailed()
+  const parts = useHashParts()
+  // The score card and the rail work screen fill the phone, keys at the bottom. Nothing goes above them.
+  const onCard = parts[0] === 'm' && (parts[4] === 'r' || parts[4] === 'rail')
   return (
     <>
       {saveFailed && (
@@ -112,7 +115,7 @@ export default function App() {
           paper.
         </p>
       )}
-      <SeatBar />
+      {!onCard && <SeatBar />}
       <Route />
     </>
   )

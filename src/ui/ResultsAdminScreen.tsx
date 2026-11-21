@@ -134,6 +134,7 @@ export function ResultsAdminScreen({ showId }: { showId: string }) {
                             <span className="row-main">
                               <strong>{r.rider || 'Rider not named'}</strong>
                               {r.horse && <span className="muted">{r.horse}</span>}
+                              {r.note && <span className="result-note">Judge’s note: {r.note}</span>}
                             </span>
                             <span className="result-score">{r.mark !== 'none' ? r.mark : r.score !== null ? formatHalf(r.score) : ''}</span>
                           </li>

@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { classKey } from '../data/fixture'
+import { resultsCsv } from '../results'
 import { STORAGE_KEY, addRiders, classState, clearAll, getState } from '../store'
 import { ScoreCard } from './ScoreCard'
 
@@ -132,6 +133,19 @@ describe('the score card', () => {
     tap('Save run')
     expect(confirm).toHaveBeenCalledWith('1 maneuver and F&E have no score. Save the run anyway?')
     expect(savedRun().scored).toBe(false)
+  })
+})
+
+describe('a note for the rider', () => {
+  it('is typed on the card, saved as it is typed, and left out of Undo', () => {
+    const key = classKey('meet-5', LEVEL_I)
+    addRiders(key, ['777'], 7)
+    const rider = () => classState(getState(), key).runs.find((r) => r.backNo === '777')!
+    render(<ScoreCard meetId="meet-5" classId={LEVEL_I} runId={rider().id} />)
+    fireEvent.change(screen.getByLabelText('Note for the rider'), { target: { value: 'Nice ride. Watch your legs.' } })
+    expect(rider().note).toBe('Nice ride. Watch your legs.')
+    expect((screen.getByRole('button', { name: 'Undo' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(resultsCsv(getState()).split('\n').find((l) => l.includes('Watch your legs'))).toBeTruthy()
   })
 })
 

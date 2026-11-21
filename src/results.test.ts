@@ -371,10 +371,11 @@ describe('CSV export', () => {
       mark: '',
       points: '7',
       status: 'unverified',
+      note: '',
     })
     // Not scored: no placing, no score, no points. Partial data is normal.
     const second = getClass('meet-5', REINING)!.entries[1].rider
-    expect(lines[2]).toBe(`Saturday,2026-11-21,,1,17,Reining,NRHA Reining Pattern 17,2,102,${second},Bunny,,,,,,,,,unverified`)
+    expect(lines[2]).toBe(`Saturday,2026-11-21,,1,17,Reining,NRHA Reining Pattern 17,2,102,${second},Bunny,,,,,,,,,unverified,`)
   })
 
   it('is just the header when nothing has been entered', () => {

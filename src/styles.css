@@ -1718,3 +1718,32 @@ h2 {
   flex: none;
   min-height: 40px;
 }
+
+/* ---------- The judge's note for a rider ---------- */
+
+.note-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 14px 0 6px;
+}
+
+.note-field span {
+  flex: none;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+}
+
+.note-field input {
+  min-width: 0;
+  min-height: 52px;
+  padding: 6px 10px;
+  font: inherit;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+
+.result-note {
+  font-style: italic;
+}

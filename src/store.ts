@@ -34,6 +34,8 @@ export interface Run {
   /** Scores outside the maneuvers, by box id: 'rail', 'fe'. Missing means not scored. */
   extras: Record<string, Half | null>
   penalties: Penalty[]
+  /** A short note from the judge for the rider, such as "Nice ride" or "Watch your legs". */
+  note?: string
   mark: Mark
   /** True once the operator has saved a score for this rider */
   scored: boolean
@@ -288,7 +290,8 @@ export function hasWork(run: Run): boolean {
     run.boxes.some((b) => b !== null) ||
     Object.values(run.extras ?? {}).some((v) => v !== null) ||
     run.penalties.length > 0 ||
-    run.mark !== 'none'
+    run.mark !== 'none' ||
+    (run.note ?? '').trim() !== ''
   )
 }
 

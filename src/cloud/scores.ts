@@ -44,6 +44,7 @@ export function rowsFor(cs: ClassState, cls: ShowClass): SentRow[] {
     score: row.score,
     mark: row.run.mark,
     rode: hasWork(row.run) || placed.has(row.run.id),
+    ...((row.run.note ?? '').trim() ? { note: (row.run.note ?? '').trim() } : {}),
   }))
 }
 

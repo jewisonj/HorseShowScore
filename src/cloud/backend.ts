@@ -19,6 +19,8 @@ export interface SentRow {
   mark: string
   /** Something was entered for this rider */
   rode: boolean
+  /** The judge's note for the rider. For the show office only: it is never published. */
+  note?: string
 }
 
 /** What one judging device last sent for one class. */

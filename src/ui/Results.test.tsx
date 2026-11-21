@@ -247,6 +247,27 @@ describe('a show admin publishes a class', () => {
     expect(server.placings[SHOW][0].placings).toHaveLength(9)
   })
 
+  it('a judge\'s note for a rider reaches the show office and never the public page', async () => {
+    await signOn(SHOW, '111111')
+    scoreTheClass()
+    saveRun(KEY, { ...run('402'), note: 'Nice ride. Watch your legs.' })
+    // A note alone counts as something entered for a rider.
+    saveRun(KEY, { ...run('410'), note: 'Did not show.' })
+    await sendPendingScores()
+    expect(server.sent[0].rows.find((r) => r.back_no === '402')?.note).toBe('Nice ride. Watch your legs.')
+    await signOn(SHOW, '333333')
+    render(<ResultsAdminScreen showId={SHOW} />)
+    expect(await screen.findByText('Judge’s note: Nice ride. Watch your legs.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Publish this class’s placings' }))
+    await screen.findByText(/are on the public page/)
+    expect(JSON.stringify(server.placings)).not.toMatch(/note|Watch your legs|Did not show/)
+    cleanup()
+    clearSeatForTests()
+    render(<PublicShow showId={SHOW} />)
+    await screen.findByText('Placings posted')
+    expect(screen.queryByText(/Watch your legs|Did not show/)).toBeNull()
+  })
+
   it('can take a class’s placings down again', async () => {
     await signOn(SHOW, '111111')
     scoreTheClass()
