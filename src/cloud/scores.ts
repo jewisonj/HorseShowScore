@@ -3,7 +3,8 @@ import { classKey, type ShowClass, type ShowFile } from '../data/fixture'
 import { classResults } from '../results'
 import { classState, getState, hasWork, judgeName, watchState, type ClassState } from '../store'
 import type { PublicPlacing, PublishedClass, SentRow, SentScores } from './backend'
-import { explainServerError, getBackend } from './cloud'
+import { cloudState, explainServerError, getBackend } from './cloud'
+import { currentSeat, markSeatRejected } from './seat'
 
 /**
  * Scores going to the server, and placings coming back out.
@@ -68,12 +69,18 @@ let sending = false
 let stopWatching: (() => void) | null = null
 
 /** The classes of published shows on this device that have something entered and not yet sent. */
-function waiting(): { show: ShowFile; key: string; judge: string; rows: SentRow[]; text: string }[] {
+function waiting(): { show: ShowFile; key: string; pin: string; judge: string; rows: SentRow[]; finished: boolean; text: string }[] {
   const cache = cloudCache()
   const scores = getState()
+  const seat = currentSeat()
+  const admin = cloudState().admin
   const out = []
   for (const show of cache.shows) {
     if (!cache.onServer.includes(show.id)) continue
+    // Only a judge signed on to this show sends, with their PIN. A signed-in show admin sends with none.
+    const judging = seat !== null && seat.role === 'judge' && seat.showId === show.id && !seat.rejected
+    if (!judging && !admin) continue
+    const pin = judging ? seat.pin : ''
     for (const meet of show.meets) {
       for (const cls of meet.classes) {
         const key = classKey(meet.id, cls.id)
@@ -86,8 +93,9 @@ function waiting(): { show: ShowFile; key: string; judge: string; rows: SentRow[
           // A class whose pattern this device does not have yet. Leave it for later.
           continue
         }
-        const text = JSON.stringify(rows)
-        if (lastSent.get(`${show.id}|${key}`) !== text) out.push({ show, key, judge: judgeName(scores, meet.id).trim(), rows, text })
+        const finished = cs.finished === true
+        const text = JSON.stringify([rows, finished])
+        if (lastSent.get(`${show.id}|${key}`) !== text) out.push({ show, key, pin, judge: judgeName(scores, meet.id).trim(), rows, finished, text })
       }
     }
   }
@@ -104,9 +112,15 @@ export async function sendPendingScores(): Promise<number> {
   try {
     for (const item of waiting()) {
       try {
-        await b.sendClassScores({ showId: item.show.id, classKey: item.key, device: deviceId(), judge: item.judge, rows: item.rows })
-        lastSent.set(`${item.show.id}|${item.key}`, item.text)
-        went++
+        const said = await b.sendClassScores({ showId: item.show.id, pin: item.pin, classKey: item.key, device: deviceId(), judge: item.judge, rows: item.rows, finished: item.finished })
+        if (said === 'ok') {
+          lastSent.set(`${item.show.id}|${item.key}`, item.text)
+          went++
+        } else if (said === 'wrong_pin' && item.pin !== '') {
+          // The admin changed the PIN. Scores stay on this device until someone signs on again.
+          markSeatRejected()
+          break
+        }
       } catch {
         // No signal, or the show was taken down. It stays waiting and is tried again.
       }
@@ -155,12 +169,18 @@ export function resetScoreSendingForTests() {
 // ---------------------------------------------------------------------------
 export type SentResult = { ok: true; latest: SentScores[] } | { ok: false; error: string }
 
-/** The latest send from each device for each class of a show. Show admins only: anyone else gets nothing. */
+/** The PIN to give the server for office work on a show: the office seat's, or none for a signed-in show admin. */
+function officePin(showId: string): string {
+  const seat = currentSeat()
+  return seat && seat.role === 'office' && seat.showId === showId ? seat.pin : ''
+}
+
+/** The latest send from each device for each class of a show. For the show office and show admins: anyone else gets nothing. */
 export async function loadSentScores(showId: string): Promise<SentResult> {
   const b = await getBackend()
   if (!b) return { ok: false, error: 'This copy of the app is not connected to a server.' }
   try {
-    const all = await b.listClassScores(showId)
+    const all = await b.listClassScores(showId, officePin(showId))
     const seen = new Set<string>()
     const latest = all.filter((s) => {
       const k = `${s.classKey}|${s.device}`
@@ -179,8 +199,8 @@ export async function publishPlacings(showId: string, key: string, rows: SentRow
   const b = await getBackend()
   if (!b) return 'This copy of the app is not connected to a server.'
   try {
-    await b.publishPlacings(showId, key, placingsFrom(rows))
-    return null
+    const said = await b.publishPlacings(showId, key, placingsFrom(rows), officePin(showId))
+    return said === 'ok' ? null : 'The server did not accept this sign-on for publishing. Sign on again as the show office.'
   } catch (e) {
     const said = explainServerError(e)
     return said === 'This account is not allowed to publish shows.' ? 'This account is not allowed to publish placings.' : said
@@ -191,8 +211,8 @@ export async function takeDownPlacings(showId: string, key: string): Promise<str
   const b = await getBackend()
   if (!b) return 'This copy of the app is not connected to a server.'
   try {
-    await b.removePlacings(showId, key)
-    return null
+    const said = await b.removePlacings(showId, key, officePin(showId))
+    return said === 'ok' ? null : 'The server did not accept this sign-on. Sign on again as the show office.'
   } catch (e) {
     return explainServerError(e)
   }

@@ -130,9 +130,14 @@ export function ShowScreen({ showId }: { showId: string }) {
               </button>
             )}
             {cloud.admin && published && onServer && (
-              <button className="btn btn-primary" onClick={() => go(`/s/${show.id}/results`)}>
-                Publish placings
-              </button>
+              <>
+                <button className="btn btn-primary" onClick={() => go(`/s/${show.id}/results`)}>
+                  Publish placings
+                </button>
+                <button className="btn" onClick={() => go(`/s/${show.id}/seats`)}>
+                  Judges and PINs
+                </button>
+              </>
             )}
             {published && onServer && (
               <button

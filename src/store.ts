@@ -46,6 +46,8 @@ export interface ClassState {
   placings: string[]
   /** Back numbers taken out of this class by hand on this device. The draw does not put them back. */
   removed?: string[]
+  /** The judge has marked the class finished. It tells the show office the placings are ready. */
+  finished?: boolean
 }
 
 export interface AppState {
@@ -313,6 +315,11 @@ export function removeClassStates(keys: string[]) {
 
 export function setPlacings(key: string, placings: string[]) {
   updateClass(key, (c) => ({ ...c, placings }))
+}
+
+/** The judge marks a class finished, or takes that back. */
+export function setClassFinished(key: string, finished: boolean) {
+  updateClass(key, (c) => ({ ...c, finished }))
 }
 
 /** The judge's name typed on this device for a day. Empty when none. */

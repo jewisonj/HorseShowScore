@@ -63,36 +63,60 @@ export function createSupabaseBackend(url: string, key: string): CloudBackend {
       const { error } = await sb.from('shows').delete().eq('id', id)
       if (error) throw new Error(error.message)
     },
-    async sendClassScores(send) {
-      // No .select(): a judging device may add a row but may not read one back.
-      const { error } = await sb.from('class_scores').insert({ show_id: send.showId, class_key: send.classKey, device: send.device, judge: send.judge, results: send.rows })
+    async checkPin(showId, pin) {
+      const { data, error } = await sb.rpc('seat_for', { p_show: showId, p_pin: pin })
+      if (error) throw new Error(error.message)
+      const seat = Array.isArray(data) ? (data[0] as { role?: string; seat_no?: number } | undefined) : undefined
+      return seat && (seat.role === 'judge' || seat.role === 'office') && typeof seat.seat_no === 'number' ? { role: seat.role, seatNo: seat.seat_no } : null
+    },
+    async listSeats(showId) {
+      const { data, error } = await sb.from('show_seats').select('role, seat_no, pin').eq('show_id', showId).order('role').order('seat_no')
+      if (error) throw new Error(error.message)
+      return (data ?? []).map((r: { role: string; seat_no: number; pin: string }) => ({ role: r.role === 'office' ? 'office' : 'judge', seatNo: r.seat_no, pin: r.pin }))
+    },
+    async replaceSeats(showId, seats) {
+      const gone = await sb.from('show_seats').delete().eq('show_id', showId)
+      if (gone.error) throw new Error(gone.error.message)
+      if (seats.length === 0) return
+      const { error } = await sb.from('show_seats').insert(seats.map((x) => ({ show_id: showId, role: x.role, seat_no: x.seatNo, pin: x.pin })))
       if (error) throw new Error(error.message)
     },
-    async listClassScores(showId) {
-      const { data, error } = await sb
-        .from('class_scores')
-        .select('class_key, device, judge, results, sent_at')
-        .eq('show_id', showId)
-        .order('sent_at', { ascending: false })
-        .limit(1000)
+    async sendClassScores(send) {
+      const { data, error } = await sb.rpc('send_class_scores', {
+        p_show: send.showId,
+        p_pin: send.pin,
+        p_class_key: send.classKey,
+        p_device: send.device,
+        p_judge: send.judge,
+        p_results: send.rows,
+        p_finished: send.finished,
+      })
       if (error) throw new Error(error.message)
-      return (data ?? []).map((r: { class_key: string; device: string; judge: string; results: unknown; sent_at: string }) => ({
+      return data === 'ok' || data === 'not_published' ? data : 'wrong_pin'
+    },
+    async listClassScores(showId, pin) {
+      const { data, error } = await sb.rpc('office_scores', { p_show: showId, p_pin: pin })
+      if (error) throw new Error(error.message)
+      type Row = { class_key: string; device: string; judge: string; seat_no: number | null; finished: boolean; results: unknown; sent_at: string }
+      return ((data ?? []) as Row[]).map((r) => ({
         classKey: r.class_key,
         device: r.device,
         judge: r.judge,
+        seatNo: r.seat_no,
+        finished: r.finished === true,
         rows: Array.isArray(r.results) ? (r.results as SentRow[]) : [],
         sentAt: r.sent_at,
       }))
     },
-    async publishPlacings(showId, classKey, placings) {
-      const { error } = await sb
-        .from('class_results')
-        .upsert({ show_id: showId, class_key: classKey, placings, published_at: new Date().toISOString() }, { onConflict: 'show_id,class_key' })
+    async publishPlacings(showId, classKey, placings, pin) {
+      const { data, error } = await sb.rpc('office_publish', { p_show: showId, p_pin: pin, p_class_key: classKey, p_placings: placings })
       if (error) throw new Error(error.message)
+      return data === 'ok' ? 'ok' : 'wrong_pin'
     },
-    async removePlacings(showId, classKey) {
-      const { error } = await sb.from('class_results').delete().eq('show_id', showId).eq('class_key', classKey)
+    async removePlacings(showId, classKey, pin) {
+      const { data, error } = await sb.rpc('office_unpublish', { p_show: showId, p_pin: pin, p_class_key: classKey })
       if (error) throw new Error(error.message)
+      return data === 'ok' ? 'ok' : 'wrong_pin'
     },
     async listPlacings(showId) {
       const { data, error } = await sb.from('class_results').select('class_key, placings, published_at').eq('show_id', showId)

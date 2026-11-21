@@ -4,7 +4,7 @@ import { classKey, getClass, getMeet, getPattern } from '../data/fixture'
 import { classResults, placingWarnings, sheetPlacings, totalFor } from '../results'
 import { PLACINGS_FIRST_CELL } from '../setup/workbook'
 import { ruleSetFor } from '../rules/rulesets'
-import { addRiders, classState, parseBackNumbers, useAppState } from '../store'
+import { addRiders, classState, parseBackNumbers, setClassFinished, useAppState } from '../store'
 import { BackNumber, Code, Ribbon, Screen, go, pts } from './bits'
 import { PatternPagePicture } from './PatternPagePicture'
 
@@ -178,6 +178,19 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
         <button className="btn btn-primary btn-wide" onClick={() => go(`${base}/place`)}>
           {cs.placings.length > 0 ? 'Change the placings' : 'Place the class'}
         </button>
+      )}
+
+      {cs.runs.length > 0 && (
+        <>
+          <button className={cs.finished ? 'btn btn-wide' : 'btn btn-primary btn-wide'} onClick={() => setClassFinished(key, !cs.finished)}>
+            {cs.finished ? 'Reopen this class' : 'Mark this class finished'}
+          </button>
+          <p className="hint" role="status">
+            {cs.finished
+              ? 'Marked finished. The show office can publish the placings. Scores can still be corrected.'
+              : 'Mark the class finished when every rider is scored. It tells the show office the placings are ready.'}
+          </p>
+        </>
       )}
 
       {results.length > 0 && (

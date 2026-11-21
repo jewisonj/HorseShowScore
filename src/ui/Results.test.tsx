@@ -3,10 +3,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { refreshShows, setBackendForTests, signIn, startCloud } from '../cloud/cloud'
 import { makeFakeBackend, type FakeBackend } from '../cloud/fakeBackend'
 import { loadSentScores, placingsFrom, resetScoreSendingForTests, sendPendingScores } from '../cloud/scores'
+import { clearSeatForTests, currentSeat, signOn } from '../cloud/seat'
 import { clearCloudCache } from '../data/cloudShows'
 import { classKey, type ShowFile } from '../data/fixture'
 import { clearShows } from '../data/shows'
-import { classState, clearAll, getState, saveRun, setJudgeName } from '../store'
+import { classState, clearAll, getState, saveRun, setClassFinished, setJudgeName } from '../store'
 import { PublicShow } from './PublicScreens'
 import { ResultsAdminScreen } from './ResultsAdminScreen'
 
@@ -70,6 +71,13 @@ beforeEach(async () => {
   server = makeFakeBackend()
   server.accounts['admin@example.com'] = { password: 'right', admin: true }
   server.shows = [show()]
+  // The show admin gave the show two judges and an office, each with a PIN.
+  server.seats[SHOW] = [
+    { role: 'judge', seatNo: 1, pin: '111111' },
+    { role: 'judge', seatNo: 2, pin: '222222' },
+    { role: 'office', seatNo: 1, pin: '333333' },
+  ]
+  clearSeatForTests()
   setBackendForTests(server)
   await startCloud()
 })
@@ -77,7 +85,39 @@ beforeEach(async () => {
 afterEach(() => cleanup())
 
 describe('a judging device sends its scores', () => {
+  it('sends nothing from a device that has not signed on as a judge', async () => {
+    scoreTheClass()
+    expect(await sendPendingScores()).toBe(0)
+    await signOn(SHOW, '333333') // the office PIN is not a judge
+    expect(await sendPendingScores()).toBe(0)
+    expect(server.sent).toHaveLength(0)
+  })
+
+  it('tells two judges apart by their PINs, and passes on that a class is marked finished', async () => {
+    await signOn(SHOW, '111111')
+    scoreTheClass()
+    await sendPendingScores()
+    // A second device, signed on with the other judge's PIN.
+    resetScoreSendingForTests()
+    await signOn(SHOW, '222222')
+    setClassFinished(KEY, true)
+    await sendPendingScores()
+    expect(server.sent.map((s) => [s.seatNo, s.finished])).toEqual([[1, false], [2, true]])
+    expect(server.sent[0].device).not.toBe(server.sent[1].device)
+  })
+
+  it('stops sending when the admin changes the PIN, keeps the scores, and says so', async () => {
+    await signOn(SHOW, '111111')
+    server.seats[SHOW] = [{ role: 'judge', seatNo: 1, pin: '444444' }]
+    scoreTheClass()
+    expect(await sendPendingScores()).toBe(0)
+    expect(currentSeat()?.rejected).toBe(true)
+    expect(run('401').scored).toBe(true)
+    expect(server.sent).toHaveLength(0)
+  })
+
   it('sends a class once something is entered, and again only when it changes', async () => {
+    await signOn(SHOW, '111111')
     expect(await sendPendingScores()).toBe(0)
     setJudgeName(`${SHOW}-m1`, 'Pat Example')
     saveRun(KEY, { ...run('401'), boxes: [3, 3, 0], extras: { fe: 0 }, scored: true })
@@ -94,6 +134,7 @@ describe('a judging device sends its scores', () => {
   })
 
   it('sends nothing for the sample shows that come with the app', async () => {
+    await signOn(SHOW, '111111')
     const sampleKey = classKey('meet-5', '1')
     const first = classState(getState(), sampleKey).runs[0]
     saveRun(sampleKey, { ...first, boxes: first.boxes.map(() => 1), scored: true })
@@ -102,6 +143,7 @@ describe('a judging device sends its scores', () => {
   })
 
   it('loses nothing with no signal: the class goes when the server is back', async () => {
+    await signOn(SHOW, '111111')
     server.down = true
     scoreTheClass()
     expect(await sendPendingScores()).toBe(0)
@@ -112,6 +154,7 @@ describe('a judging device sends its scores', () => {
   })
 
   it('cannot read what was sent. A show admin sees the latest from each device', async () => {
+    await signOn(SHOW, '111111')
     scoreTheClass()
     await sendPendingScores()
     saveRun(KEY, { ...run('410'), boxes: [0, 0, 0], extras: { fe: 0 }, scored: true })
@@ -143,18 +186,22 @@ describe('placings for the public', () => {
 describe('a show admin publishes a class', () => {
   it('is not offered to someone who is not signed in', () => {
     render(<ResultsAdminScreen showId={SHOW} />)
-    expect(screen.getByText(/Sign in to carry on/)).toBeTruthy()
+    expect(screen.getByText(/Sign on to carry on/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Publish this class/ })).toBeNull()
   })
 
   it('sees the scores sent, publishes the placings, and the public page shows them with no scores', async () => {
+    await signOn(SHOW, '222222')
     setJudgeName(`${SHOW}-m1`, 'Pat Example')
     scoreTheClass()
+    setClassFinished(KEY, true)
     await sendPendingScores()
+    clearSeatForTests()
     await signIn('admin@example.com', 'right')
 
     render(<ResultsAdminScreen showId={SHOW} />)
-    const block = (await screen.findByText(/Sent by Pat Example/)).closest('section')!
+    const block = (await screen.findByText(/Sent by judge 2, Pat Example,/)).closest('section')!
+    expect(within(block).getByText('The judge has marked this class finished.')).toBeTruthy()
     const lines = within(block).getAllByRole('listitem').map((li) => li.textContent)
     expect(lines[0]).toMatch(/^1.*401.*Avery Example.*73$/)
     expect(lines[7]).toMatch(/^8.*408.*Harper Example.*69½$/)
@@ -184,9 +231,27 @@ describe('a show admin publishes a class', () => {
     expect(cls.textContent).not.toMatch(/73|69½|DQ/)
   })
 
-  it('can take a class’s placings down again', async () => {
+  it('the show office, signed on with its PIN, publishes a class. A judge\'s PIN cannot', async () => {
+    await signOn(SHOW, '111111')
     scoreTheClass()
     await sendPendingScores()
+    // The judge's device asks for the office page: it gets no scores and no way to publish.
+    render(<ResultsAdminScreen showId={SHOW} />)
+    expect(screen.getByText(/Sign on to carry on/)).toBeTruthy()
+    cleanup()
+
+    await signOn(SHOW, '333333')
+    render(<ResultsAdminScreen showId={SHOW} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Publish this class’s placings' }))
+    expect(await screen.findByText(/Placings for Open Reining are on the public page/)).toBeTruthy()
+    expect(server.placings[SHOW][0].placings).toHaveLength(9)
+  })
+
+  it('can take a class’s placings down again', async () => {
+    await signOn(SHOW, '111111')
+    scoreTheClass()
+    await sendPendingScores()
+    clearSeatForTests()
     await signIn('admin@example.com', 'right')
     window.confirm = () => true
     render(<ResultsAdminScreen showId={SHOW} />)

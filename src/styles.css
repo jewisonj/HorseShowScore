@@ -1676,3 +1676,45 @@ h2 {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- Sign-on: role buttons, and the bar that says who is signed on ---------- */
+
+.role-list .role {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 76px;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+.role-list .role strong {
+  font-size: 1.1rem;
+}
+
+.role-list .role span {
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+.seat-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 6px 12px;
+  background: #e3e8ee;
+  font-size: 0.95rem;
+}
+
+.seat-bar-warn {
+  background: #fde8e6;
+  color: #7a1a14;
+}
+
+.seat-bar .btn {
+  flex: none;
+  min-height: 40px;
+}

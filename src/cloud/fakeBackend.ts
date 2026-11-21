@@ -1,5 +1,5 @@
 import type { ShowFile } from '../data/fixture'
-import type { CloudBackend, CloudUser, PublishedClass, SentScores } from './backend'
+import type { CloudBackend, CloudUser, PublishedClass, SeatPin, SentScores } from './backend'
 
 /** A stand-in server for tests. Nothing here touches the network. */
 export interface FakeBackend extends CloudBackend {
@@ -12,6 +12,10 @@ export interface FakeBackend extends CloudBackend {
   down: boolean
   /** Every send from a judging device, oldest first, with the show it was for. */
   sent: (SentScores & { showId: string })[]
+  /** The seats and PINs a show admin set, by show id. */
+  seats: Record<string, SeatPin[]>
+  /** True for the show's office PIN, or a signed-in show admin giving no PIN. */
+  office(showId: string, pin: string): Promise<boolean>
   /** Published placings, by show id. */
   placings: Record<string, PublishedClass[]>
   /** Pictures of pattern book pages "on the server", by path. */
@@ -32,6 +36,11 @@ export function makeFakeBackend(): FakeBackend {
     signedIn: null,
     down: false,
     sent: [],
+    seats: {},
+    async office(showId, pin) {
+      if (pin === '') return fake.isShowAdmin()
+      return (fake.seats[showId] ?? []).some((x) => x.pin === pin && x.role === 'office')
+    },
     placings: {},
     pages: {},
     workbook: null,
@@ -73,26 +82,55 @@ export function makeFakeBackend(): FakeBackend {
       if (fake.down) throw new Error('Failed to fetch')
       if (await fake.isShowAdmin()) fake.shows = fake.shows.filter((s) => s.id !== id)
     },
-    async sendClassScores(send) {
+    async checkPin(showId, pin) {
       if (fake.down) throw new Error('Failed to fetch')
-      if (!fake.shows.some((s) => s.id === send.showId)) throw new Error('new row violates row-level security policy')
-      fake.sent.push({ showId: send.showId, classKey: send.classKey, device: send.device, judge: send.judge, rows: JSON.parse(JSON.stringify(send.rows)), sentAt: new Date(Date.now() + fake.sent.length).toISOString() })
+      const seat = (fake.seats[showId] ?? []).find((x) => x.pin === pin)
+      return seat ? { role: seat.role, seatNo: seat.seatNo } : null
     },
-    async listClassScores(showId) {
+    async listSeats(showId) {
       if (fake.down) throw new Error('Failed to fetch')
-      // Row-level security hands anyone but a show admin nothing.
-      if (!(await fake.isShowAdmin())) return []
-      return fake.sent.filter((s) => s.showId === showId).reverse()
+      return (await fake.isShowAdmin()) ? (fake.seats[showId] ?? []) : []
     },
-    async publishPlacings(showId, classKey, placings) {
+    async replaceSeats(showId, seats) {
       if (fake.down) throw new Error('Failed to fetch')
       if (!(await fake.isShowAdmin())) throw new Error('new row violates row-level security policy')
+      if (new Set(seats.map((x) => x.pin)).size !== seats.length) throw new Error('duplicate key value violates unique constraint "show_seats_pin_once_per_show"')
+      fake.seats[showId] = seats.map((x) => ({ ...x }))
+    },
+    async sendClassScores(send) {
+      if (fake.down) throw new Error('Failed to fetch')
+      if (!fake.shows.some((s) => s.id === send.showId)) return 'not_published'
+      const seat = (fake.seats[send.showId] ?? []).find((x) => x.pin === send.pin && x.role === 'judge')
+      if (!seat && !(send.pin === '' && (await fake.isShowAdmin()))) return 'wrong_pin'
+      fake.sent.push({
+        showId: send.showId,
+        classKey: send.classKey,
+        device: send.device,
+        judge: send.judge,
+        seatNo: seat ? seat.seatNo : null,
+        finished: send.finished,
+        rows: JSON.parse(JSON.stringify(send.rows)),
+        sentAt: new Date(Date.now() + fake.sent.length).toISOString(),
+      })
+      return 'ok'
+    },
+    async listClassScores(showId, pin) {
+      if (fake.down) throw new Error('Failed to fetch')
+      if (!(await fake.office(showId, pin))) return []
+      return fake.sent.filter((s) => s.showId === showId).reverse()
+    },
+    async publishPlacings(showId, classKey, placings, pin) {
+      if (fake.down) throw new Error('Failed to fetch')
+      if (!(await fake.office(showId, pin))) return 'wrong_pin'
       if (JSON.stringify(placings).includes('"score"')) throw new Error('violates check constraint "class_results_no_scores"')
       fake.placings[showId] = [...(fake.placings[showId] ?? []).filter((c) => c.classKey !== classKey), { classKey, placings, publishedAt: new Date().toISOString() }]
+      return 'ok'
     },
-    async removePlacings(showId, classKey) {
+    async removePlacings(showId, classKey, pin) {
       if (fake.down) throw new Error('Failed to fetch')
-      if (await fake.isShowAdmin()) fake.placings[showId] = (fake.placings[showId] ?? []).filter((c) => c.classKey !== classKey)
+      if (!(await fake.office(showId, pin))) return 'wrong_pin'
+      fake.placings[showId] = (fake.placings[showId] ?? []).filter((c) => c.classKey !== classKey)
+      return 'ok'
     },
     async listPlacings(showId) {
       if (fake.down) throw new Error('Failed to fetch')

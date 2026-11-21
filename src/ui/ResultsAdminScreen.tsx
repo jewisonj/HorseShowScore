@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { PublishedClass, SentScores } from '../cloud/backend'
 import { startCloud, useCloud } from '../cloud/cloud'
 import { loadPlacings, loadSentScores, publishPlacings, takeDownPlacings } from '../cloud/scores'
+import { useSeat } from '../cloud/seat'
 import { useCloudCache } from '../data/cloudShows'
 import { classKey } from '../data/fixture'
 import { formatHalf } from '../engine/half'
@@ -21,6 +22,9 @@ export function ResultsAdminScreen({ showId }: { showId: string }) {
   const [problem, setProblem] = useState('')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
+  const seat = useSeat()
+  // The show office signs on with its PIN. A show admin is signed in with an account.
+  const allowed = cloud.admin || (seat?.role === 'office' && seat.showId === showId)
 
   const load = useCallback(async () => {
     setProblem('')
@@ -34,20 +38,20 @@ export function ResultsAdminScreen({ showId }: { showId: string }) {
     void startCloud()
   }, [])
   useEffect(() => {
-    if (cloud.admin) void load()
-  }, [cloud.admin, load])
+    if (allowed) void load()
+  }, [allowed, load])
 
-  if (!cloud.configured || !cloud.admin) {
+  if (!cloud.configured || !allowed) {
     return (
       <Screen title="Publish placings" backTo={`/s/${showId}`} backLabel="Show">
         <p className="hint">
           {cloud.user
             ? 'This account is not on the list of people who can publish placings.'
-            : 'Placings are published by the people who run the show. Sign in to carry on.'}
+            : 'Placings are published by the show office or a show admin. Sign on to carry on.'}
         </p>
         <div className="stack">
-          <button className="btn btn-primary btn-wide" onClick={() => go('/account')}>
-            Sign in
+          <button className="btn btn-primary btn-wide" onClick={() => go('/')}>
+            Sign on
           </button>
         </div>
       </Screen>
@@ -115,8 +119,12 @@ export function ResultsAdminScreen({ showId }: { showId: string }) {
                   return (
                     <div key={send.device} className="result-send">
                       <p className="muted">
-                        Sent by {send.judge || 'a judge who gave no name'} at {whenChecked(send.sentAt)}
-                        {sends.length > 1 ? `, device ending ${send.device.slice(-4)}` : ''}
+                        {send.seatNo === null ? 'Sent by a show admin' : `Sent by judge ${send.seatNo}`}
+                        {send.judge ? `, ${send.judge},` : ''} at {whenChecked(send.sentAt)}
+                        {sends.filter((x) => x.seatNo === send.seatNo).length > 1 ? `, device ending ${send.device.slice(-4)}` : ''}
+                      </p>
+                      <p className={send.finished ? 'result-out' : 'muted'}>
+                        {send.finished ? 'The judge has marked this class finished.' : 'Not marked finished yet. The scores may still change.'}
                       </p>
                       <ol className="result-rows">
                         {rows.map((r) => (
