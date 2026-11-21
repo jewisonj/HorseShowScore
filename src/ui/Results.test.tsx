@@ -268,6 +268,50 @@ describe('a show admin publishes a class', () => {
     expect(screen.queryByText(/Watch your legs|Did not show/)).toBeNull()
   })
 
+  it('the office releases a class\'s score cards, and only then does the public see scores, penalties and notes', async () => {
+    await signOn(SHOW, '111111')
+    scoreTheClass()
+    saveRun(KEY, { ...run('402'), penalties: [{ half: 2, box: 1 }], note: 'Nice ride. Watch your legs.' })
+    await sendPendingScores()
+    await signOn(SHOW, '333333')
+    window.confirm = () => true
+
+    // Before release: nothing of the card is public.
+    render(<PublicShow showId={SHOW} />)
+    await screen.findByText('1. Open Reining')
+    expect(screen.queryByText('Score cards')).toBeNull()
+    expect(screen.queryByText(/Watch your legs/)).toBeNull()
+    cleanup()
+
+    render(<ResultsAdminScreen showId={SHOW} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Release this class’s score cards' }))
+    expect(await screen.findByText(/Score cards for Open Reining are on the public page/)).toBeTruthy()
+    expect(await screen.findByText(/Score cards released at/)).toBeTruthy()
+    expect(server.cards[SHOW][0].cards).toHaveLength(9)
+    // Releasing cards does not publish placings: they are separate buttons.
+    expect(server.placings[SHOW] ?? []).toEqual([])
+    cleanup()
+
+    clearSeatForTests()
+    render(<PublicShow showId={SHOW} />)
+    expect(await screen.findByText('Score cards released')).toBeTruthy()
+    const card = screen.getByText('Blake Example', { selector: '.public-card strong' }).closest('details')!
+    // 70 + 2½ maneuvers − 1 penalty = 71½, with the penalty on maneuver 2 and the note.
+    expect(card.textContent).toMatch(/402.*Blake Example.*71½/)
+    expect(card.textContent).toMatch(/2\..*\+1.*Penalty 1/)
+    expect(card.textContent).toMatch(/Judge’s note: Nice ride\. Watch your legs\./)
+    expect(screen.getByText('Indy Example', { selector: '.public-card strong' }).closest('details')!.textContent).toMatch(/No place.*Disqualified/)
+    cleanup()
+
+    // The office can take them down again, and a judge's PIN cannot release them.
+    await signOn(SHOW, '333333')
+    render(<ResultsAdminScreen showId={SHOW} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Take these score cards down' }))
+    expect(await screen.findByText(/Score cards for Open Reining are taken down/)).toBeTruthy()
+    expect(server.cards[SHOW]).toEqual([])
+    expect(await server.releaseCards(SHOW, KEY, [], '111111')).toBe('wrong_pin')
+  })
+
   it('can take a class’s placings down again', async () => {
     await signOn(SHOW, '111111')
     scoreTheClass()

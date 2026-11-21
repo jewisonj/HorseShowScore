@@ -1,5 +1,5 @@
 import type { ShowFile } from '../data/fixture'
-import type { CloudBackend, CloudUser, PublishedClass, SeatPin, SentScores } from './backend'
+import type { CloudBackend, CloudUser, PublishedClass, ReleasedCards, SeatPin, SentScores } from './backend'
 
 /** A stand-in server for tests. Nothing here touches the network. */
 export interface FakeBackend extends CloudBackend {
@@ -16,6 +16,8 @@ export interface FakeBackend extends CloudBackend {
   seats: Record<string, SeatPin[]>
   /** True for the show's office PIN, or a signed-in show admin giving no PIN. */
   office(showId: string, pin: string): Promise<boolean>
+  /** Released score cards, by show id. */
+  cards: Record<string, ReleasedCards[]>
   /** Published placings, by show id. */
   placings: Record<string, PublishedClass[]>
   /** Pictures of pattern book pages "on the server", by path. */
@@ -42,6 +44,7 @@ export function makeFakeBackend(): FakeBackend {
       return (fake.seats[showId] ?? []).some((x) => x.pin === pin && x.role === 'office')
     },
     placings: {},
+    cards: {},
     pages: {},
     workbook: null,
     workbookLinks: [],
@@ -131,6 +134,22 @@ export function makeFakeBackend(): FakeBackend {
       if (!(await fake.office(showId, pin))) return 'wrong_pin'
       fake.placings[showId] = (fake.placings[showId] ?? []).filter((c) => c.classKey !== classKey)
       return 'ok'
+    },
+    async releaseCards(showId, classKey, cards, pin) {
+      if (fake.down) throw new Error('Failed to fetch')
+      if (!(await fake.office(showId, pin))) return 'wrong_pin'
+      fake.cards[showId] = [...(fake.cards[showId] ?? []).filter((c) => c.classKey !== classKey), { classKey, cards: JSON.parse(JSON.stringify(cards)), publishedAt: new Date().toISOString() }]
+      return 'ok'
+    },
+    async takeDownCards(showId, classKey, pin) {
+      if (fake.down) throw new Error('Failed to fetch')
+      if (!(await fake.office(showId, pin))) return 'wrong_pin'
+      fake.cards[showId] = (fake.cards[showId] ?? []).filter((c) => c.classKey !== classKey)
+      return 'ok'
+    },
+    async listCards(showId) {
+      if (fake.down) throw new Error('Failed to fetch')
+      return fake.cards[showId] ?? []
     },
     async listPlacings(showId) {
       if (fake.down) throw new Error('Failed to fetch')

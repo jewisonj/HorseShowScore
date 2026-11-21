@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { ShowFile } from '../data/fixture'
-import type { CloudBackend, CloudUser, PublicPlacing, SentRow } from './backend'
+import type { CloudBackend, CloudUser, PublicCard, PublicPlacing, SentRow } from './backend'
 
 function toUser(u: { id: string; email?: string } | null | undefined): CloudUser | null {
   return u ? { id: u.id, email: u.email ?? '' } : null
@@ -117,6 +117,25 @@ export function createSupabaseBackend(url: string, key: string): CloudBackend {
       const { data, error } = await sb.rpc('office_unpublish', { p_show: showId, p_pin: pin, p_class_key: classKey })
       if (error) throw new Error(error.message)
       return data === 'ok' ? 'ok' : 'wrong_pin'
+    },
+    async releaseCards(showId, classKey, cards, pin) {
+      const { data, error } = await sb.rpc('office_release_cards', { p_show: showId, p_pin: pin, p_class_key: classKey, p_cards: cards })
+      if (error) throw new Error(error.message)
+      return data === 'ok' ? 'ok' : 'wrong_pin'
+    },
+    async takeDownCards(showId, classKey, pin) {
+      const { data, error } = await sb.rpc('office_take_down_cards', { p_show: showId, p_pin: pin, p_class_key: classKey })
+      if (error) throw new Error(error.message)
+      return data === 'ok' ? 'ok' : 'wrong_pin'
+    },
+    async listCards(showId) {
+      const { data, error } = await sb.from('class_cards').select('class_key, cards, published_at').eq('show_id', showId)
+      if (error) throw new Error(error.message)
+      return (data ?? []).map((r: { class_key: string; cards: unknown; published_at: string }) => ({
+        classKey: r.class_key,
+        cards: Array.isArray(r.cards) ? (r.cards as PublicCard[]) : [],
+        publishedAt: r.published_at,
+      }))
     },
     async listPlacings(showId) {
       const { data, error } = await sb.from('class_results').select('class_key, placings, published_at').eq('show_id', showId)

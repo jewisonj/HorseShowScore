@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { PublishedClass, SentScores } from '../cloud/backend'
+import type { PublishedClass, ReleasedCards, SentScores } from '../cloud/backend'
 import { startCloud, useCloud } from '../cloud/cloud'
-import { loadPlacings, loadSentScores, publishPlacings, takeDownPlacings } from '../cloud/scores'
+import { loadCards, loadPlacings, loadSentScores, publishPlacings, releaseCards, takeDownCards, takeDownPlacings } from '../cloud/scores'
 import { useSeat } from '../cloud/seat'
 import { useCloudCache } from '../data/cloudShows'
 import { classKey } from '../data/fixture'
@@ -19,6 +19,7 @@ export function ResultsAdminScreen({ showId }: { showId: string }) {
   const cache = useCloudCache()
   const [sent, setSent] = useState<SentScores[] | null>(null)
   const [published, setPublished] = useState<PublishedClass[]>([])
+  const [released, setReleased] = useState<ReleasedCards[]>([])
   const [problem, setProblem] = useState('')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
@@ -28,10 +29,11 @@ export function ResultsAdminScreen({ showId }: { showId: string }) {
 
   const load = useCallback(async () => {
     setProblem('')
-    const [scores, placings] = await Promise.all([loadSentScores(showId), loadPlacings(showId)])
+    const [scores, placings, cards] = await Promise.all([loadSentScores(showId), loadPlacings(showId), loadCards(showId)])
     if (!scores.ok) setProblem(scores.error)
     else setSent(scores.latest)
     if (placings) setPublished(placings)
+    if (cards) setReleased(cards)
   }, [showId])
 
   useEffect(() => {
@@ -82,8 +84,9 @@ export function ResultsAdminScreen({ showId }: { showId: string }) {
   return (
     <Screen title="Publish placings" sub={show.name} backTo={`/s/${show.id}`} backLabel="Show">
       <p className="hint">
-        Judging devices send their scores as they are entered. Scores are shown on this page only. Publishing a class
-        puts its placings, with no scores, on the public page.
+        Judging devices send their scores as they are entered. Publishing a class puts its placings, with no scores,
+        on the public page. Releasing its score cards puts every rider’s scores, penalties and the judge’s notes
+        there too, during the class or after the show.
       </p>
       <div className="stack">
         <button className="btn" disabled={busy} onClick={() => void load()}>
@@ -107,12 +110,14 @@ export function ResultsAdminScreen({ showId }: { showId: string }) {
             const key = classKey(meet.id, cls.id)
             const sends = sent.filter((s) => s.classKey === key)
             const out = published.find((p) => p.classKey === key)
+            const cardsOut = released.find((p) => p.classKey === key)
             return (
               <section key={key} className="panel result-class" aria-label={`${cls.id}. ${cls.name}`}>
                 <h2>
                   {cls.id}. {cls.name}
                 </h2>
                 {out && <p className="result-out">Placings published at {whenChecked(out.publishedAt)}.</p>}
+                {cardsOut && <p className="result-out">Score cards released at {whenChecked(cardsOut.publishedAt)}.</p>}
                 {sends.length === 0 && <p className="muted">No scores sent for this class yet.</p>}
                 {sends.map((send) => {
                   const rows = send.rows.filter((r) => r.place !== null || r.rode)
@@ -147,6 +152,16 @@ export function ResultsAdminScreen({ showId }: { showId: string }) {
                       >
                         {out ? 'Publish this class’s placings again' : 'Publish this class’s placings'}
                       </button>
+                      <button
+                        className="btn"
+                        disabled={busy || rows.length === 0}
+                        onClick={() => {
+                          if (!window.confirm(`Release the score cards for ${cls.name}? Anyone with the public link will see every rider’s scores, penalties and the judge’s notes.`)) return
+                          void act(() => releaseCards(show.id, key, send.rows), `Score cards for ${cls.name} are on the public page.`)
+                        }}
+                      >
+                        {cardsOut ? 'Release this class’s score cards again' : 'Release this class’s score cards'}
+                      </button>
                     </div>
                   )
                 })}
@@ -160,6 +175,18 @@ export function ResultsAdminScreen({ showId }: { showId: string }) {
                     }}
                   >
                     Take these placings down
+                  </button>
+                )}
+                {cardsOut && (
+                  <button
+                    className="btn btn-danger"
+                    disabled={busy}
+                    onClick={() => {
+                      if (!window.confirm(`Take the score cards for ${cls.name} off the public page?`)) return
+                      void act(() => takeDownCards(show.id, key), `Score cards for ${cls.name} are taken down.`)
+                    }}
+                  >
+                    Take these score cards down
                   </button>
                 )}
               </section>

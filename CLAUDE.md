@@ -46,7 +46,8 @@ Read `README.md` first. The requirements, decision log and scoring references li
 
 - `#/public` and `#/public/<show id>` are for riders, coaches and spectators (`src/ui/PublicScreens.tsx`). Read only: classes in running order, the draw and the patterns with their pictures.
 - They show exactly what is published on the server. Never a sample, never a copy being worked on in setup, and nothing from this device's own scores.
-- Placings show under a class once a show admin has published them: placings only, never a score or a card.
+- Placings show under a class once the show office or a show admin has published them. Placings never carry a score.
+- Score cards are a separate release (owner, 2026-11-21): during a class or after the show, the office releases a class's score cards with its own button. A released card is public: each maneuver's score, penalties, the total and the judge's note for the rider (`class_cards`, `src/ui/PublicCard.tsx`). Until then none of that leaves the office's view.
 - The live server can be reached from the development sandbox with the publishable key in `.env`: reads, and checking that unsigned writes are refused. Test against it instead of assuming.
 
 ## This repo is public
@@ -56,7 +57,7 @@ Do not commit any of these unless the owner says so:
 - Association pattern text or diagrams. The test data carries pattern names, box counts, short maneuver codes and a few words per box in our own words. The owner asked for those on 2026-11-21.
 - People other than riders: judges and coaches. Riders' schools too.
 - Rider names **are** in the test data. The owner said on 2026-11-21 that they are public information. The draw carries draw order, back number, rider and horse.
-- Scores or score sheets from a real show. IHSA cards are not public.
+- Scores or score sheets from a real show. Cards become public only when a show's office releases them in the app; they are still never committed here.
 - The planning documents from the Claude Project.
 
 `src/results.test.ts` has a test that fails if a judge, or any field beyond those four, turns up in the test data.

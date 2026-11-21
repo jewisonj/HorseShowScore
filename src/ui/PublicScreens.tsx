@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import type { PublishedClass } from '../cloud/backend'
+import type { PublishedClass, ReleasedCards } from '../cloud/backend'
 import { refreshShows, refreshShowsIfStale, startCloud, useCloud } from '../cloud/cloud'
-import { loadPlacings } from '../cloud/scores'
+import { loadCards, loadPlacings } from '../cloud/scores'
 import { useCloudCache } from '../data/cloudShows'
 import { classKey, formatDate, type ShowFile } from '../data/fixture'
 import { BackNumber, Code, Screen, go } from './bits'
 import { showDates, whenChecked } from './Home'
 import { PatternPagePicture } from './PatternPagePicture'
+import { PublicCardView } from './PublicCard'
 
 /**
  * The public side: what anyone may see of a published show.
@@ -84,12 +85,15 @@ export function PublicShow({ showId }: { showId: string }) {
   const show = shows.find((s) => s.id === showId)
   // Placings a show admin has published. Read each time the page opens: they arrive class by class.
   const [results, setResults] = useState<PublishedClass[]>([])
+  // Score cards the show office has released, class by class.
+  const [released, setReleased] = useState<ReleasedCards[]>([])
   useEffect(() => {
     let current = true
     void startCloud()
-      .then(() => loadPlacings(showId))
-      .then((got) => {
+      .then(() => Promise.all([loadPlacings(showId), loadCards(showId)]))
+      .then(([got, cards]) => {
         if (current && got) setResults(got)
+        if (current && cards) setReleased(cards)
       })
     return () => {
       current = false
@@ -118,6 +122,7 @@ export function PublicShow({ showId }: { showId: string }) {
             const pattern = show.patterns.find((p) => p.id === cls.pattern_id)
             const riders = [...cls.entries].sort((a, b) => a.draw - b.draw)
             const placings = results.find((r) => r.classKey === classKey(meet.id, cls.id))?.placings ?? []
+            const cards = released.find((r) => r.classKey === classKey(meet.id, cls.id))?.cards ?? []
             return (
               <details key={cls.id} className="public-class">
                 <summary>
@@ -130,6 +135,7 @@ export function PublicShow({ showId }: { showId: string }) {
                       {pattern ? `, ${pattern.name}` : ''}
                     </span>
                     {placings.length > 0 && <span className="public-posted">Placings posted</span>}
+                    {cards.length > 0 && <span className="public-posted">Score cards released</span>}
                   </span>
                 </summary>
                 {placings.length > 0 && (
@@ -147,6 +153,14 @@ export function PublicShow({ showId }: { showId: string }) {
                         </li>
                       ))}
                     </ol>
+                  </>
+                )}
+                {cards.length > 0 && (
+                  <>
+                    <h3>Score cards</h3>
+                    {cards.map((card) => (
+                      <PublicCardView key={card.back_no} card={card} cls={cls} pattern={pattern} />
+                    ))}
                   </>
                 )}
                 {riders.length > 0 && (
@@ -191,7 +205,7 @@ export function PublicShow({ showId }: { showId: string }) {
         </section>
       ))}
       {checkedAt && <p className="hint">Read from the server at {whenChecked(checkedAt)}. The draw can change up to the start of a class.</p>}
-      <p className="hint">Placings appear under a class when the show publishes them. They are unofficial.</p>
+      <p className="hint">Placings and score cards appear under a class when the show office releases them. They are unofficial.</p>
     </Screen>
   )
 }

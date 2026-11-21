@@ -19,8 +19,35 @@ export interface SentRow {
   mark: string
   /** Something was entered for this rider */
   rode: boolean
-  /** The judge's note for the rider. For the show office only: it is never published. */
+  /** The judge's note for the rider. For the show office, until it releases the score cards. */
   note?: string
+  /** The card itself, for riders who rode: what the office releases as a score card. */
+  card?: SentCard
+}
+
+/** A rider's card as scored: each maneuver box, the boxes outside the maneuvers, and the penalties. Half points. */
+export interface SentCard {
+  boxes: (number | null)[]
+  extras: Record<string, number | null>
+  penalties: { half: number; box: number; reason?: string; circled?: boolean }[]
+}
+
+/** One rider's released score card. Public once the show office releases the class. */
+export interface PublicCard extends SentCard {
+  place: number | null
+  tied: boolean
+  back_no: string
+  rider: string
+  horse: string
+  score: number | null
+  mark: string
+  note: string
+}
+
+export interface ReleasedCards {
+  classKey: string
+  cards: PublicCard[]
+  publishedAt: string
 }
 
 /** What one judging device last sent for one class. */
@@ -92,6 +119,12 @@ export interface CloudBackend {
   publishPlacings(showId: string, classKey: string, placings: PublicPlacing[], pin: string): Promise<'ok' | 'wrong_pin'>
   /** The office PIN, or a signed-in show admin with an empty PIN: take a class's placings down. */
   removePlacings(showId: string, classKey: string, pin: string): Promise<'ok' | 'wrong_pin'>
+  /** The office PIN, or a signed-in show admin with an empty PIN: release, or replace, a class's score cards. */
+  releaseCards(showId: string, classKey: string, cards: PublicCard[], pin: string): Promise<'ok' | 'wrong_pin'>
+  /** The office PIN, or a signed-in show admin with an empty PIN: take a class's score cards down. */
+  takeDownCards(showId: string, classKey: string, pin: string): Promise<'ok' | 'wrong_pin'>
+  /** Anyone: the score cards released for a show. */
+  listCards(showId: string): Promise<ReleasedCards[]>
   /** Anyone: the placings published for a show. */
   listPlacings(showId: string): Promise<PublishedClass[]>
   /** Store a picture of a pattern book page at this path. Throws when the server refuses. */

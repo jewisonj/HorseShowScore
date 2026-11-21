@@ -2,7 +2,7 @@ import { cloudCache } from '../data/cloudShows'
 import { classKey, type ShowClass, type ShowFile } from '../data/fixture'
 import { classResults } from '../results'
 import { classState, getState, hasWork, judgeName, watchState, type ClassState } from '../store'
-import type { PublicPlacing, PublishedClass, SentRow, SentScores } from './backend'
+import type { PublicCard, PublicPlacing, PublishedClass, ReleasedCards, SentRow, SentScores } from './backend'
 import { cloudState, explainServerError, getBackend } from './cloud'
 import { currentSeat, markSeatRejected } from './seat'
 
@@ -45,6 +45,8 @@ export function rowsFor(cs: ClassState, cls: ShowClass): SentRow[] {
     mark: row.run.mark,
     rode: hasWork(row.run) || placed.has(row.run.id),
     ...((row.run.note ?? '').trim() ? { note: (row.run.note ?? '').trim() } : {}),
+    // The card itself goes along for riders who rode, so the office can release it later.
+    ...(hasWork(row.run) ? { card: { boxes: row.run.boxes, extras: row.run.extras ?? {}, penalties: row.run.penalties } } : {}),
   }))
 }
 
@@ -58,6 +60,28 @@ export function placingsFrom(rows: SentRow[]): PublicPlacing[] {
   const placed = rows.filter((r) => r.place !== null).sort((a, b) => (a.place ?? 0) - (b.place ?? 0))
   const rest = rows.filter((r) => r.place === null && r.rode)
   return [...placed.map(line), ...rest.map(line)]
+}
+
+/**
+ * Score cards for the public, from what a device sent, in placing order: every
+ * rider who rode, with the card as scored, the total and the judge's note.
+ * Only the show office or a show admin releases them.
+ */
+export function cardsFrom(rows: SentRow[]): PublicCard[] {
+  const order = [...rows.filter((r) => r.place !== null).sort((a, b) => (a.place ?? 0) - (b.place ?? 0)), ...rows.filter((r) => r.place === null && r.rode)]
+  return order.map((r) => ({
+    place: r.place,
+    tied: r.tied,
+    back_no: r.back_no,
+    rider: r.rider,
+    horse: r.horse,
+    score: r.score,
+    mark: r.mark,
+    note: r.note ?? '',
+    boxes: r.card?.boxes ?? [],
+    extras: r.card?.extras ?? {},
+    penalties: r.card?.penalties ?? [],
+  }))
 }
 
 // ---------------------------------------------------------------------------
@@ -216,6 +240,40 @@ export async function takeDownPlacings(showId: string, key: string): Promise<str
     return said === 'ok' ? null : 'The server did not accept this sign-on. Sign on again as the show office.'
   } catch (e) {
     return explainServerError(e)
+  }
+}
+
+/** Release a class's score cards from what a device sent. Returns what went wrong, or null. */
+export async function releaseCards(showId: string, key: string, rows: SentRow[]): Promise<string | null> {
+  const b = await getBackend()
+  if (!b) return 'This copy of the app is not connected to a server.'
+  try {
+    const said = await b.releaseCards(showId, key, cardsFrom(rows), officePin(showId))
+    return said === 'ok' ? null : 'The server did not accept this sign-on for releasing score cards. Sign on again as the show office.'
+  } catch (e) {
+    return explainServerError(e)
+  }
+}
+
+export async function takeDownCards(showId: string, key: string): Promise<string | null> {
+  const b = await getBackend()
+  if (!b) return 'This copy of the app is not connected to a server.'
+  try {
+    const said = await b.takeDownCards(showId, key, officePin(showId))
+    return said === 'ok' ? null : 'The server did not accept this sign-on. Sign on again as the show office.'
+  } catch (e) {
+    return explainServerError(e)
+  }
+}
+
+/** The score cards released for a show. Null when the server could not be read. */
+export async function loadCards(showId: string): Promise<ReleasedCards[] | null> {
+  const b = await getBackend()
+  if (!b) return null
+  try {
+    return await b.listCards(showId)
+  } catch {
+    return null
   }
 }
 
