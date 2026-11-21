@@ -513,6 +513,25 @@ h2 {
   line-height: 1.2;
 }
 
+/* ---------- Rail work for the whole class ---------- */
+
+.rail-first {
+  margin-bottom: 10px;
+}
+
+.rail-row.is-sel {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.rail-value {
+  flex: none;
+  min-width: 2.4em;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: right;
+}
+
 /* Score or status at the right of a rider's row */
 .row-status {
   display: flex;

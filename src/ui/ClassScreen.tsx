@@ -3,18 +3,8 @@ import { formatHalf } from '../engine'
 import { classKey, getClass, getMeet, getPattern } from '../data/fixture'
 import { classResults, placingWarnings, totalFor } from '../results'
 import { ruleSetFor } from '../rules/rulesets'
-import { addRiders, classState, parseBackNumbers, useAppState, type Run } from '../store'
+import { addRiders, classState, parseBackNumbers, useAppState } from '../store'
 import { BackNumber, Code, Ribbon, Screen, go, pts } from './bits'
-
-function inProgress(run: Run): boolean {
-  return (
-    !run.scored &&
-    (run.boxes.some((b) => b !== null) ||
-      Object.values(run.extras ?? {}).some((v) => v !== null) ||
-      run.penalties.length > 0 ||
-      run.mark !== 'none')
-  )
-}
 
 export function ClassScreen({ meetId, classId }: { meetId: string; classId: string }) {
   const state = useAppState()
@@ -38,6 +28,8 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
   const results = classResults(cs, cls)
   const warnings = cls.card_family === 'placings' ? placingWarnings(cs, cls) : []
   const base = `/m/${meetId}/c/${classId}`
+  const hasRail = rules.extras.some((e) => e.id === 'rail')
+  const railLeft = cs.runs.filter((r) => (r.extras?.rail ?? null) === null).length
 
   function onAdd() {
     const numbers = parseBackNumbers(text)
@@ -113,6 +105,12 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
         )}
       </form>
 
+      {hasRail && cs.runs.length > 0 && (
+        <button className="btn btn-primary btn-wide rail-first" onClick={() => go(`${base}/rail`)}>
+          {railLeft === 0 ? 'Change the rail work scores' : 'Score the rail work first'}
+        </button>
+      )}
+
       {cs.runs.length === 0 ? (
         <p className="empty">No riders yet. Type the back numbers for this class, with spaces between them.</p>
       ) : (
@@ -121,8 +119,11 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
             const t = totalFor(run, cls)
             // A blank right side means not scored yet. It leaves the name room on a narrow phone.
             let status = ''
+            const railScore = run.extras?.rail ?? null
+            const patternStarted = run.boxes.some((b) => b !== null) || run.penalties.length > 0 || run.mark !== 'none'
             if (run.scored) status = t.score === null ? 'DQ' : formatHalf(t.score)
-            else if (inProgress(run)) status = 'Started'
+            else if (patternStarted || (run.extras?.fe ?? null) !== null) status = 'Started'
+            else if (railScore !== null) status = `Rail ${formatHalf(railScore, { sign: true })}`
             return (
               <li key={run.id}>
                 <button

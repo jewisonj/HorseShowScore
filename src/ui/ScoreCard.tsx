@@ -5,6 +5,7 @@ import { totalFor } from '../results'
 import { reasonById, reasonsFor, ruleSetFor, type ExtraBox, type PenaltyReason } from '../rules/rulesets'
 import { classState, removeRun, saveRun, useAppState, type Penalty, type Run } from '../store'
 import { BackNumber, Code, go } from './bits'
+import { ScoreKeys, scoreClass } from './ScoreKeys'
 
 const MARK_LABEL: Record<Mark, string> = {
   none: '',
@@ -59,10 +60,6 @@ function firstOpenSlot(run: Run | undefined, slots: Slot[]): number {
     if (s.kind === 'box') lastBox = i
   })
   return lastBox
-}
-
-function scoreClass(h: Half): string {
-  return h > 0 ? 'plus' : h < 0 ? 'minus' : 'zero'
 }
 
 /** "½ point", "1 point", "3 point" */
@@ -137,35 +134,6 @@ function PenaltySheet(props: {
           </button>
         )}
       </div>
-    </div>
-  )
-}
-
-/** The score keys for whatever is selected: a signed maneuver scale, or a plain 0 to 5. */
-function ScoreKeys(props: { scale: Half[]; signed: boolean; label: string; onPick: (value: Half) => void }) {
-  if (!props.signed) {
-    return (
-      <div className="pad-plain" role="group" aria-label={props.label}>
-        {props.scale.map((value) => (
-          <button key={value} className="key key-score key-plain" onClick={() => props.onPick(value)}>
-            {formatHalf(value)}
-          </button>
-        ))}
-      </div>
-    )
-  }
-  const steps = Math.max(...props.scale.map(Math.abs))
-  return (
-    <div className={`pad-scores pad-steps-${steps}`} role="group" aria-label={props.label}>
-      {props.scale.map((value) => (
-        <button
-          key={value}
-          className={`key key-score ${scoreClass(value)} s${value < 0 ? 'm' : 'p'}${Math.abs(value)}`}
-          onClick={() => props.onPick(value)}
-        >
-          {formatHalf(value, { sign: true })}
-        </button>
-      ))}
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { ClassScreen } from './ui/ClassScreen'
 import { Home } from './ui/Home'
 import { MeetScreen } from './ui/MeetScreen'
 import { PlacingsScreen } from './ui/PlacingsScreen'
+import { RailScreen } from './ui/RailScreen'
 import { ScoreCard } from './ui/ScoreCard'
 
 function useHashParts(): string[] {
@@ -31,6 +32,7 @@ function Route() {
       const classId = p[3]
       if (p[4] === 'r' && p[5]) return <ScoreCard key={p[5]} meetId={meetId} classId={classId} runId={p[5]} />
       if (p[4] === 'place') return <PlacingsScreen meetId={meetId} classId={classId} />
+      if (p[4] === 'rail') return <RailScreen key={`rail:${meetId}:${classId}`} meetId={meetId} classId={classId} />
       return <ClassScreen key={`${meetId}:${classId}`} meetId={meetId} classId={classId} />
     }
     return <MeetScreen meetId={meetId} />
