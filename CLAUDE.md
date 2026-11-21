@@ -29,6 +29,10 @@ Do not commit any of these unless the owner says so:
 
 `.env` may hold only the Supabase project URL and the publishable key. Never commit `sb_secret_...`, a service role key or a database password.
 
+## Where changes go
+
+The owner said on 2026-11-21: push straight to `main` on this project until he says otherwise. Vercel deploys `main`, so run the checks below first. No pull request is needed.
+
 ## Checks before committing
 
 ```
