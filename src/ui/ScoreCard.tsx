@@ -390,12 +390,12 @@ export function ScoreCard({ meetId, classId, runId }: { meetId: string; classId:
         </div>
 
         <label className="note-field">
-          <span>Note for the rider</span>
           {/* Saved as it is typed. It is not a scoring step, so it stays out of Undo. */}
           <input
             value={run.note ?? ''}
             maxLength={200}
-            placeholder="Nice ride. Watch your legs."
+            aria-label="Notes"
+            placeholder="Notes"
             autoComplete="off"
             enterKeyHint="done"
             onChange={(e) => saveRun(key, { ...run, note: e.target.value.slice(0, 200) })}

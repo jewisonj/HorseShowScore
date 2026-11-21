@@ -142,7 +142,7 @@ describe('a note for the rider', () => {
     addRiders(key, ['777'], 7)
     const rider = () => classState(getState(), key).runs.find((r) => r.backNo === '777')!
     render(<ScoreCard meetId="meet-5" classId={LEVEL_I} runId={rider().id} />)
-    fireEvent.change(screen.getByLabelText('Note for the rider'), { target: { value: 'Nice ride. Watch your legs.' } })
+    fireEvent.change(screen.getByLabelText('Notes'), { target: { value: 'Nice ride. Watch your legs.' } })
     expect(rider().note).toBe('Nice ride. Watch your legs.')
     expect((screen.getByRole('button', { name: 'Undo' }) as HTMLButtonElement).disabled).toBe(true)
     expect(resultsCsv(getState()).split('\n').find((l) => l.includes('Watch your legs'))).toBeTruthy()
