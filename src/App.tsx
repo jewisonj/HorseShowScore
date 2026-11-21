@@ -6,6 +6,8 @@ import { MeetScreen } from './ui/MeetScreen'
 import { PlacingsScreen } from './ui/PlacingsScreen'
 import { RailScreen } from './ui/RailScreen'
 import { ScoreCard } from './ui/ScoreCard'
+import { SetupScreen } from './ui/SetupScreen'
+import { ShowScreen } from './ui/ShowScreen'
 
 function useHashParts(): string[] {
   const [hash, setHash] = useState(() => window.location.hash)
@@ -37,6 +39,11 @@ function Route() {
     }
     return <MeetScreen meetId={meetId} />
   }
+  if (p[0] === 's' && p[1]) {
+    if (p[2] === 'setup') return <SetupScreen key={`setup:${p[1]}`} showId={p[1]} />
+    return <ShowScreen showId={p[1]} />
+  }
+  if (p[0] === 'new') return <SetupScreen key="new" />
   return <Home />
 }
 

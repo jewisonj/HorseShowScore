@@ -9,13 +9,17 @@ A free judging and scoring tool for small horse shows: IHSA meets, ARHA and loca
 - The **score card** follows the IHSA score sheets: a penalty strip over a score box for each maneuver, then rail work (horsemanship) and F&E, which are added to the score. Reining and ranch riding score −1½ to +1½. Horsemanship scores −3 to +3.
 - Each box is named above it: a short code on a phone (`Rr S`, `4 LS`, `S&B`), the words from the sheet on a tablet.
 - Tapping a penalty value **asks which penalty**, from the list for that value, with the ones that fit the maneuver first. A penalty can be **circled**: the horse's fault, shown on the card, not counted.
+- **Rail work** for a whole horsemanship class is scored on one screen, first, before the patterns.
 - The **placings card** takes the judge's order for horsemanship classes and gives IHSA points.
+- The first screen is a **show picker**. A show can be created on a computer, saved as a show file and opened on each phone.
+- **Show setup** reads the Google Sheets show workbook (downloaded as an Excel file) for the classes, running order and draw. Patterns are picked from other shows or typed in.
+- A class's placings can be **copied for the show workbook** and pasted into its Placings column.
 - It is loaded with two real IHSA meets (November 21–22, 2026). Saturday has the show's 12 classes in running order and the draw: back numbers, riders and horses. Sunday has the class list.
 - Everything is saved **on the device only**. There is no sign-in and no server sync yet.
 - Every screen says **"Unofficial test"**. The show's own system is the official record.
 - **Penalty values are placeholders.** The IHSA sheets do not list them, so reining follows NRHA and ranch riding follows the AQHA sheet. Each card says so.
 
-What is not built yet: sync to Supabase, seats and PINs, importing entries from a file or sheet, tie-breakers, teams and high point, office screens, entering your own patterns.
+What is not built yet: sync to Supabase (so shows and scores still move by file), seats and PINs, tie-breakers, teams and high point, office screens, writing results into the Google Sheet without a paste.
 
 ## Try it
 
@@ -47,6 +51,21 @@ A quick walk through:
 - Are the boxes the same as on the judge's sheet? The sheet may group maneuvers differently from the pattern book.
 - One-handed on a phone, as a judge with no scribe.
 
+## Set up a show
+
+Do this on a computer.
+
+1. On the first screen, **Create a show**.
+2. If the show is kept in the Google Sheets show workbook: in Google Sheets, File, Download, Microsoft Excel. Then **Choose the workbook**. It fills in the days, the classes in running order and the draw. The file is read in the browser. Nothing is uploaded and the sheet is never changed.
+3. Or add days and classes by hand.
+4. Pick a pattern for each class. Patterns from other shows on the device are offered. **New pattern** opens an editor: one row per box on the judge's score sheet, with a short code and a few words. A list can be pasted in.
+5. **Save the show**. Then, on the show's screen, **Download the show file**.
+6. Send the show file to each phone or tablet. There, **Open a show file** on the first screen.
+
+### Send placings back to the workbook
+
+On a class with results, **Copy placings for the sheet**. In the workbook, open that class's tab, click the first Placings cell (J6) and paste as values only. Each line is one draw place: a placing, `DQ`, or blank.
+
 ## Put it on Vercel
 
 1. In Vercel, **Add New → Project** and import this GitHub repo.
@@ -69,8 +88,9 @@ No environment variables are needed for the prototype. Once it is open on a phon
 ```
 src/engine/     Scoring engine. Pure TypeScript, no UI, no storage.
 src/rules/      Rule sets as data: scales, penalty values, marks.
-src/data/       Test data: meets, classes, the draw, patterns.
-src/seed.ts     Puts the draw on the device the first time.
+src/data/       The sample show, and the store of shows added on the device.
+src/setup/      Show setup: the Excel reader, the show workbook import, drafts.
+src/seed.ts     Puts each show's draw on the device the first time.
 src/store.ts    Saves to the device on every tap.
 src/results.ts  Placings, points and CSV from what is stored.
 src/ui/         The screens.

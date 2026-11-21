@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { formatHalf } from '../engine'
 import { classKey, getClass, getMeet, getPattern } from '../data/fixture'
-import { classResults, placingWarnings, totalFor } from '../results'
+import { classResults, placingWarnings, sheetPlacings, totalFor } from '../results'
+import { PLACINGS_FIRST_CELL } from '../setup/workbook'
 import { ruleSetFor } from '../rules/rulesets'
 import { addRiders, classState, parseBackNumbers, useAppState } from '../store'
 import { BackNumber, Code, Ribbon, Screen, go, pts } from './bits'
@@ -11,13 +12,14 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
   const [text, setText] = useState('')
   const [showPattern, setShowPattern] = useState(false)
   const [notice, setNotice] = useState('')
+  const [copied, setCopied] = useState<{ note: string; text: string; show: boolean } | null>(null)
 
   const meet = getMeet(meetId)
   const cls = getClass(meetId, classId)
   if (!meet || !cls) {
     return (
-      <Screen title="Class not found" backTo="/" backLabel="Meets">
-        <p className="hint">This class is not in the test data.</p>
+      <Screen title="Class not found" backTo="/" backLabel="Shows">
+        <p className="hint">This class is not in any show on this device.</p>
       </Screen>
     )
   }
@@ -30,6 +32,20 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
   const base = `/m/${meetId}/c/${classId}`
   const hasRail = rules.extras.some((e) => e.id === 'rail')
   const railLeft = cs.runs.filter((r) => (r.extras?.rail ?? null) === null).length
+
+  // The show workbook takes placings one per draw place, so this needs riders that came from a draw.
+  const fromDraw = cs.runs.length > 0 && cs.runs.every((r) => r.draw !== undefined)
+
+  async function copyForSheet() {
+    const text = sheetPlacings(cs, cls!).join('\n')
+    const where = `In the sheet, open the “${cls!.name}” tab, click the first Placings cell (${PLACINGS_FIRST_CELL}) and paste. Paste as values only.`
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied({ note: `Copied. ${where}`, text, show: false })
+    } catch {
+      setCopied({ note: `This device would not copy by itself. Select the lines below and copy them. ${where}`, text, show: true })
+    }
+  }
 
   function onAdd() {
     const numbers = parseBackNumbers(text)
@@ -69,8 +85,10 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
               <p>Then {rules.extras.map((e) => e.label.toLowerCase().replace('form and effectiveness', 'F&E')).join(' and ')}, added to the score.</p>
             )}
             <p className="muted">
-              These boxes follow our reading of the pattern book, page {pattern.source_page}. If the judge’s sheet
-              groups the maneuvers differently, say so and it will be matched.
+              {pattern.source_page > 0
+                ? `These boxes follow our reading of the pattern book, page ${pattern.source_page}. `
+                : 'These boxes were entered in setup. '}
+              They must match the judge’s score sheet, which can group the maneuvers differently.
             </p>
           </div>
         )}
@@ -178,6 +196,19 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
             </p>
           ))}
           <p className="hint">Unverified. Points use the IHSA table: 7, 5, 4, 3, 2, 1.</p>
+          {fromDraw && (
+            <>
+              <button className="btn btn-wide" onClick={copyForSheet}>
+                Copy placings for the sheet
+              </button>
+              {copied && (
+                <div className="hint" role="status">
+                  <p>{copied.note}</p>
+                  {copied.show && <textarea readOnly rows={12} value={copied.text} aria-label="Placings to paste" onFocus={(e) => e.target.select()} />}
+                </div>
+              )}
+            </>
+          )}
         </>
       )}
 

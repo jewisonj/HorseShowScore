@@ -1,4 +1,5 @@
 import raw from './ihsa-black-hawk-2026-11.json'
+import { userShows } from './shows'
 
 export interface PatternBox {
   n: number
@@ -61,22 +62,77 @@ export interface ShowEvent {
   is_test: boolean
 }
 
+/**
+ * One show, complete in itself: its days, classes, draw and patterns.
+ * This is what setup produces and what a phone opens. Meet ids and pattern ids
+ * are unique across shows, so a class is found from its meet id alone.
+ */
+export interface ShowFile {
+  format: 'hss-show'
+  version: 1
+  id: string
+  name: string
+  host: string
+  association: string
+  meets: Meet[]
+  patterns: Pattern[]
+}
+
 export const event = raw.event as ShowEvent
 export const meets = raw.meets as Meet[]
 export const patterns = raw.patterns as Pattern[]
 
+/** The sample show that ships with the app. */
+export const builtInShow: ShowFile = {
+  format: 'hss-show',
+  version: 1,
+  id: event.id,
+  name: event.name,
+  host: event.host,
+  association: event.association,
+  meets,
+  patterns,
+}
+
 const patternsById = new Map(patterns.map((p) => [p.id, p]))
 
+/** The sample show first, then the shows added on this device. */
+export function allShows(): ShowFile[] {
+  return [builtInShow, ...userShows()]
+}
+
+export function getShow(showId: string): ShowFile | undefined {
+  return allShows().find((s) => s.id === showId)
+}
+
+export function showOfMeet(meetId: string): ShowFile | undefined {
+  return allShows().find((s) => s.meets.some((m) => m.id === meetId))
+}
+
 export function getMeet(meetId: string): Meet | undefined {
-  return meets.find((m) => m.id === meetId)
+  for (const show of allShows()) {
+    const meet = show.meets.find((m) => m.id === meetId)
+    if (meet) return meet
+  }
+  return undefined
 }
 
 export function getClass(meetId: string, classId: string): ShowClass | undefined {
   return getMeet(meetId)?.classes.find((c) => c.id === classId)
 }
 
+export function findPattern(patternId: string): Pattern | undefined {
+  const builtIn = patternsById.get(patternId)
+  if (builtIn) return builtIn
+  for (const show of userShows()) {
+    const p = show.patterns.find((x) => x.id === patternId)
+    if (p) return p
+  }
+  return undefined
+}
+
 export function getPattern(patternId: string): Pattern {
-  const p = patternsById.get(patternId)
+  const p = findPattern(patternId)
   if (!p) throw new Error(`Unknown pattern: ${patternId}`)
   return p
 }

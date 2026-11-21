@@ -20,8 +20,8 @@ export function PlacingsScreen({ meetId, classId }: { meetId: string; classId: s
   const base = `/m/${meetId}/c/${classId}`
   if (!meet || !cls) {
     return (
-      <Screen title="Class not found" backTo="/" backLabel="Meets">
-        <p className="hint">This class is not in the test data.</p>
+      <Screen title="Class not found" backTo="/" backLabel="Shows">
+        <p className="hint">This class is not in any show on this device.</p>
       </Screen>
     )
   }

@@ -228,6 +228,38 @@ export function removeRun(key: string, runId: string) {
   }))
 }
 
+/** True when a run holds anything the operator entered. */
+export function hasWork(run: Run): boolean {
+  return (
+    run.scored ||
+    run.boxes.some((b) => b !== null) ||
+    Object.values(run.extras ?? {}).some((v) => v !== null) ||
+    run.penalties.length > 0 ||
+    run.mark !== 'none'
+  )
+}
+
+/**
+ * Give untouched riders in a class a card with a different number of boxes,
+ * after its pattern changed in setup. Returns false, changing nothing, if any
+ * rider already has work on a card of another size.
+ */
+export function resizeRuns(key: string, boxCount: number): boolean {
+  const current = classState(state, key)
+  if (current.runs.every((r) => r.boxes.length === boxCount)) return true
+  if (current.runs.some((r) => r.boxes.length !== boxCount && hasWork(r))) return false
+  const runs = current.runs.map((r) => (r.boxes.length === boxCount ? r : { ...r, boxes: Array.from({ length: boxCount }, () => null) }))
+  commit({ ...state, classes: { ...state.classes, [key]: { ...current, runs } } })
+  return true
+}
+
+/** Forget everything entered for these classes, when their show is removed from the device. */
+export function removeClassStates(keys: string[]) {
+  const classes = { ...state.classes }
+  for (const key of keys) delete classes[key]
+  commit({ ...state, classes })
+}
+
 export function setPlacings(key: string, placings: string[]) {
   updateClass(key, (c) => ({ ...c, placings }))
 }

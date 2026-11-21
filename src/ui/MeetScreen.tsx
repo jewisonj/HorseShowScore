@@ -1,19 +1,25 @@
-import { classKey, formatDate, getMeet, getPattern } from '../data/fixture'
+import { classKey, findPattern, formatDate, getMeet, showOfMeet } from '../data/fixture'
 import { classState, useAppState } from '../store'
 import { Screen, go } from './bits'
 
 export function MeetScreen({ meetId }: { meetId: string }) {
   const state = useAppState()
   const meet = getMeet(meetId)
+  const show = showOfMeet(meetId)
   if (!meet) {
     return (
-      <Screen title="Meet not found" backTo="/" backLabel="Meets">
-        <p className="hint">This meet is not in the test data.</p>
+      <Screen title="Day not found" backTo="/" backLabel="Shows">
+        <p className="hint">This day is not in any show on this device.</p>
       </Screen>
     )
   }
   return (
-    <Screen title={meet.label} sub={meet.judges.length > 0 ? `${formatDate(meet.date)}, judge ${meet.judges.join(', ')}` : formatDate(meet.date)} backTo="/" backLabel="Meets">
+    <Screen
+      title={meet.label}
+      sub={[meet.date ? formatDate(meet.date) : '', meet.judges.length > 0 ? `judge ${meet.judges.join(', ')}` : ''].filter(Boolean).join(', ')}
+      backTo={show ? `/s/${show.id}` : '/'}
+      backLabel="Show"
+    >
       <h2>Classes</h2>
       <ul className="list">
         {meet.classes.map((c) => {
@@ -32,7 +38,7 @@ export function MeetScreen({ meetId }: { meetId: string }) {
                 <span className="classno">{c.id}</span>
                 <span className="row-main">
                   <strong>{c.name}</strong>
-                  <span>{getPattern(c.pattern_id).name}</span>
+                  <span>{findPattern(c.pattern_id)?.name ?? 'No pattern chosen'}</span>
                 </span>
                 <span className="row-side">{status}</span>
               </button>

@@ -1,5 +1,5 @@
 import { cardTotal, pointsForPlace, rankScored, type CardTotal } from './engine'
-import { classKey, getPattern, meets, type Meet, type ShowClass } from './data/fixture'
+import { allShows, classKey, getPattern, type Meet, type ShowClass } from './data/fixture'
 import { opRuleForClass, reasonById, ruleSetFor } from './rules/rulesets'
 import { classState, type AppState, type ClassState, type Run } from './store'
 
@@ -112,6 +112,24 @@ export function classResults(cs: ClassState, cls: ShowClass): ResultRow[] {
   return cls.card_family === 'pattern' ? patternClassResults(cs, cls) : placingsClassResults(cs, cls)
 }
 
+/**
+ * The placings of a class as the show workbook takes them: one line for each
+ * draw place, top to bottom, ready to paste into the Placings column of the
+ * class tab. A number for a placed rider, DQ for a disqualified one, and an
+ * empty line for a draw place with no rider or no placing yet.
+ */
+export function sheetPlacings(cs: ClassState, cls: ShowClass, places = 12): string[] {
+  const placeOf = new Map(classResults(cs, cls).map((row) => [row.run.id, row.place]))
+  const lines: string[] = Array.from({ length: places }, () => '')
+  for (const run of cs.runs) {
+    if (run.draw === undefined || run.draw < 1 || run.draw > places) continue
+    const place = placeOf.get(run.id) ?? null
+    if (run.mark === 'DQ') lines[run.draw - 1] = 'DQ'
+    else if (place !== null) lines[run.draw - 1] = String(place)
+  }
+  return lines
+}
+
 function csvCell(value: string | number | null): string {
   if (value === null) return ''
   const s = String(value)
@@ -147,7 +165,7 @@ export const CSV_HEADER = [
 ]
 
 /** Every rider in every class, placed or not. Status is always unverified in this prototype. */
-export function resultsCsv(state: AppState, meetList: Meet[] = meets): string {
+export function resultsCsv(state: AppState, meetList: Meet[] = allShows().flatMap((s) => s.meets)): string {
   const lines = [CSV_HEADER.join(',')]
   for (const meet of meetList) {
     for (const cls of meet.classes) {

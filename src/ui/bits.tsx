@@ -73,10 +73,12 @@ export function Screen(props: {
   backTo?: string
   backLabel?: string
   right?: ReactNode
+  /** A wider page, for setup work done on a computer */
+  wide?: boolean
   children: ReactNode
 }) {
   return (
-    <div className="screen">
+    <div className={props.wide ? 'screen screen-wide' : 'screen'}>
       <header className="topbar">
         <div className="topbar-row">
           {props.backTo !== undefined && (

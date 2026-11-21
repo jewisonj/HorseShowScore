@@ -14,6 +14,13 @@ Read `README.md` first. The requirements, decision log and scoring references li
 - An operator must never be able to see another judge's card.
 - Rider height and weight are personal data. Do not add them without the admin-only handling in decision D-25.
 
+## Shows
+
+- A show is one self-contained file (`ShowFile`): days, classes, draw and patterns. Meet ids and pattern ids are unique across shows, so a class is found from its meet id and class id alone.
+- The sample show ships in `src/data/`. Shows made in setup live in the device's storage and move between devices as show files until sync is built.
+- The show workbook is read only, in the browser, from an Excel download. Never write to anyone's Google Sheet. `src/setup/workbook.ts` says exactly which cells are relied on.
+- Tests build their own small workbook with made-up names (`src/setup/testWorkbook.ts`). Do not commit a real show workbook.
+
 ## This repo is public
 
 Do not commit any of these unless the owner says so:
