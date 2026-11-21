@@ -28,10 +28,10 @@ function Route() {
   if (p[0] === 'm' && p[1]) {
     const meetId = p[1]
     if (p[2] === 'c' && p[3]) {
-      const classNo = p[3]
-      if (p[4] === 'r' && p[5]) return <ScoreCard key={p[5]} meetId={meetId} classNo={classNo} runId={p[5]} />
-      if (p[4] === 'place') return <PlacingsScreen meetId={meetId} classNo={classNo} />
-      return <ClassScreen key={`${meetId}:${classNo}`} meetId={meetId} classNo={classNo} />
+      const classId = p[3]
+      if (p[4] === 'r' && p[5]) return <ScoreCard key={p[5]} meetId={meetId} classId={classId} runId={p[5]} />
+      if (p[4] === 'place') return <PlacingsScreen meetId={meetId} classId={classId} />
+      return <ClassScreen key={`${meetId}:${classId}`} meetId={meetId} classId={classId} />
     }
     return <MeetScreen meetId={meetId} />
   }

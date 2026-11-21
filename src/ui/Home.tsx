@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { event, formatDate, meets, classKey } from '../data/fixture'
 import { resultsCsv } from '../results'
+import { loadDraw } from '../seed'
 import { classState, clearAll, restoreBackup, useAppState } from '../store'
 import { Screen, go } from './bits'
 
@@ -28,7 +29,7 @@ export function Home() {
       <ul className="list">
         {meets.map((m) => {
           const riders = m.classes.reduce(
-            (n, c) => n + classState(state, classKey(m.id, c.class_no)).runs.length,
+            (n, c) => n + classState(state, classKey(m.id, c.id)).runs.length,
             0,
           )
           return (
@@ -83,13 +84,14 @@ export function Home() {
         <button
           className="btn btn-danger"
           onClick={() => {
-            if (window.confirm('Clear every rider and score saved on this device? This cannot be undone.')) {
+            if (window.confirm('Clear every score saved on this device and reload the draw? This cannot be undone.')) {
               clearAll()
-              setMessage('All test data cleared.')
+              const riders = loadDraw()
+              setMessage(riders > 0 ? `Scores cleared. The draw is loaded again: ${riders} rides.` : 'All test data cleared.')
             }
           }}
         >
-          Clear all test data
+          Clear scores and reload the draw
         </button>
       </div>
       {message && (

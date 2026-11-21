@@ -17,7 +17,7 @@ export function MeetScreen({ meetId }: { meetId: string }) {
       <h2>Classes</h2>
       <ul className="list">
         {meet.classes.map((c) => {
-          const cs = classState(state, classKey(meet.id, c.class_no))
+          const cs = classState(state, classKey(meet.id, c.id))
           const scored = cs.runs.filter((r) => r.scored).length
           let status = 'No riders yet'
           if (cs.runs.length > 0) {
@@ -27,9 +27,9 @@ export function MeetScreen({ meetId }: { meetId: string }) {
                 : `${scored} scored of ${cs.runs.length}`
           }
           return (
-            <li key={c.class_no}>
-              <button className="row" onClick={() => go(`/m/${meet.id}/c/${c.class_no}`)}>
-                <span className="classno">{c.class_no}</span>
+            <li key={c.id}>
+              <button className="row" onClick={() => go(`/m/${meet.id}/c/${c.id}`)}>
+                <span className="classno">{c.id}</span>
                 <span className="row-main">
                   <strong>{c.name}</strong>
                   <span>{getPattern(c.pattern_id).name}</span>

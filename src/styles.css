@@ -474,6 +474,39 @@ h2 {
   padding: 2px 0;
 }
 
+.boxlist-row {
+  display: grid;
+  grid-template-columns: 4.8em 1fr;
+  column-gap: 8px;
+  vertical-align: top;
+}
+
+.boxlist-code {
+  font-weight: 700;
+}
+
+/* Small letters in a circle code, drawn as small capitals so an l cannot be read as an I. */
+.code-small {
+  font-size: 0.74em;
+  text-transform: uppercase;
+}
+
+/* Draw position, in front of the back number */
+.draw {
+  flex: none;
+  width: 1.6em;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.horse {
+  flex-basis: 100%;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+}
+
 .segmented {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -580,11 +613,29 @@ h2 {
   opacity: 0.85;
 }
 
+.total-parts > span {
+  display: inline-block;
+  white-space: pre;
+}
+
 .card-content {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding-bottom: 12px;
+}
+
+.rider {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.rider-horse {
+  font-size: 0.9rem;
+  font-weight: 700;
+  opacity: 0.9;
 }
 
 .boxes {
@@ -593,11 +644,14 @@ h2 {
   gap: 6px;
 }
 
+/*
+  One box, top to bottom, the way the paper card reads:
+  maneuver name, then the penalty strip with the box number, then the score.
+*/
 .box {
-  position: relative;
   display: grid;
-  grid-template-rows: 24px 1fr;
-  min-height: 76px;
+  grid-template-rows: auto 22px 1fr;
+  min-height: 92px;
   padding: 0;
   background: var(--paper);
   border: 2px solid var(--rule);
@@ -610,35 +664,79 @@ h2 {
   box-shadow: 0 0 0 2px var(--ink);
 }
 
-.box-n {
-  position: absolute;
-  top: 3px;
-  left: 6px;
-  color: var(--muted);
-  font-size: 0.75rem;
+.box-label {
+  display: block;
+  padding: 3px 4px 2px;
+  background: #e3e8ee;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+  font-size: 0.82rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
+  text-align: center;
 }
 
-.box-pen {
-  padding: 2px 6px 0 22px;
-  border-bottom: 1px solid var(--rule);
-  font-size: 0.9rem;
-  font-weight: 700;
-  line-height: 1.2;
-  text-align: right;
+.box-sel .box-label {
+  background: var(--ink);
+  color: #fff;
+}
+
+.box-abbr {
+  display: block;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.box-pen.has-pen {
+/* The words from the score sheet need a wider box. Phones show the short code. */
+.box-text {
+  display: none;
+}
+
+.box-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.box-head.has-pen {
   background: var(--hi);
   color: var(--hi-ink);
 }
 
-.box-pen.has-pen ~ .box-score {
-  /* keeps the number legible when the box also carries a penalty */
-  padding-top: 0;
+.box-n {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.box-head.has-pen .box-n {
+  color: var(--hi-ink);
+}
+
+.box-pen {
+  display: flex;
+  gap: 5px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* A circled penalty is the horse's fault. It shows on the card and is not counted. */
+.pen-circled {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.35em;
+  height: 1.35em;
+  padding: 0 2px;
+  border: 1.5px solid currentColor;
+  border-radius: 1em;
+  font-size: 0.85em;
+  line-height: 1;
 }
 
 .box-score {
@@ -646,6 +744,15 @@ h2 {
   place-items: center;
   font-size: 1.5rem;
   font-weight: 700;
+}
+
+/* Rail work and F&E are added to the score but are not maneuvers. */
+.box-extra {
+  border-style: dashed;
+}
+
+.box-extra .box-head {
+  border-bottom: 0;
 }
 
 .plus {
@@ -673,6 +780,13 @@ h2 {
   line-height: 1.25;
 }
 
+.current-hint {
+  margin: 2px 0 0;
+  color: var(--ink-2);
+  font-size: 0.85rem;
+  line-height: 1.25;
+}
+
 .current-pens {
   display: flex;
   flex-wrap: wrap;
@@ -683,13 +797,131 @@ h2 {
 }
 
 .chip {
-  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
   padding: 0 12px;
   background: var(--hi);
   border: 1.5px solid var(--hi-ink);
   border-radius: 20px;
   color: var(--hi-ink);
   font-weight: 700;
+}
+
+.chip-why {
+  font-weight: 400;
+}
+
+.chip-circled {
+  background: var(--paper);
+}
+
+/* ---------- Which penalty? ---------- */
+
+.sheet-back {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(16, 32, 58, 0.5);
+}
+
+.sheet {
+  width: 100%;
+  max-width: 720px;
+  max-height: 92dvh;
+  margin: 0 auto;
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  background: var(--ground);
+  border-top: 3px solid var(--ink);
+  border-radius: 14px 14px 0 0;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.sheet-head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.sheet-head p {
+  margin: 2px 0 0;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+}
+
+.sheet-close {
+  flex: none;
+}
+
+.reasons {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+
+.reason {
+  min-height: 52px;
+  padding: 8px 12px;
+  background: var(--hi);
+  border: 2px solid var(--hi-ink);
+  border-radius: 10px;
+  color: var(--hi-ink);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.reason-plain {
+  background: var(--paper);
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.reason.is-current {
+  box-shadow: 0 0 0 3px var(--ink);
+}
+
+.circle-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 12px;
+  background: var(--paper);
+  border: 2px solid var(--rule);
+  border-radius: 10px;
+  text-align: left;
+  line-height: 1.2;
+}
+
+.circle-toggle.is-on {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+.circle-mark {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+
+.circle-toggle.is-on .circle-mark {
+  background: radial-gradient(circle, var(--ink) 0 48%, transparent 52%);
 }
 
 /* The key pad sits at the bottom, in thumb reach. */
@@ -718,6 +950,20 @@ h2 {
     'm1 m2 m3 z';
 }
 
+/* Horsemanship runs from −3 to +3: six steps each way, zero on the right as before. */
+.pad-steps-6 {
+  gap: 4px;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-areas:
+    'p1 p2 p3 p4 p5 p6 z'
+    'm1 m2 m3 m4 m5 m6 z';
+}
+
+.pad-steps-6 .key {
+  padding: 0 2px;
+  font-size: 1.05rem;
+}
+
 .sp1 {
   grid-area: p1;
 }
@@ -728,6 +974,18 @@ h2 {
 
 .sp3 {
   grid-area: p3;
+}
+
+.sp4 {
+  grid-area: p4;
+}
+
+.sp5 {
+  grid-area: p5;
+}
+
+.sp6 {
+  grid-area: p6;
 }
 
 .sp0 {
@@ -744,6 +1002,30 @@ h2 {
 
 .sm3 {
   grid-area: m3;
+}
+
+.sm4 {
+  grid-area: m4;
+}
+
+.sm5 {
+  grid-area: m5;
+}
+
+.sm6 {
+  grid-area: m6;
+}
+
+/* F&E is a plain 0 to 5. The keys are as tall as the two score rows so nothing below them moves. */
+.pad-plain {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.pad-plain .key {
+  min-height: 118px;
+  font-size: 1.75rem;
 }
 
 .key {
@@ -831,8 +1113,40 @@ h2 {
     grid-template-areas: 'm3 m2 m1 z p1 p2 p3';
   }
 
+  .pad-steps-6 {
+    grid-template-columns: repeat(13, 1fr);
+    grid-template-areas: 'm6 m5 m4 m3 m2 m1 z p1 p2 p3 p4 p5 p6';
+  }
+
   .key-score.zero {
     font-size: 1.35rem;
+  }
+
+  .pad-plain .key {
+    min-height: 56px;
+    font-size: 1.35rem;
+  }
+
+  /* Room for the words from the score sheet above each box. */
+  .boxes {
+    grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  }
+
+  .box-abbr {
+    display: none;
+  }
+
+  /* Three lines for every label, so the penalty strips line up across a row. */
+  .box-text {
+    display: grid;
+    place-items: center;
+    min-height: 3.45em;
+    font-size: 0.74rem;
+    font-weight: 700;
+  }
+
+  .box {
+    min-height: 124px;
   }
 }
 
@@ -845,7 +1159,8 @@ h2 {
   .content,
   .topbar-row,
   .card-head,
-  .pad > * {
+  .pad > *,
+  .sheet {
     max-width: 860px;
   }
 
@@ -856,15 +1171,33 @@ h2 {
   .pad-row .key {
     min-height: 60px;
   }
+
+  .pad-plain .key {
+    min-height: 64px;
+  }
 }
 
 /* Short phones: give the boxes room. */
 @media (max-height: 700px) {
   .box {
-    min-height: 66px;
+    min-height: 80px;
   }
 
   .total-value {
     font-size: 2.25rem;
+  }
+
+  .key {
+    min-height: 52px;
+  }
+
+  .pad {
+    gap: 6px;
+  }
+}
+
+@media (max-height: 700px) and (max-width: 639px) {
+  .pad-plain .key {
+    min-height: 110px;
   }
 }

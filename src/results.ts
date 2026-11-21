@@ -1,6 +1,6 @@
 import { cardTotal, pointsForPlace, rankScored, type CardTotal } from './engine'
 import { classKey, getPattern, meets, type Meet, type ShowClass } from './data/fixture'
-import { opRuleForClass, ruleSetFor } from './rules/rulesets'
+import { opRuleForClass, reasonById, ruleSetFor } from './rules/rulesets'
 import { classState, type AppState, type ClassState, type Run } from './store'
 
 export function totalFor(run: Run, cls: ShowClass): CardTotal {
@@ -8,9 +8,24 @@ export function totalFor(run: Run, cls: ShowClass): CardTotal {
   return cardTotal({
     base: rs.base,
     boxes: run.boxes,
-    penalties: run.penalties.map((p) => p.half),
+    extras: rs.extras.map((e) => run.extras?.[e.id] ?? null),
+    // A circled penalty is put down to the horse. It stays on the card but does not count.
+    penalties: run.penalties.filter((p) => !p.circled).map((p) => p.half),
     mark: run.mark,
   })
+}
+
+/** "3:1 break of gait; 7:3 (circled)" for the export: maneuver number, value, reason. */
+export function penaltyDetail(run: Run, cls: ShowClass): string {
+  const rs = ruleSetFor(cls.rule_set)
+  return run.penalties
+    .slice()
+    .sort((a, b) => a.box - b.box)
+    .map((p) => {
+      const reason = reasonById(rs, p.half, p.reason)
+      return `${p.box + 1}:${p.half / 2}${reason ? ` ${reason.short}` : ''}${p.circled ? ' (circled)' : ''}`
+    })
+    .join('; ')
 }
 
 export interface ResultRow {
@@ -112,13 +127,19 @@ export const CSV_HEADER = [
   'meet',
   'date',
   'judge',
+  'show_class',
   'class_no',
   'class',
   'pattern',
+  'draw',
   'back_number',
+  'horse',
   'placing',
   'score',
+  'rail_work',
+  'fe',
   'penalty_total',
+  'penalties',
   'mark',
   'points',
   'status',
@@ -129,7 +150,7 @@ export function resultsCsv(state: AppState, meetList: Meet[] = meets): string {
   const lines = [CSV_HEADER.join(',')]
   for (const meet of meetList) {
     for (const cls of meet.classes) {
-      const cs = classState(state, classKey(meet.id, cls.class_no))
+      const cs = classState(state, classKey(meet.id, cls.id))
       if (cs.runs.length === 0) continue
       const placedRows = classResults(cs, cls)
       const placedIds = new Set(placedRows.map((r) => r.run.id))
@@ -145,13 +166,19 @@ export function resultsCsv(state: AppState, meetList: Meet[] = meets): string {
             meet.label,
             meet.date,
             meet.judges.join(' / '),
+            cls.id,
             cls.class_no,
             cls.name,
             getPattern(cls.pattern_id).name,
+            row.run.draw ?? null,
             row.run.backNo,
+            row.run.horse ?? '',
             row.place,
             halfToDecimal(row.score),
+            row.run.scored ? halfToDecimal(row.run.extras?.rail ?? null) : '',
+            row.run.scored ? halfToDecimal(row.run.extras?.fe ?? null) : '',
             row.run.scored ? halfToDecimal(row.penaltySum) : '',
+            row.run.scored ? penaltyDetail(row.run, cls) : '',
             row.run.mark === 'none' ? '' : row.run.mark,
             row.place === null ? '' : row.points,
             'unverified',

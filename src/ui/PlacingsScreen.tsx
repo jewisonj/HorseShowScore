@@ -11,13 +11,13 @@ function byBackNumber(a: Run, b: Run): number {
   return a.backNo.localeCompare(b.backNo, undefined, { numeric: true })
 }
 
-export function PlacingsScreen({ meetId, classNo }: { meetId: string; classNo: string }) {
+export function PlacingsScreen({ meetId, classId }: { meetId: string; classId: string }) {
   const state = useAppState()
   const [mode, setMode] = useState<Mode>('place')
 
   const meet = getMeet(meetId)
-  const cls = getClass(meetId, classNo)
-  const base = `/m/${meetId}/c/${classNo}`
+  const cls = getClass(meetId, classId)
+  const base = `/m/${meetId}/c/${classId}`
   if (!meet || !cls) {
     return (
       <Screen title="Class not found" backTo="/" backLabel="Meets">
@@ -26,7 +26,7 @@ export function PlacingsScreen({ meetId, classNo }: { meetId: string; classNo: s
     )
   }
 
-  const key = classKey(meetId, classNo)
+  const key = classKey(meetId, classId)
   const cs = classState(state, key)
   const byId = new Map(cs.runs.map((r) => [r.id, r]))
   const placed = cs.placings.map((id) => byId.get(id)).filter((r): r is Run => r !== undefined)
@@ -41,7 +41,7 @@ export function PlacingsScreen({ meetId, classNo }: { meetId: string; classNo: s
       if (sa !== null && sb !== null && sa !== sb) return sb - sa
       if (sa !== null && sb === null) return -1
       if (sa === null && sb !== null) return 1
-      return byBackNumber(a, b)
+      return (a.draw ?? 999) - (b.draw ?? 999) || byBackNumber(a, b)
     })
 
   const warnings = placingWarnings(cs, cls)
