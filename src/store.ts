@@ -26,6 +26,8 @@ export interface Run {
   backNo: string
   /** Position in the draw, when the rider came from a draw */
   draw?: number
+  /** The rider's name, when known */
+  rider?: string
   /** The drawn horse, when known */
   horse?: string
   boxes: (Half | null)[]
@@ -137,6 +139,7 @@ export function parseBackNumbers(text: string): string[] {
 export interface NewRider {
   backNo: string
   draw?: number
+  rider?: string
   horse?: string
 }
 
@@ -145,6 +148,7 @@ function blankRun(rider: NewRider, boxCount: number): Run {
     id: newId(),
     backNo: rider.backNo,
     ...(rider.draw !== undefined ? { draw: rider.draw } : {}),
+    ...(rider.rider ? { rider: rider.rider } : {}),
     ...(rider.horse ? { horse: rider.horse } : {}),
     boxes: Array.from({ length: boxCount }, () => null),
     extras: {},
@@ -173,6 +177,32 @@ export function addEntries(key: string, riders: NewRider[], boxCount: number): n
     return fresh.length ? { ...c, runs: [...c.runs, ...fresh] } : c
   })
   return added
+}
+
+/**
+ * Bring the draw details (order, rider, horse) of riders already in a class up to date.
+ * Matched by back number. Scores, penalties and placings are not touched.
+ * Returns how many riders changed.
+ */
+export function updateDetails(key: string, riders: NewRider[]): number {
+  const byBack = new Map(riders.map((r) => [r.backNo, r]))
+  let changed = 0
+  const current = classState(state, key)
+  const runs = current.runs.map((run) => {
+    const d = byBack.get(run.backNo)
+    if (!d) return run
+    if (run.draw === d.draw && (run.rider ?? '') === (d.rider ?? '') && (run.horse ?? '') === (d.horse ?? '')) return run
+    changed += 1
+    const { draw: _draw, rider: _rider, horse: _horse, ...rest } = run
+    return {
+      ...rest,
+      ...(d.draw !== undefined ? { draw: d.draw } : {}),
+      ...(d.rider ? { rider: d.rider } : {}),
+      ...(d.horse ? { horse: d.horse } : {}),
+    }
+  })
+  if (changed > 0) commit({ ...state, classes: { ...state.classes, [key]: { ...current, runs } } })
+  return changed
 }
 
 /** Add riders by back number alone. */

@@ -507,6 +507,43 @@ h2 {
   font-size: 0.9rem;
 }
 
+.rider-name {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* Score or status at the right of a rider's row */
+.row-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.row-status .score {
+  color: var(--ink);
+}
+
+.result-name {
+  display: block;
+  color: var(--ink-2);
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.pick-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+}
+
+.pick-text .rider-name {
+  font-size: 0.9rem;
+}
+
 .segmented {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -587,6 +624,8 @@ h2 {
 }
 
 .total {
+  flex: 1;
+  min-width: 0;
   text-align: right;
 }
 
@@ -626,16 +665,31 @@ h2 {
 }
 
 .rider {
+  flex: none;
+  max-width: 62%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
 }
 
+.rider .rider-name,
 .rider-horse {
-  font-size: 0.9rem;
-  font-weight: 700;
-  opacity: 0.9;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rider .rider-name {
+  margin-top: 2px;
+  font-size: 0.95rem;
+}
+
+.rider-horse {
+  font-size: 0.85rem;
+  line-height: 1.2;
+  opacity: 0.85;
 }
 
 .boxes {

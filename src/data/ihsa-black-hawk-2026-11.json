@@ -1,6 +1,6 @@
 {
   "fixture_version": 2,
-  "description": "Test data for Horse Show Scorer: two IHSA Western meets. Saturday has the show's 12 classes in running order with the draw (back numbers and horses). Sunday has the class list only. Patterns carry short maneuver codes and labels in our own words. No people's names, no pattern diagrams.",
+  "description": "Test data for Horse Show Scorer: two IHSA Western meets. Saturday has the show's 12 classes in running order with the draw (back number, rider and horse). Sunday has the class list only. Patterns carry short maneuver codes and labels in our own words. No pattern diagrams.",
   "event": {
     "id": "evt-bhc-2026-11",
     "name": "IHSA Western Meets",
@@ -32,26 +32,31 @@
             {
               "draw": 1,
               "back_no": "1025",
+              "rider": "Emily Kramer",
               "horse": "George"
             },
             {
               "draw": 2,
               "back_no": "102",
+              "rider": "Mason Loser",
               "horse": "Bunny"
             },
             {
               "draw": 3,
               "back_no": "1007",
+              "rider": "Elizabeth Ellis",
               "horse": "Cisco"
             },
             {
               "draw": 4,
               "back_no": "553",
+              "rider": "Ava Armstrong",
               "horse": "Rey"
             },
             {
               "draw": 5,
               "back_no": "576",
+              "rider": "Rachel Kowitz",
               "horse": "George"
             }
           ]
@@ -69,36 +74,43 @@
             {
               "draw": 1,
               "back_no": "1004",
+              "rider": "Tommie jo Lael",
               "horse": "Hooker"
             },
             {
               "draw": 2,
               "back_no": "1022",
+              "rider": "Ella Carlock",
               "horse": "Sheldon"
             },
             {
               "draw": 3,
               "back_no": "108",
+              "rider": "Elly Dravis",
               "horse": "Kash"
             },
             {
               "draw": 4,
               "back_no": "106",
+              "rider": "Lillian Cozzi",
               "horse": "Marylin"
             },
             {
               "draw": 5,
               "back_no": "124",
+              "rider": "Adeline Bihary",
               "horse": "Rock"
             },
             {
               "draw": 6,
               "back_no": "122",
+              "rider": "Alyssa Miller",
               "horse": "Louie"
             },
             {
               "draw": 7,
               "back_no": "127",
+              "rider": "Paulina Esparza",
               "horse": "Survivor"
             }
           ]
@@ -116,51 +128,61 @@
             {
               "draw": 1,
               "back_no": "590",
+              "rider": "Indigo Contos",
               "horse": "Bunny"
             },
             {
               "draw": 2,
               "back_no": "669",
+              "rider": "Charlotte Tompkins",
               "horse": "Charlotte"
             },
             {
               "draw": 3,
               "back_no": "678",
+              "rider": "Stephanie Fortier",
               "horse": "Missy"
             },
             {
               "draw": 4,
               "back_no": "558",
+              "rider": "Madeline Toebe",
               "horse": "Felix"
             },
             {
               "draw": 5,
               "back_no": "673",
+              "rider": "Sydney Streich",
               "horse": "Rey"
             },
             {
               "draw": 6,
               "back_no": "1019",
+              "rider": "Baleigh Stouffer",
               "horse": "Super Pete"
             },
             {
               "draw": 7,
               "back_no": "663",
+              "rider": "Talia Pierard",
               "horse": "Henry"
             },
             {
               "draw": 8,
               "back_no": "642",
+              "rider": "Maddie Robinson Valley",
               "horse": "Bunny"
             },
             {
               "draw": 9,
               "back_no": "1028",
+              "rider": "Shay Henson",
               "horse": "Charlotte"
             },
             {
               "draw": 10,
               "back_no": "415",
+              "rider": "Mia Diaz",
               "horse": "Missy"
             }
           ]
@@ -178,31 +200,37 @@
             {
               "draw": 1,
               "back_no": "125",
+              "rider": "Paige Johnson",
               "horse": "Hooker"
             },
             {
               "draw": 2,
               "back_no": "1030",
+              "rider": "Abby Bey",
               "horse": "Peyton"
             },
             {
               "draw": 3,
               "back_no": "662",
+              "rider": "Korah Pinter",
               "horse": "Sheldon"
             },
             {
               "draw": 4,
               "back_no": "1029",
+              "rider": "Jessica Besch",
               "horse": "Shooter"
             },
             {
               "draw": 5,
               "back_no": "1023",
+              "rider": "Matison Elvert",
               "horse": "Survivor"
             },
             {
               "draw": 6,
               "back_no": "708",
+              "rider": "Talena Sprecher",
               "horse": "Hollie"
             }
           ]
@@ -220,36 +248,43 @@
             {
               "draw": 1,
               "back_no": "1011",
+              "rider": "Kelsey Heath",
               "horse": "Hank"
             },
             {
               "draw": 2,
               "back_no": "120",
+              "rider": "Paisley Knight",
               "horse": "Henry"
             },
             {
               "draw": 3,
               "back_no": "91",
+              "rider": "Ave Beatty",
               "horse": "Super Pete"
             },
             {
               "draw": 4,
               "back_no": "1024",
+              "rider": "Ava Oster",
               "horse": "Kash"
             },
             {
               "draw": 5,
               "back_no": "70",
+              "rider": "Natalia Szwajnos",
               "horse": "Marylin"
             },
             {
               "draw": 6,
               "back_no": "100",
+              "rider": "Kailey Miller",
               "horse": "Louie"
             },
             {
               "draw": 7,
               "back_no": "126",
+              "rider": "Ellie Dungan",
               "horse": "Cisco"
             }
           ]
@@ -267,26 +302,31 @@
             {
               "draw": 1,
               "back_no": "1028",
+              "rider": "Shay Henson",
               "horse": "Jazz"
             },
             {
               "draw": 2,
               "back_no": "102",
+              "rider": "Mason Loser",
               "horse": "Archie (Roan)"
             },
             {
               "draw": 3,
               "back_no": "576",
+              "rider": "Rachel Kowitz",
               "horse": "Survivor"
             },
             {
               "draw": 4,
               "back_no": "1025",
+              "rider": "Emily Kramer",
               "horse": "Felix"
             },
             {
               "draw": 5,
               "back_no": "1007",
+              "rider": "Elizabeth Ellis",
               "horse": "Hank"
             }
           ]
@@ -304,26 +344,31 @@
             {
               "draw": 1,
               "back_no": "111",
+              "rider": "Lila Stutzman",
               "horse": "Hooker"
             },
             {
               "draw": 2,
               "back_no": "116",
+              "rider": "Kassidy Dixon",
               "horse": "Peyton"
             },
             {
               "draw": 3,
               "back_no": "588",
+              "rider": "Alyssa Schenk",
               "horse": "Sheldon"
             },
             {
               "draw": 4,
               "back_no": "1005",
+              "rider": "Hanna Kiersten",
               "horse": "Shooter"
             },
             {
               "draw": 5,
               "back_no": "114",
+              "rider": "Morgan Hess",
               "horse": "Hollie"
             }
           ]
@@ -341,31 +386,37 @@
             {
               "draw": 1,
               "back_no": "590",
+              "rider": "Indigo Contos",
               "horse": "Archie (Roan)"
             },
             {
               "draw": 2,
               "back_no": "669",
+              "rider": "Charlotte Tompkins",
               "horse": "Felix"
             },
             {
               "draw": 3,
               "back_no": "553",
+              "rider": "Ava Armstrong",
               "horse": "Survivor"
             },
             {
               "draw": 4,
               "back_no": "673",
+              "rider": "Sydney Streich",
               "horse": "Hooker"
             },
             {
               "draw": 5,
               "back_no": "1014",
+              "rider": "Bailey Koning",
               "horse": "Shooter"
             },
             {
               "draw": 6,
               "back_no": "642",
+              "rider": "Maddie Robinson Valley",
               "horse": "George"
             }
           ]
@@ -383,36 +434,43 @@
             {
               "draw": 1,
               "back_no": "46",
+              "rider": "Felipe Velica",
               "horse": "Missy"
             },
             {
               "draw": 2,
               "back_no": "104",
+              "rider": "Raven Ringhand",
               "horse": "Super Pete"
             },
             {
               "draw": 3,
               "back_no": "675",
+              "rider": "Abygail Hinze",
               "horse": "Kash"
             },
             {
               "draw": 4,
               "back_no": "1006",
+              "rider": "Margaret Martin",
               "horse": "Marylin"
             },
             {
               "draw": 5,
               "back_no": "405",
+              "rider": "Stacy Behnke",
               "horse": "Rock"
             },
             {
               "draw": 6,
               "back_no": "37",
+              "rider": "Skyler Holmes",
               "horse": "Louie"
             },
             {
               "draw": 7,
               "back_no": "134",
+              "rider": "Hannah Weikel",
               "horse": "Survivor"
             }
           ]
@@ -430,26 +488,31 @@
             {
               "draw": 1,
               "back_no": "678",
+              "rider": "Stephanie Fortier",
               "horse": "Archie (Roan)"
             },
             {
               "draw": 2,
               "back_no": "558",
+              "rider": "Madeline Toebe",
               "horse": "Felix"
             },
             {
               "draw": 3,
               "back_no": "1019",
+              "rider": "Baleigh Stouffer",
               "horse": "Hooker"
             },
             {
               "draw": 4,
               "back_no": "663",
+              "rider": "Talia Pierard",
               "horse": "Shooter"
             },
             {
               "draw": 5,
               "back_no": "415",
+              "rider": "Mia Diaz",
               "horse": "George"
             }
           ]
@@ -467,41 +530,49 @@
             {
               "draw": 1,
               "back_no": "103",
+              "rider": "Gabrie Gozder",
               "horse": "Felix"
             },
             {
               "draw": 2,
               "back_no": "113",
+              "rider": "Brianna Condon",
               "horse": "Archie (Bay)"
             },
             {
               "draw": 3,
               "back_no": "133",
+              "rider": "Phoebe Cox",
               "horse": "Hollie"
             },
             {
               "draw": 4,
               "back_no": "117",
+              "rider": "Mia Romo",
               "horse": "Sheldon"
             },
             {
               "draw": 5,
               "back_no": "130",
+              "rider": "Cady McCallum",
               "horse": "Peyton"
             },
             {
               "draw": 6,
               "back_no": "115",
+              "rider": "Aubree Christian",
               "horse": "Shooter"
             },
             {
               "draw": 7,
               "back_no": "109",
+              "rider": "Skyler Miles",
               "horse": "Hank"
             },
             {
               "draw": 8,
               "back_no": "112",
+              "rider": "Audree Kuhlman",
               "horse": "Marylin"
             }
           ]
@@ -519,21 +590,25 @@
             {
               "draw": 1,
               "back_no": "105",
+              "rider": "Lucy Zeug",
               "horse": "Marylin"
             },
             {
               "draw": 2,
               "back_no": "128",
+              "rider": "Alyssa Parrell",
               "horse": "Missy"
             },
             {
               "draw": 3,
               "back_no": "492",
+              "rider": "Aryanne Encarnacion-Cox",
               "horse": "Archie (Bay)"
             },
             {
               "draw": 4,
               "back_no": "693",
+              "rider": "Liberty Vue",
               "horse": "Peyton"
             }
           ]
@@ -1576,6 +1651,6 @@
   "open_items": [
     "Box grouping follows our reading of the pattern book. The printed IHSA score sheet for a meet may group maneuvers differently.",
     "Penalty values are placeholders: the IHSA sheets seen so far do not list them.",
-    "Rider names, schools, judges and Sunday's draw are not in this file."
+    "Schools, coaches, judges and Sunday's draw are not in this file."
   ]
 }

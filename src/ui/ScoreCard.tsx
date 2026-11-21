@@ -341,6 +341,7 @@ export function ScoreCard({ meetId, classId, runId }: { meetId: string; classId:
         <div className="card-head">
           <div className="rider">
             <BackNumber value={run.backNo} size="lg" />
+            {run.rider && <span className="rider-name">{run.rider}</span>}
             {run.horse && <span className="rider-horse">{run.horse}</span>}
           </div>
           <div className="total" aria-live="polite">

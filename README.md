@@ -10,12 +10,12 @@ A free judging and scoring tool for small horse shows: IHSA meets, ARHA and loca
 - Each box is named above it: a short code on a phone (`Rr S`, `4 LS`, `S&B`), the words from the sheet on a tablet.
 - Tapping a penalty value **asks which penalty**, from the list for that value, with the ones that fit the maneuver first. A penalty can be **circled**: the horse's fault, shown on the card, not counted.
 - The **placings card** takes the judge's order for horsemanship classes and gives IHSA points.
-- It is loaded with two real IHSA meets (November 21–22, 2026). Saturday has the show's 12 classes in running order and the draw: back numbers and horses. Sunday has the class list.
+- It is loaded with two real IHSA meets (November 21–22, 2026). Saturday has the show's 12 classes in running order and the draw: back numbers, riders and horses. Sunday has the class list.
 - Everything is saved **on the device only**. There is no sign-in and no server sync yet.
 - Every screen says **"Unofficial test"**. The show's own system is the official record.
 - **Penalty values are placeholders.** The IHSA sheets do not list them, so reining follows NRHA and ranch riding follows the AQHA sheet. Each card says so.
 
-What is not built yet: sync to Supabase, seats and PINs, importing entries from a file or sheet, rider names, tie-breakers, teams and high point, office screens, entering your own patterns.
+What is not built yet: sync to Supabase, seats and PINs, importing entries from a file or sheet, tie-breakers, teams and high point, office screens, entering your own patterns.
 
 ## Try it
 
@@ -100,5 +100,5 @@ The requirement, decision-log and scoring-reference documents live in the Claude
 
 - **Patterns:** names, box counts, short maneuver codes and a few words per box, written in our own words. No pattern text copied from an association and no diagrams. NRHA states its patterns may not be reproduced without approval, and other associations' patterns raise the same question.
 - **Penalty lists:** short descriptions in our own words of what each penalty value is for.
-- **The draw:** back numbers and horse names only.
-- **No people:** no rider names, schools, coaches or judges. No scores from a real show.
+- **The draw:** draw order, back number, rider name and horse. The repo owner confirmed rider names are public information.
+- **Not here:** riders' schools, coaches, judges, and any scores from a real show.

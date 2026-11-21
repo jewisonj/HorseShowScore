@@ -119,20 +119,27 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
         <ul className="list">
           {cs.runs.map((run) => {
             const t = totalFor(run, cls)
-            let status = cls.card_family === 'placings' ? 'Pattern not scored' : 'Not scored'
+            // A blank right side means not scored yet. It leaves the name room on a narrow phone.
+            let status = ''
             if (run.scored) status = t.score === null ? 'DQ' : formatHalf(t.score)
-            else if (inProgress(run)) status = 'In progress'
+            else if (inProgress(run)) status = 'Started'
             return (
               <li key={run.id}>
-                <button className="row" onClick={() => go(`${base}/r/${run.id}`)}>
+                <button
+                  className="row"
+                  aria-label={`Back number ${run.backNo}${run.rider ? `, ${run.rider}` : ''}${run.horse ? `, on ${run.horse}` : ''}. ${status === '' ? 'Not scored' : status}`}
+                  onClick={() => go(`${base}/r/${run.id}`)}
+                >
                   {run.draw !== undefined && <span className="draw" aria-label={`Draw ${run.draw}`}>{run.draw}</span>}
                   <BackNumber value={run.backNo} />
                   <span className="row-main">
-                    <strong className={run.scored ? 'score' : 'muted'}>{status}</strong>
-                    {run.mark !== 'none' && run.mark !== 'DQ' && <span className="tag">{run.mark}</span>}
+                    {run.rider && <strong className="rider-name">{run.rider}</strong>}
                     {run.horse && <span className="horse">{run.horse}</span>}
                   </span>
-                  <span className="row-side">{run.scored ? 'Edit' : 'Score'}</span>
+                  <span className="row-side row-status">
+                    <span className={run.scored ? 'score' : undefined}>{status}</span>
+                    {run.mark !== 'none' && run.mark !== 'DQ' && <span className="tag">{run.mark}</span>}
+                  </span>
                 </button>
               </li>
             )
@@ -158,6 +165,7 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
                   {row.score === null ? (row.run.mark === 'DQ' ? 'DQ' : '') : formatHalf(row.score)}
                   {row.run.mark === 'OP' && <span className="tag">OP</span>}
                   {row.tied && <span className="tag tag-warn">Tie, judge breaks it</span>}
+                  {row.run.rider && <span className="result-name">{row.run.rider}</span>}
                 </span>
                 <span className="result-points">{row.place !== null ? pts(row.points) : ''}</span>
               </li>

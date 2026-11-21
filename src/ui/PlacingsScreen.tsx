@@ -84,6 +84,7 @@ export function PlacingsScreen({ meetId, classId }: { meetId: string; classId: s
                   <Ribbon place={i + 1} />
                   <BackNumber value={run.backNo} />
                   <span className="row-main">
+                    {run.rider && <strong className="rider-name">{run.rider}</strong>}
                     {s !== null && <span className="score">{formatHalf(s)}</span>}
                     {run.mark === 'OP' && <span className="tag">OP</span>}
                   </span>
@@ -112,7 +113,10 @@ export function PlacingsScreen({ meetId, classId }: { meetId: string; classId: s
             return (
               <button key={run.id} className="pick" onClick={() => tapUnplaced(run)}>
                 <BackNumber value={run.backNo} />
-                {s !== null && <span className="score">{formatHalf(s)}</span>}
+                <span className="pick-text">
+                  {run.rider && <span className="rider-name">{run.rider}</span>}
+                  {s !== null && <span className="score">{formatHalf(s)}</span>}
+                </span>
                 {run.mark === 'OP' && <span className="tag">OP</span>}
               </button>
             )

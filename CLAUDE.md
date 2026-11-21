@@ -19,11 +19,12 @@ Read `README.md` first. The requirements, decision log and scoring references li
 Do not commit any of these unless the owner says so:
 
 - Association pattern text or diagrams. The test data carries pattern names, box counts, short maneuver codes and a few words per box in our own words. The owner asked for those on 2026-11-21.
-- Real people's names: riders, judges, coaches. Their schools too. The draw in the test data is back numbers and horses only.
+- People other than riders: judges and coaches. Riders' schools too.
+- Rider names **are** in the test data. The owner said on 2026-11-21 that they are public information. The draw carries draw order, back number, rider and horse.
 - Scores or score sheets from a real show. IHSA cards are not public.
 - The planning documents from the Claude Project.
 
-`src/results.test.ts` has a test that fails if a judge or an extra field turns up in the test data.
+`src/results.test.ts` has a test that fails if a judge, or any field beyond those four, turns up in the test data.
 
 ## Secrets
 

@@ -71,12 +71,16 @@ describe('test data', () => {
     expect(getPattern('nrha-8').boxes.map((b) => b.abbr)).toEqual(['4 LS', '4 RS', 'RrR CL', 'LlL CL', 'LRB', 'RRB', 'SB'])
   })
 
-  it('carries no people: no judges, and a draw line is only draw, back number and horse', () => {
-    // This repo is public. Rider names, schools and judges stay out of it.
+  it('a draw line is draw, back number, rider and horse, and nothing else about people', () => {
+    // This repo is public. The owner cleared rider names. Schools, coaches and judges stay out.
     for (const m of meets) {
       expect(m.judges).toEqual([])
       for (const c of m.classes) {
-        for (const e of c.entries) expect(Object.keys(e).sort()).toEqual(['back_no', 'draw', 'horse'])
+        for (const e of c.entries) {
+          expect(Object.keys(e).sort()).toEqual(['back_no', 'draw', 'horse', 'rider'])
+          expect(e.rider.trim()).toBe(e.rider)
+          expect(e.rider.length).toBeGreaterThan(0)
+        }
       }
     }
     // Class and meet records carry only these fields.
@@ -143,6 +147,9 @@ describe('the draw', () => {
       [4, '553', 'Rey'],
       [5, '576', 'George'],
     ])
+    // Every rider comes with the name from the draw.
+    const fixture = getClass('meet-5', REINING)!.entries
+    expect(reining.map((r) => r.rider)).toEqual(fixture.map((e) => e.rider))
     expect(reining[0].boxes).toHaveLength(8)
     expect(classState(getState(), classKey('meet-5', RANCH)).runs).toHaveLength(10)
     // Sunday's draw is not known yet.
@@ -159,6 +166,25 @@ describe('the draw', () => {
     const after = classState(getState(), key).runs
     expect(after).toHaveLength(4)
     expect(after[0].scored).toBe(true)
+  })
+
+  it('fills in name, horse and draw order for riders already on the device, without touching scores', () => {
+    // A device that loaded an earlier draw, or had back numbers typed in by hand.
+    const key = classKey('meet-5', REINING)
+    addRiders(key, ['576', '1025', '999'], 8)
+    scoreRun(key, '1025', [1, 1, 1, 1, 1, 1, 1, 1], [{ half: 2, box: 3 }], 'none', { fe: 6 })
+    expect(loadDraw()).toBe(70) // the other eleven classes
+    const entries = getClass('meet-5', REINING)!.entries
+    const runs = classState(getState(), key).runs
+    expect(runs.map((r) => [r.backNo, r.draw, r.horse, r.rider])).toEqual([
+      ['576', 5, 'George', entries[4].rider],
+      ['1025', 1, 'George', entries[0].rider],
+      ['999', undefined, undefined, undefined],
+    ])
+    expect(runs[1].boxes).toEqual([1, 1, 1, 1, 1, 1, 1, 1])
+    expect(runs[1].penalties).toEqual([{ half: 2, box: 3 }])
+    expect(runs[1].extras).toEqual({ fe: 6 })
+    expect(runs[1].scored).toBe(true)
   })
 })
 
@@ -330,6 +356,7 @@ describe('CSV export', () => {
       pattern: 'NRHA Reining Pattern 17',
       draw: '1',
       back_number: '1025',
+      rider: getClass('meet-5', REINING)!.entries[0].rider,
       horse: 'George',
       placing: '1',
       score: '72.5', // 70 + 2 + F&E 2 − 1½, the circled 5 is not counted
@@ -342,7 +369,8 @@ describe('CSV export', () => {
       status: 'unverified',
     })
     // Not scored: no placing, no score, no points. Partial data is normal.
-    expect(lines[2]).toBe('Meet #5,2026-11-21,,1,17,Reining,NRHA Reining Pattern 17,2,102,Bunny,,,,,,,,,unverified')
+    const second = getClass('meet-5', REINING)!.entries[1].rider
+    expect(lines[2]).toBe(`Meet #5,2026-11-21,,1,17,Reining,NRHA Reining Pattern 17,2,102,${second},Bunny,,,,,,,,,unverified`)
   })
 
   it('is just the header when nothing has been entered', () => {

@@ -19,10 +19,11 @@ export interface Pattern {
 
 export type CardFamily = 'pattern' | 'placings'
 
-/** One line of the draw: who goes when, on which horse. No names. */
+/** One line of the draw: who goes when, on which horse. */
 export interface Entry {
   draw: number
   back_no: string
+  rider: string
   horse: string
 }
 
