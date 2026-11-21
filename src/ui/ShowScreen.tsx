@@ -6,7 +6,7 @@ import { removeShow, useUserShows } from '../data/shows'
 import { resultsCsv } from '../results'
 import { loadDraw } from '../seed'
 import { problemsIn } from '../setup/draft'
-import { classState, removeClassStates, useAppState } from '../store'
+import { classState, judgeName, removeClassStates, useAppState } from '../store'
 import { Screen, go } from './bits'
 import { download, slug } from './files'
 import { showDates } from './Home'
@@ -77,7 +77,7 @@ export function ShowScreen({ showId }: { showId: string }) {
                 <span className="row-main">
                   <strong>{m.label}</strong>
                   {m.date && <span>{formatDate(m.date)}</span>}
-                  {m.judges.length > 0 && <span>Judge {m.judges.join(', ')}</span>}
+                  {judgeName(state, m.id).trim() && <span>Judge {judgeName(state, m.id).trim()}</span>}
                 </span>
                 <span className="row-side">
                   {m.classes.length} classes
@@ -135,8 +135,8 @@ export function ShowScreen({ showId }: { showId: string }) {
           </div>
           {cloud.admin && (local !== undefined || !onServer) && (
             <p className="hint">
-              A published show can be read by anyone who has the app: its classes, draw, patterns and any judge named
-              in setup. Scores are not published.
+              A published show can be read by anyone who has the app: its classes, draw and patterns. Judges' names
+              and scores are not published.
             </p>
           )}
           {!cloud.admin && !published && (

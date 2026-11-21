@@ -168,6 +168,18 @@ describe('publishing', () => {
     expect(cloudCache().onServer).toContain('s-new00001')
   })
 
+  it('judges are never sent to the server, even from an older show file that names one', async () => {
+    await startCloud()
+    await signIn('admin@example.com', 'right')
+    const old = show('s-new00001')
+    old.meets[0].judges = ['Pat Example']
+    saveShow(old)
+    expect(await publishShow(old)).toBeNull()
+    expect(server.shows[0].meets[0].judges).toEqual([])
+    expect(JSON.stringify(server.shows)).not.toContain('Pat Example')
+    expect(getShow('s-new00001')?.meets[0].judges).toEqual([])
+  })
+
   it('someone who is not a show admin is told so, and nothing changes', async () => {
     await startCloud()
     await signIn('judge@example.com', 'right')

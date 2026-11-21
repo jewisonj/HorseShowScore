@@ -24,7 +24,9 @@ Read `README.md` first. The requirements, decision log and scoring references li
 ## The server
 
 - Supabase holds published shows (`public.shows`, one show file per row) and the list of show admins. Scores are not on the server yet.
-- A published show is readable by anyone. It may hold only what the show file holds: classes, the four draw fields, patterns, and judges named in setup. Never add schools, coaches, scores, or rider height and weight to it.
+- A published show is readable by anyone. It may hold only classes, the four draw fields and patterns. Never add judges, schools, coaches, scores, or rider height and weight to it.
+- Judges' names are not part of a show. The owner said on 2026-11-21 to remove them or let judges enter them. Setup does not ask for one, the workbook's judge column is not read, publishing strips them, and the database refuses a show that names one. A judge types a name on the day screen; it stays in that device's state and its results file.
+- `is_show_admin()` runs as the caller and is not callable without signing in. Keep it that way: Supabase's advisor flags owner-rights functions in `public`.
 - Only people in `show_admins` change shows. Rows are added by the owner in the SQL editor, never from the app.
 - New tables need row-level security, policies and explicit grants in the migration, and a check in `supabase/tests/check-migration.mjs` for each kind of caller.
 - The app talks to the server only through `CloudBackend` (`src/cloud/backend.ts`). Tests use `makeFakeBackend` and never touch the network.

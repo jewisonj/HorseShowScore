@@ -49,6 +49,8 @@ export interface ClassState {
 export interface AppState {
   v: 2
   classes: Record<string, ClassState>
+  /** Who is judging each day, as typed on this device. Keyed by meet id. Never sent to the server. */
+  judges?: Record<string, string>
 }
 
 export const STORAGE_KEY = 'hss.state.v2'
@@ -262,6 +264,15 @@ export function removeClassStates(keys: string[]) {
 
 export function setPlacings(key: string, placings: string[]) {
   updateClass(key, (c) => ({ ...c, placings }))
+}
+
+/** The judge's name typed on this device for a day. Empty when none. */
+export function judgeName(s: AppState, meetId: string): string {
+  return s.judges?.[meetId] ?? ''
+}
+
+export function setJudgeName(meetId: string, name: string) {
+  commit({ ...state, judges: { ...state.judges, [meetId]: name.slice(0, 80) } })
 }
 
 export function clearAll() {

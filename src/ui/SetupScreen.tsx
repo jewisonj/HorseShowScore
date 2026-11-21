@@ -308,13 +308,6 @@ export function SetupScreen({ showId }: { showId?: string }) {
               <span>Date</span>
               <input type="date" value={meet.date} onChange={(e) => setMeet(meet.id, (m) => ({ ...m, date: e.target.value }))} />
             </label>
-            <label className="field">
-              <span>Judge</span>
-              <input
-                value={meet.judges.join(', ')}
-                onChange={(e) => setMeet(meet.id, (m) => ({ ...m, judges: e.target.value.split(',').map((j) => j.trimStart()) }))}
-              />
-            </label>
           </div>
 
           {meet.classes.length === 0 ? (

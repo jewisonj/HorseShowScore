@@ -93,8 +93,9 @@ describe('reading the show workbook', () => {
     expect(show.title).toBe('March 6, 2027 Spring Western Show')
     expect(show.rides).toBe(6)
     expect(show.meets.map((m) => [m.id, m.label, m.date, m.judges])).toEqual([
-      ['s-x-m1', 'Saturday', '2027-03-06', ['Pat Example']],
-      ['s-x-m2', 'Sunday', '2027-03-07', ['Sam Sample']],
+      // The workbook names a judge for each day. Judges' names are left out of shows.
+      ['s-x-m1', 'Saturday', '2027-03-06', []],
+      ['s-x-m2', 'Sunday', '2027-03-07', []],
     ])
     expect(show.meets[0].classes.map((c) => [c.id, c.name, c.class_no, c.section, c.card_family, c.entries.length])).toEqual([
       ['1', 'Reining', '17', '', 'pattern', 2],

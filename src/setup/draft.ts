@@ -122,7 +122,8 @@ export function finishShow(show: ShowFile): ShowFile {
       .map((m) => ({
         ...m,
         label: m.label.trim(),
-        judges: m.judges.map((j) => j.trim()).filter(Boolean),
+        // Judges are not part of a show. Each judge types a name on the device they score on.
+        judges: [],
         classes: m.classes.map((c) => {
           const division = divisionFor(c.class_no)
           return { ...c, name: c.name.trim(), rule_set: division.rule_set, card_family: division.card_family }

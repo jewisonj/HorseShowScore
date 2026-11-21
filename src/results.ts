@@ -1,7 +1,7 @@
 import { cardTotal, pointsForPlace, rankScored, type CardTotal } from './engine'
 import { allShows, classKey, getPattern, type Meet, type ShowClass } from './data/fixture'
 import { opRuleForClass, reasonById, ruleSetFor } from './rules/rulesets'
-import { classState, type AppState, type ClassState, type Run } from './store'
+import { type AppState, type ClassState, classState, judgeName, type Run } from './store'
 
 export function totalFor(run: Run, cls: ShowClass): CardTotal {
   const rs = ruleSetFor(cls.rule_set)
@@ -184,7 +184,7 @@ export function resultsCsv(state: AppState, meetList: Meet[] = allShows().flatMa
           [
             meet.label,
             meet.date,
-            meet.judges.join(' / '),
+            judgeName(state, meet.id).trim(),
             cls.id,
             cls.class_no,
             cls.name,

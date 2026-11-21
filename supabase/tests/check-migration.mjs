@@ -104,6 +104,8 @@ await allowed('can change a show', ADMIN, `update public.shows set name = 'Sprin
 await allowed('sees unpublished shows too', ADMIN, `select id from public.shows order by id`, (r) => r.rows.length === 2)
 await refused('cannot save a show whose file belongs to another show', ADMIN, `insert into public.shows (id, name, definition) values ('s-wrong1', 'X', '{"format":"hss-show","id":"s-other"}'::jsonb)`, /shows_definition_is_this_show/)
 await refused('cannot save something that is not a show file', ADMIN, `insert into public.shows (id, name, definition) values ('s-junk01', 'X', '{"v":2}'::jsonb)`, /shows_definition_is_this_show/)
+await refused('cannot save a show that names a judge', ADMIN, `insert into public.shows (id, name, definition) values ('s-judge01', 'X', '{"format":"hss-show","id":"s-judge01","meets":[{"id":"m1","judges":["Pat Example"]}]}'::jsonb)`, /shows_no_judge_names/)
+await allowed('can save a show whose days have an empty judges list', ADMIN, `insert into public.shows (id, name, definition, published) values ('s-judge02', 'X', '{"format":"hss-show","id":"s-judge02","meets":[{"id":"m1","judges":[]}]}'::jsonb, false)`)
 await refused('cannot save a show with no name', ADMIN, `insert into public.shows (id, name, definition) values (${show('s-noname', '  ')})`, /shows_name_present/)
 await refused('cannot hand a show to another owner', ADMIN, `insert into public.shows (id, name, definition, owner) values (${show('s-owner1')}, '${OTHER}')`, /row-level security/)
 
@@ -113,7 +115,7 @@ await refused('cannot add a show', 'anon', `insert into public.shows (id, name, 
 await refused('cannot change a show', 'anon', `update public.shows set name = 'hacked' where id = 's-abc123'`, /permission denied/)
 await refused('cannot remove a show', 'anon', `delete from public.shows where id = 's-abc123'`, /permission denied/)
 await refused('cannot see who the admins are', 'anon', `select * from public.show_admins`, /permission denied/)
-await allowed('is told it is not an admin', 'anon', `select public.is_show_admin() as yes`, (r) => r.rows[0].yes === false)
+await refused('cannot run the admin check at all', 'anon', `select public.is_show_admin() as yes`, /permission denied/)
 
 console.log('\n  A signed-in person who is not a show admin')
 await allowed('reads published shows only', OTHER, `select id from public.shows`, (r) => r.rows.length === 1)
@@ -130,6 +132,21 @@ await db.exec(`insert into public.show_admins (user_id, note) values ('${OTHER}'
 await allowed('can publish over a show someone else set up', OTHER, `insert into public.shows (id, name, definition) values (${show('s-abc123', 'Spring show, revised')}) on conflict (id) do update set name = excluded.name, definition = excluded.definition returning id`, (r) => r.rows.length === 1)
 await db.exec(`delete from public.show_admins where user_id = '${OTHER}';`)
 await refused('and loses that the moment they are taken off the list', OTHER, `update public.shows set name = 'again' where id = 's-abc123' returning id`, /row-level security/)
+
+console.log('\n  A show stored before judges were ruled out')
+await db.exec(`
+  alter table public.shows drop constraint shows_no_judge_names;
+  insert into public.shows (id, name, definition, owner) values ('s-older01', 'Older', '{"format":"hss-show","id":"s-older01","meets":[{"id":"m1","label":"Saturday","judges":["Pat Example"]},{"id":"m2","label":"Sunday","judges":[]}]}'::jsonb, '${ADMIN}');
+`)
+try {
+  await db.exec(readFileSync(join(migrationsDir, files[files.length - 1]), 'utf8'))
+  const older = await db.query(`select definition from public.shows where id = 's-older01'`)
+  const meets = older.rows[0].definition.meets
+  if (meets.length === 2 && meets[0].label === 'Saturday' && meets[1].label === 'Sunday' && meets.every((m) => m.judges.length === 0)) ok('has its judges removed, and keeps its days in order')
+  else fail('has its judges removed, and keeps its days in order', JSON.stringify(meets))
+} catch (e) {
+  fail('has its judges removed, and keeps its days in order', e.message)
+}
 
 console.log('\n  After the changes')
 const after = await db.query(`select name, owner, updated_at > created_at as touched from public.shows where id = 's-abc123'`)

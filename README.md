@@ -108,20 +108,20 @@ Rules that hold across the code:
 
 What the server does today:
 
-- **Published shows.** A show admin sets a show up, signs in and chooses Publish. Every phone lists it the next time it is online, and keeps it for when there is no signal. Anyone with the app can read a published show: classes, draw, patterns and any judge named in setup.
+- **Published shows.** A show admin sets a show up, signs in and chooses Publish. Every phone lists it the next time it is online, and keeps it for when there is no signal. Anyone with the app can read a published show: classes, draw and patterns. Judges' names are never published: the database refuses a show that names one. Each judge types a name on the day screen of the device they score on, and it goes in that device's results file.
 - **Pattern book reader.** In setup, a signed-in show admin hands over the pattern book as a PDF. An Edge Function sends it to Claude and answers with each pattern as boxes with short codes. A person ticks what to keep and checks it against the book.
 - **Scores are not on the server yet.** They stay on each device. `supabase/drafts/full-schema-draft.sql` is a sketch for that step, not a migration.
 
 ### Set it up, once
 
-1. **Tables.** In the Supabase dashboard open the SQL editor, paste `supabase/migrations/20261121150000_shows.sql` and run it. It is safe to run twice.
+1. **Tables.** In the Supabase dashboard open the SQL editor and run each file in `supabase/migrations/`, in name order. Each is safe to run twice, but always finish with the last one.
 2. **Your account.** Authentication, Users, Add user: your email and a password. Then in the SQL editor, with your email in place of the example:
    ```sql
    insert into public.show_admins (user_id, note)
    select id, 'owner' from auth.users where email = 'you@example.com';
    ```
    Add other people who set up shows the same way. Nobody can add themselves from the app.
-3. **No sign-ups.** Authentication, Sign In / Providers: turn off "Allow new users to sign up". An account that is not in `show_admins` can do nothing more than a phone that is not signed in, but there is no reason to let strangers make accounts.
+3. **No sign-ups.** Authentication, Sign In / Providers, at the top of the page: turn off "Allow new users to sign up". An account that is not in `show_admins` can do nothing more than a phone that is not signed in, but there is no reason to let strangers make accounts.
 4. **The Anthropic key.** Edge Functions, Secrets: add `ANTHROPIC_API_KEY`. It lives only there. It never goes in `.env`, the repo or the app.
 5. **The reader.** From this folder on a computer:
    ```
@@ -134,7 +134,9 @@ Optional function secrets: `PATTERN_READER_MODEL` (default `claude-sonnet-5-5`) 
 
 ### What has and has not been tested
 
-`npm run db:check` runs the migration on a real Postgres in memory and checks who can read, add, change and remove shows: a phone with only the app's key, a signed-in person off the list, and a show admin. The app's side and the reader's logic are tested against stand-ins. **Nothing here has been run against the live Supabase project or the live Anthropic API**, so the first publish and the first pattern book are the real test.
+`npm run db:check` runs the migrations on a real Postgres in memory and checks who can read, add, change and remove shows: a phone with only the app's key, a signed-in person off the list, and a show admin. On 2026-11-21 the same rules were checked on the live project, inside a transaction that was rolled back, and Supabase's security advisor showed no warnings about the tables or functions.
+
+The app's side and the reader's logic are tested against stand-ins. **Publishing from the app and reading a pattern book have not yet been run against the live project or the live Anthropic API**, so the first publish and the first pattern book are the real test.
 
 ## Requirements
 

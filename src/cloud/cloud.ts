@@ -210,9 +210,11 @@ export async function signOut(): Promise<void> {
  * this copy, so the copy that was being worked on here is no longer needed.
  * Returns what went wrong, or null.
  */
-export async function publishShow(show: ShowFile): Promise<string | null> {
+export async function publishShow(given: ShowFile): Promise<string | null> {
   const b = await backend()
   if (!b) return 'This copy of the app is not connected to a server.'
+  // Judges' names never go to the server, even from a show file made before that rule.
+  const show: ShowFile = { ...given, meets: given.meets.map((m) => ({ ...m, judges: [] })) }
   try {
     await b.publishShow(show)
   } catch (e) {

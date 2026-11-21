@@ -5,9 +5,11 @@ import { makeFakeBackend, type FakeBackend } from '../cloud/fakeBackend'
 import { clearCloudCache } from '../data/cloudShows'
 import type { ShowFile } from '../data/fixture'
 import { clearShows, saveShow, userShows } from '../data/shows'
-import { clearAll } from '../store'
+import { resultsCsv } from '../results'
+import { clearAll, getState } from '../store'
 import { AccountScreen } from './AccountScreen'
 import { Home } from './Home'
+import { MeetScreen } from './MeetScreen'
 import { SetupScreen } from './SetupScreen'
 import { ShowScreen } from './ShowScreen'
 
@@ -135,6 +137,25 @@ describe('publishing from the show screen', () => {
     expect(screen.queryByRole('button', { name: 'Take it off the server' })).toBeNull()
     expect(screen.queryByRole('button', { name: /Publish/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /Remove this show/ })).toBeNull()
+  })
+})
+
+describe('the judge on this device', () => {
+  it('types a name on the day screen; it goes in this device\'s results and nowhere else', async () => {
+    server.shows = [show('s-fall00001', 'p-fall-1')]
+    await startCloud()
+    render(<MeetScreen meetId="s-fall00001-m1" />)
+    fireEvent.change(screen.getByLabelText('Judge on this device'), { target: { value: 'Pat Example' } })
+    expect(screen.getByText(/judge Pat Example/)).toBeTruthy()
+    const csv = resultsCsv(getState(), server.shows[0].meets)
+    expect(csv.split('\n')[1]).toContain('Pat Example')
+    expect(JSON.stringify(server.shows)).not.toContain('Pat Example')
+  })
+
+  it('setup has no judge field', async () => {
+    saveShow(show('s-fall00001', 'p-fall-1'))
+    render(<SetupScreen showId="s-fall00001" />)
+    expect(screen.queryByLabelText('Judge')).toBeNull()
   })
 })
 

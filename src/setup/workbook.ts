@@ -66,7 +66,7 @@ export function readShowWorkbook(wb: Workbook, idPrefix: string): WorkbookShow {
 
   const title = text(wb.cell(list, 'B2'))
   const notes: string[] = []
-  const byDay = new Map<string, { classes: ShowClass[]; judges: Set<string> }>()
+  const byDay = new Map<string, { classes: ShowClass[] }>()
   let rides = 0
 
   for (let row = 3; row <= 60; row++) {
@@ -81,9 +81,8 @@ export function readShowWorkbook(wb: Workbook, idPrefix: string): WorkbookShow {
     rides += entries.length
 
     const division = inferDivision(name)
-    const slot = byDay.get(day) ?? { classes: [], judges: new Set<string>() }
-    const judge = text(wb.cell(list, `D${row}`))
-    if (judge) slot.judges.add(judge)
+    // Column D holds the judge. It is not read: judges' names stay out of shows.
+    const slot = byDay.get(day) ?? { classes: [] }
     slot.classes.push({
       id: typeof number === 'number' ? String(number) : String(slot.classes.length + 1),
       class_no: division.class_no,
@@ -110,7 +109,7 @@ export function readShowWorkbook(wb: Workbook, idPrefix: string): WorkbookShow {
       date,
       coach_meeting: '',
       start_time: '',
-      judges: [...slot.judges],
+      judges: [],
       classes: slot.classes,
     }
     if (date) date = nextDay(date)

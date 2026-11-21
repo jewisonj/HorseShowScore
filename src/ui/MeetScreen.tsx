@@ -1,5 +1,5 @@
 import { classKey, findPattern, formatDate, getMeet, showOfMeet } from '../data/fixture'
-import { classState, useAppState } from '../store'
+import { classState, judgeName, setJudgeName, useAppState } from '../store'
 import { Screen, go } from './bits'
 
 export function MeetScreen({ meetId }: { meetId: string }) {
@@ -13,13 +13,20 @@ export function MeetScreen({ meetId }: { meetId: string }) {
       </Screen>
     )
   }
+  const judge = judgeName(state, meet.id)
   return (
     <Screen
       title={meet.label}
-      sub={[meet.date ? formatDate(meet.date) : '', meet.judges.length > 0 ? `judge ${meet.judges.join(', ')}` : ''].filter(Boolean).join(', ')}
+      sub={[meet.date ? formatDate(meet.date) : '', judge.trim() ? `judge ${judge.trim()}` : ''].filter(Boolean).join(', ')}
       backTo={show ? `/s/${show.id}` : '/'}
       backLabel="Show"
     >
+      <label className="field">
+        <span>Judge on this device</span>
+        <input value={judge} onChange={(e) => setJudgeName(meet.id, e.target.value)} placeholder="Your name" autoComplete="off" />
+      </label>
+      <p className="hint">Stays on this phone or tablet and goes in its results file. It is not sent to the server.</p>
+
       <h2>Classes</h2>
       <ul className="list">
         {meet.classes.map((c) => {
