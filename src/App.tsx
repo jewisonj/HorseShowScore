@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSaveFailed } from './store'
+import { AccountScreen } from './ui/AccountScreen'
 import { ClassScreen } from './ui/ClassScreen'
 import { Home } from './ui/Home'
 import { MeetScreen } from './ui/MeetScreen'
@@ -44,6 +45,7 @@ function Route() {
     return <ShowScreen showId={p[1]} />
   }
   if (p[0] === 'new') return <SetupScreen key="new" />
+  if (p[0] === 'account') return <AccountScreen />
   return <Home />
 }
 

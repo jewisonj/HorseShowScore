@@ -1,3 +1,7 @@
+-- NOT A MIGRATION. Do not run this.
+-- A sketch of the full normalized schema (seats, cards, card events) for when
+-- scores move to the server. The live database starts with supabase/migrations.
+
 -- Horse Show Scorer: first schema.
 --
 -- STATUS: DRAFT. Not applied to the Supabase project yet, and not used by the

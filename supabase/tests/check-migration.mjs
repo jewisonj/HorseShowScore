@@ -1,6 +1,6 @@
 // Runs the migrations against a real Postgres (PGlite, Postgres compiled to
-// WebAssembly) and checks the rules the schema is supposed to enforce.
-// Usage: npm run db:check
+// WebAssembly) and checks who can do what, as the app's key and as a signed-in
+// person. Usage: npm run db:check
 import { PGlite } from '@electric-sql/pglite'
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -8,33 +8,65 @@ import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const migrationsDir = join(here, '..', 'migrations')
-
 const db = new PGlite()
 let failures = 0
-
-function ok(name) {
-  console.log(`  ok    ${name}`)
-}
-
-function fail(name, detail) {
+const ok = (name) => console.log(`  ok    ${name}`)
+const fail = (name, detail) => {
   failures++
   console.log(`  FAIL  ${name}${detail ? `: ${detail}` : ''}`)
 }
 
-async function expectError(name, sql, pattern) {
+const ADMIN = '11111111-1111-1111-1111-111111111111'
+const OTHER = '22222222-2222-2222-2222-222222222222'
+
+/** Run SQL as a visitor with only the app's key (anon), or as a signed-in person. */
+async function as(who, sql) {
+  const role = who === 'anon' ? 'anon' : 'authenticated'
+  await db.exec(`select set_config('request.jwt.claim.sub', '${who === 'anon' ? '' : who}', false); set role ${role};`)
   try {
-    await db.exec(sql)
-    fail(name, 'statement succeeded but should have been refused')
+    return await db.query(sql)
+  } finally {
+    await db.exec('reset role;')
+  }
+}
+
+async function allowed(name, who, sql, check) {
+  try {
+    const res = await as(who, sql)
+    if (!check || check(res)) ok(name)
+    else fail(name, `unexpected result: ${JSON.stringify(res.rows).slice(0, 200)} affected=${res.affectedRows}`)
+  } catch (e) {
+    fail(name, e.message)
+  }
+}
+
+async function refused(name, who, sql, pattern) {
+  try {
+    const res = await as(who, sql)
+    // An update or delete that row-level security hides simply touches nothing.
+    if ((res.affectedRows ?? 0) === 0 && res.rows.length === 0 && !/^\s*insert/i.test(sql)) ok(name)
+    else fail(name, 'statement went through but should have been refused')
   } catch (e) {
     if (pattern.test(String(e.message))) ok(name)
     else fail(name, `refused, but for another reason: ${e.message}`)
   }
 }
 
-// Supabase provides auth.users. Stand in for it here.
-await db.exec('create schema auth; create table auth.users (id uuid primary key);')
+// What Supabase provides: the auth schema, the API roles and auth.uid().
+await db.exec(`
+  create schema auth;
+  create table auth.users (id uuid primary key, email text);
+  create role anon nologin; create role authenticated nologin; create role service_role nologin;
+  create function auth.uid() returns uuid language sql stable as $$
+    select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
+  $$;
+  grant usage on schema public, auth to anon, authenticated;
+  grant execute on function auth.uid() to anon, authenticated;
+  insert into auth.users (id, email) values ('${ADMIN}', 'admin@example.com'), ('${OTHER}', 'other@example.com');
+`)
 
-for (const file of readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort()) {
+const files = readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort()
+for (const file of files) {
   try {
     await db.exec(readFileSync(join(migrationsDir, file), 'utf8'))
     ok(`migration applies: ${file}`)
@@ -42,93 +74,68 @@ for (const file of readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).
     fail(`migration applies: ${file}`, e.message)
   }
 }
+for (const file of files) {
+  try {
+    await db.exec(readFileSync(join(migrationsDir, file), 'utf8'))
+    ok(`migration can be run a second time: ${file}`)
+  } catch (e) {
+    fail(`migration can be run a second time: ${file}`, e.message)
+  }
+}
 
-// Every table has row-level security on, and none has a policy yet.
 const tables = await db.query(
-  `select c.relname, c.relrowsecurity from pg_class c
-   join pg_namespace n on n.oid = c.relnamespace
+  `select c.relname, c.relrowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace
    where n.nspname = 'public' and c.relkind = 'r' order by 1`,
 )
 const open = tables.rows.filter((r) => !r.relrowsecurity).map((r) => r.relname)
 if (tables.rows.length > 0 && open.length === 0) ok(`row-level security is on for all ${tables.rows.length} tables`)
 else fail('row-level security is on for every table', `off for: ${open.join(', ') || 'no tables found'}`)
 
-const policies = await db.query(`select count(*)::int as n from pg_policies where schemaname = 'public'`)
-if (policies.rows[0].n === 0) ok('no policies yet, so the publishable key reaches nothing')
-else fail('no policies yet', `${policies.rows[0].n} found`)
+// The project owner lists one person as a show admin, by hand.
+await db.exec(`insert into public.show_admins (user_id, note) values ('${ADMIN}', 'owner');`)
 
-// A small show, to exercise the constraints.
-await db.exec(`
-  insert into orgs (id, name) values ('00000000-0000-0000-0000-000000000001', 'Test org');
-  insert into events (id, org_id, name, start_date, end_date)
-    values ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Test event', '2026-11-21', '2026-11-22');
-  insert into meets (id, event_id, label, meet_date)
-    values ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000002', 'Meet #5', '2026-11-21');
-  insert into rule_sets (id, name, definition) values ('ihsa-reining', 'IHSA reining', '{}');
-  insert into classes (id, meet_id, class_no, name, card_family, rule_set_id)
-    values ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000003', '17', 'Open Reining', 'pattern', 'ihsa-reining');
-  insert into sections (id, class_id) values ('00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000004');
-  insert into entries (id, section_id, back_no, order_position)
-    values ('00000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000005', '214', 1),
-           ('00000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000005', '187', 1.1);
-  insert into seats (id, meet_id, seat_no) values ('00000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000003', 1);
-  insert into cards (id, entry_id, seat_id, family, computed_half, final_half)
-    values ('00000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000008', 'pattern', 141, 141);
-  insert into card_events (id, card_id, seq, type, payload)
-    values ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-000000000009', 1, 'set_box', '{"box": 1, "half": 1}');
-`)
-ok('a meet, class, section, entries, card and event can be stored')
+const show = (id, name = 'Spring show') =>
+  `'${id}', '${name}', '${JSON.stringify({ format: 'hss-show', version: 1, id, name, host: '', association: 'IHSA', meets: [], patterns: [] })}'::jsonb`
 
-const points = await db.query(`select points_table from classes`)
-if (JSON.stringify(points.rows[0].points_table) === '[7,5,4,3,2,1]') ok('points table defaults to 7, 5, 4, 3, 2, 1')
-else fail('points table default', JSON.stringify(points.rows[0].points_table))
+console.log('\n  A show admin')
+await allowed('can publish a show', ADMIN, `insert into public.shows (id, name, definition) values (${show('s-abc123')})`)
+await allowed('can save a show that is not published yet', ADMIN, `insert into public.shows (id, name, definition, published) values (${show('s-draft1', 'Draft')}, false)`)
+await allowed('can change a show', ADMIN, `update public.shows set name = 'Spring show, revised' where id = 's-abc123' returning name`, (r) => r.rows.length === 1)
+await allowed('sees unpublished shows too', ADMIN, `select id from public.shows order by id`, (r) => r.rows.length === 2)
+await refused('cannot save a show whose file belongs to another show', ADMIN, `insert into public.shows (id, name, definition) values ('s-wrong1', 'X', '{"format":"hss-show","id":"s-other"}'::jsonb)`, /shows_definition_is_this_show/)
+await refused('cannot save something that is not a show file', ADMIN, `insert into public.shows (id, name, definition) values ('s-junk01', 'X', '{"v":2}'::jsonb)`, /shows_definition_is_this_show/)
+await refused('cannot save a show with no name', ADMIN, `insert into public.shows (id, name, definition) values (${show('s-noname', '  ')})`, /shows_name_present/)
+await refused('cannot hand a show to another owner', ADMIN, `insert into public.shows (id, name, definition, owner) values (${show('s-owner1')}, '${OTHER}')`, /row-level security/)
 
-await expectError(
-  'an overridden total without a note is refused',
-  `update cards set final_half = 144 where id = '00000000-0000-0000-0000-000000000009'`,
-  /override_needs_note/,
-)
+console.log('\n  A phone with only the app’s key')
+await allowed('reads published shows', 'anon', `select id, name from public.shows`, (r) => r.rows.length === 1 && r.rows[0].id === 's-abc123')
+await refused('cannot add a show', 'anon', `insert into public.shows (id, name, definition) values (${show('s-anon01')})`, /permission denied|row-level security/)
+await refused('cannot change a show', 'anon', `update public.shows set name = 'hacked' where id = 's-abc123'`, /permission denied/)
+await refused('cannot remove a show', 'anon', `delete from public.shows where id = 's-abc123'`, /permission denied/)
+await refused('cannot see who the admins are', 'anon', `select * from public.show_admins`, /permission denied/)
+await allowed('is told it is not an admin', 'anon', `select public.is_show_admin() as yes`, (r) => r.rows[0].yes === false)
 
-try {
-  await db.exec(
-    `update cards set final_half = 144, override_note = 'Judge set the score' where id = '00000000-0000-0000-0000-000000000009'`,
-  )
-  ok('an overridden total with a note is accepted')
-} catch (e) {
-  fail('an overridden total with a note is accepted', e.message)
-}
+console.log('\n  A signed-in person who is not a show admin')
+await allowed('reads published shows only', OTHER, `select id from public.shows`, (r) => r.rows.length === 1)
+await refused('cannot add a show', OTHER, `insert into public.shows (id, name, definition) values (${show('s-other1')})`, /row-level security/)
+await refused('cannot change a show', OTHER, `update public.shows set name = 'hacked' where id = 's-abc123' returning id`, /row-level security/)
+await refused('cannot remove a show', OTHER, `delete from public.shows where id = 's-abc123' returning id`, /row-level security/)
+await refused('cannot make themselves an admin', OTHER, `insert into public.show_admins (user_id) values ('${OTHER}')`, /permission denied/)
+await allowed('sees no admin rows but their own', OTHER, `select * from public.show_admins`, (r) => r.rows.length === 0)
+await allowed('is told it is not an admin', OTHER, `select public.is_show_admin() as yes`, (r) => r.rows[0].yes === false)
+await allowed('while the admin is told yes', ADMIN, `select public.is_show_admin() as yes`, (r) => r.rows[0].yes === true)
 
-await expectError(
-  'a card event cannot be changed',
-  `update card_events set type = 'x' where id = '00000000-0000-0000-0000-00000000000a'`,
-  /append-only/,
-)
-await expectError(
-  'a card event cannot be deleted',
-  `delete from card_events where id = '00000000-0000-0000-0000-00000000000a'`,
-  /append-only/,
-)
-await expectError(
-  'two events cannot share a sequence number on one card',
-  `insert into card_events (id, card_id, seq, type) values ('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-000000000009', 1, 'set_box')`,
-  /unique|duplicate/i,
-)
-await expectError(
-  'a back number cannot appear twice in a section',
-  `insert into entries (section_id, back_no) values ('00000000-0000-0000-0000-000000000005', '214')`,
-  /unique|duplicate/i,
-)
+console.log('\n  A second show admin')
+await db.exec(`insert into public.show_admins (user_id, note) values ('${OTHER}', 'show secretary');`)
+await allowed('can publish over a show someone else set up', OTHER, `insert into public.shows (id, name, definition) values (${show('s-abc123', 'Spring show, revised')}) on conflict (id) do update set name = excluded.name, definition = excluded.definition returning id`, (r) => r.rows.length === 1)
+await db.exec(`delete from public.show_admins where user_id = '${OTHER}';`)
+await refused('and loses that the moment they are taken off the list', OTHER, `update public.shows set name = 'again' where id = 's-abc123' returning id`, /row-level security/)
 
-await db.exec(`
-  insert into placings (section_id, seat_id, entry_id, place)
-    values ('00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000006', 1);
-`)
-await expectError(
-  'two riders cannot share a place on a placings card',
-  `insert into placings (section_id, seat_id, entry_id, place)
-     values ('00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000007', 1)`,
-  /unique|duplicate/i,
-)
+console.log('\n  After the changes')
+const after = await db.query(`select name, owner, updated_at > created_at as touched from public.shows where id = 's-abc123'`)
+if (after.rows[0]?.name === 'Spring show, revised' && after.rows[0].owner === ADMIN) ok('the show kept its owner and holds only the admin’s change')
+else fail('the show kept its owner and holds only the admin’s change', JSON.stringify(after.rows))
+await allowed('the admin can take a show off the server', ADMIN, `delete from public.shows where id = 's-abc123' returning id`, (r) => r.rows.length === 1)
 
-console.log(failures === 0 ? '\nAll schema checks passed.' : `\n${failures} schema check(s) failed.`)
+console.log(failures === 0 ? '\nAll database checks passed.' : `\n${failures} check(s) failed.`)
 process.exit(failures === 0 ? 0 : 1)

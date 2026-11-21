@@ -1,0 +1,8 @@
+# Supabase project settings used when deploying with the Supabase CLI.
+project_id = "horseshowscore"
+
+# The function checks the sign-in itself, by asking the database whether the
+# caller is a show admin. The platform's own check only understands the older
+# kind of key, so it is off here.
+[functions.read-pattern-book]
+verify_jwt = false

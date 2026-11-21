@@ -18,6 +18,7 @@ import { readShowWorkbook } from '../setup/workbook'
 import { readXlsx } from '../setup/xlsx'
 import { classState, getState, hasWork, resizeRuns } from '../store'
 import { Code, Screen, go } from './bits'
+import { PatternBookReader } from './PatternBookReader'
 
 const KINDS: { value: Division['kind']; label: string }[] = [
   { value: 'reining', label: 'Reining' },
@@ -415,6 +416,7 @@ export function SetupScreen({ showId }: { showId?: string }) {
       </div>
 
       <h2>Patterns</h2>
+      <PatternBookReader show={draft} onAdd={setDraft} />
       {draft.patterns.length === 0 ? (
         <p className="empty">No patterns yet. Choose one for a class above, or start a new one there.</p>
       ) : (

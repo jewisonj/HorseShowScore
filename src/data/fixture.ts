@@ -1,4 +1,5 @@
 import raw from './ihsa-black-hawk-2026-11.json'
+import { cloudShows } from './cloudShows'
 import { userShows } from './shows'
 
 export interface PatternBox {
@@ -96,9 +97,15 @@ export const builtInShow: ShowFile = {
 
 const patternsById = new Map(patterns.map((p) => [p.id, p]))
 
-/** The sample show first, then the shows added on this device. */
+/**
+ * The sample show first, then the shows added on this device, then the published
+ * shows read from the server. A show on this device stands in front of the
+ * published show with the same id: it is the copy being worked on.
+ */
 export function allShows(): ShowFile[] {
-  return [builtInShow, ...userShows()]
+  const mine = userShows()
+  const taken = new Set([builtInShow.id, ...mine.map((s) => s.id)])
+  return [builtInShow, ...mine, ...cloudShows().filter((s) => !taken.has(s.id))]
 }
 
 export function getShow(showId: string): ShowFile | undefined {
@@ -124,7 +131,7 @@ export function getClass(meetId: string, classId: string): ShowClass | undefined
 export function findPattern(patternId: string): Pattern | undefined {
   const builtIn = patternsById.get(patternId)
   if (builtIn) return builtIn
-  for (const show of userShows()) {
+  for (const show of [...userShows(), ...cloudShows()]) {
     const p = show.patterns.find((x) => x.id === patternId)
     if (p) return p
   }

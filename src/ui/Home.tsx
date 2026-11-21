@@ -1,4 +1,6 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { refreshShows, refreshShowsIfStale, startCloud, useCloud } from '../cloud/cloud'
+import { useCloudCache } from '../data/cloudShows'
 import { allShows, classKey, formatDate, type ShowFile } from '../data/fixture'
 import { isShowFile, readShowFile, saveShow, useUserShows, userShows } from '../data/shows'
 import { loadDraw } from '../seed'
@@ -14,10 +16,23 @@ export function showDates(show: ShowFile): string {
   return `${formatDate(dates[0])} to ${formatDate(dates[dates.length - 1])}`
 }
 
+/** "3:42 PM", or "Nov 20, 3:42 PM" when it was not today. */
+export function whenChecked(iso: string): string {
+  const at = new Date(iso)
+  const time = at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  return at.toDateString() === new Date().toDateString() ? time : `${at.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`
+}
+
 /** The first screen: pick a show, create one, or open one from a file. */
 export function Home() {
   const state = useAppState()
   useUserShows()
+  const cloud = useCloud()
+  const cache = useCloudCache()
+  useEffect(() => {
+    // Look for newly published shows each time this screen opens, at most once a minute.
+    void startCloud().then(refreshShowsIfStale)
+  }, [])
   const showFileRef = useRef<HTMLInputElement>(null)
   const backupRef = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState('')
@@ -49,7 +64,26 @@ export function Home() {
           )
         })}
       </ul>
+      {cloud.configured && (
+        <>
+          <p className="hint" role="status">
+            {cloud.check === 'checking'
+              ? 'Looking for published shows.'
+              : cloud.check === 'failed'
+                ? `Could not reach the server. ${cache.checkedAt ? `This list is from ${whenChecked(cache.checkedAt)}.` : 'Only the shows on this device are listed.'}`
+                : cache.checkedAt
+                  ? `Published shows were read at ${whenChecked(cache.checkedAt)}.`
+                  : 'Published shows appear here when this device is online.'}
+          </p>
+          <div className="stack">
+            <button className="btn" disabled={cloud.check === 'checking'} onClick={() => void refreshShows()}>
+              Check for new shows
+            </button>
+          </div>
+        </>
+      )}
 
+      <h2>Set up a show</h2>
       <div className="stack">
         <button className="btn btn-primary btn-wide" onClick={() => go('/new')}>
           Create a show
@@ -79,15 +113,22 @@ export function Home() {
             go(`/s/${show.id}`)
           }}
         />
+        {cloud.configured && (
+          <button className="btn" onClick={() => go('/account')}>
+            {cloud.user ? `Signed in as ${cloud.user.email}` : 'Sign in to publish shows'}
+          </button>
+        )}
       </div>
       <p className="hint">
-        Setting up a show is easiest on a computer. Save it there, send the show file to each phone, and open it here.
+        {cloud.configured
+          ? 'Setting up a show is easiest on a computer. Sign in there, set the show up and publish it. It then appears in the list on every phone. A show file still works where there is no signal.'
+          : 'Setting up a show is easiest on a computer. Save it there, send the show file to each phone, and open it here.'}
       </p>
 
       <h2>This device</h2>
       <p className="hint">
-        Scores are saved on this phone or tablet only. Nothing is sent anywhere yet, so back up before you clear
-        anything.
+        Scores are saved on this phone or tablet only. They are not sent to the server yet, so back up before you
+        clear anything.
       </p>
       <div className="stack">
         <button

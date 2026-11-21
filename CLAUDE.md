@@ -21,6 +21,16 @@ Read `README.md` first. The requirements, decision log and scoring references li
 - The show workbook is read only, in the browser, from an Excel download. Never write to anyone's Google Sheet. `src/setup/workbook.ts` says exactly which cells are relied on.
 - Tests build their own small workbook with made-up names (`src/setup/testWorkbook.ts`). Do not commit a real show workbook.
 
+## The server
+
+- Supabase holds published shows (`public.shows`, one show file per row) and the list of show admins. Scores are not on the server yet.
+- A published show is readable by anyone. It may hold only what the show file holds: classes, the four draw fields, patterns, and judges named in setup. Never add schools, coaches, scores, or rider height and weight to it.
+- Only people in `show_admins` change shows. Rows are added by the owner in the SQL editor, never from the app.
+- New tables need row-level security, policies and explicit grants in the migration, and a check in `supabase/tests/check-migration.mjs` for each kind of caller.
+- The app talks to the server only through `CloudBackend` (`src/cloud/backend.ts`). Tests use `makeFakeBackend` and never touch the network.
+- Scoring never waits on the server. A failed read leaves the device with what it had.
+- The pattern book reader is `supabase/functions/read-pattern-book`. Its logic is in `handler.ts` (web-standard APIs only, tested from `src/cloud/reader.test.ts`). Check the Anthropic docs before changing the request: forced tool use is refused by the current models, so it uses `output_config.format`.
+
 ## This repo is public
 
 Do not commit any of these unless the owner says so:
@@ -35,7 +45,7 @@ Do not commit any of these unless the owner says so:
 
 ## Secrets
 
-`.env` may hold only the Supabase project URL and the publishable key. Never commit `sb_secret_...`, a service role key or a database password.
+`.env` may hold only the Supabase project URL and the publishable key. Never commit `sb_secret_...`, a service role key or a database password. The Anthropic key is a Supabase function secret (`ANTHROPIC_API_KEY`) and nowhere else: not in `.env`, not in any `VITE_` variable, not in the repo.
 
 ## Where changes go
 

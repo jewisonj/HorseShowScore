@@ -1480,3 +1480,31 @@ h2 {
     min-height: 110px;
   }
 }
+
+/* ---------- Pattern book reader (setup) ---------- */
+
+.reader {
+  margin: 0 0 14px;
+}
+
+.reader h3 {
+  margin: 14px 0 6px;
+  font-size: 1rem;
+}
+
+/* The whole row is the tick target. */
+.reader-pick {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 52px;
+  cursor: pointer;
+}
+
+.reader-pick input[type='checkbox'] {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin: 2px 0 0;
+  accent-color: var(--ink);
+}
