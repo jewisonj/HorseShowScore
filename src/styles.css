@@ -1,0 +1,870 @@
+/*
+  Design notes
+  - Modeled on the paper judge's card: a penalty box over a score box for each maneuver.
+  - Penalties are highlighter yellow, the way scribes mark them.
+  - Riders appear as the white back-number card they wear.
+  - Places use US ribbon colors: blue, red, yellow, white, pink, green.
+  - Light theme only. Arenas are bright and screens wash out.
+  - Overpass, bundled so it works offline. It descends from US highway sign lettering, which was
+    drawn to be read at a glance in daylight. Its zero is plain, so a 70 cannot be mistaken for a 78.
+*/
+
+:root {
+  --ink: #10203a;
+  --ink-2: #33415a;
+  --muted: #5b6676;
+  --paper: #ffffff;
+  --ground: #eef0f2;
+  --rule: #c5ccd6;
+  --plus: #17754a;
+  --minus: #b3261e;
+  --hi: #ffe27a;
+  --hi-ink: #4d3800;
+  --focus: #1f4fbf;
+
+  --ribbon-1: #1f4fbf;
+  --ribbon-2: #c8202f;
+  --ribbon-3: #f2c230;
+  --ribbon-4: #ffffff;
+  --ribbon-5: #f29bb7;
+  --ribbon-6: #1e8a4c;
+
+  font-family: 'Overpass', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 17px;
+  line-height: 1.4;
+  color: var(--ink);
+  background: var(--ground);
+  font-variant-numeric: tabular-nums;
+  -webkit-text-size-adjust: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:active {
+  filter: brightness(0.93);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Page frame ---------- */
+
+.screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  background: var(--ink);
+  color: #fff;
+  padding: calc(8px + env(safe-area-inset-top)) 12px 10px;
+}
+
+.topbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.back {
+  flex: none;
+  min-height: 44px;
+  padding: 0 10px 0 4px;
+  background: none;
+  border: 0;
+  color: #fff;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.topbar-title {
+  min-width: 0;
+}
+
+.topbar-title h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.topbar-title p {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.shadow-note {
+  margin: 0;
+  padding: 4px 12px;
+  background: var(--hi);
+  color: var(--hi-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.save-failed {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--minus);
+  color: #fff;
+  font-weight: 700;
+}
+
+.content {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
+}
+
+h2 {
+  margin: 22px 0 8px;
+  font-size: 1rem;
+}
+
+.content > h2:first-child {
+  margin-top: 6px;
+}
+
+.hint {
+  margin: 10px 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.muted {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.empty {
+  margin: 0;
+  padding: 16px;
+  background: var(--paper);
+  border: 1px dashed var(--rule);
+  border-radius: 10px;
+  color: var(--ink-2);
+}
+
+.warning {
+  margin: 10px 0;
+  padding: 10px 12px;
+  background: #fde8e6;
+  border-left: 4px solid var(--minus);
+  border-radius: 6px;
+  color: #7a1a14;
+  font-weight: 700;
+}
+
+/* ---------- Lists and rows ---------- */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  text-align: left;
+}
+
+.row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
+}
+
+.row-main > strong {
+  flex-basis: 100%;
+}
+
+.row-main > .score,
+.row-main > strong.score,
+.row-main > strong.muted {
+  flex-basis: auto;
+}
+
+.row-meet .row-main > span {
+  flex-basis: 100%;
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
+
+.row-side {
+  flex: none;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.classno {
+  flex: none;
+  min-width: 2.6em;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.score {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.tag-warn {
+  color: var(--minus);
+}
+
+/* ---------- Back number and ribbons ---------- */
+
+.backno {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5em;
+  padding: 2px 8px;
+  background: #fff;
+  color: #000;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.backno-sm {
+  font-size: 1rem;
+}
+
+.backno-md {
+  font-size: 1.35rem;
+}
+
+.backno-lg {
+  font-size: 2rem;
+  padding: 2px 12px;
+  border-color: #fff;
+}
+
+.ribbon {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  font-weight: 700;
+  color: #fff;
+}
+
+.ribbon-1 {
+  background: var(--ribbon-1);
+}
+
+.ribbon-2 {
+  background: var(--ribbon-2);
+}
+
+.ribbon-3 {
+  background: var(--ribbon-3);
+  color: var(--ink);
+}
+
+.ribbon-4 {
+  background: var(--ribbon-4);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.ribbon-5 {
+  background: var(--ribbon-5);
+  color: var(--ink);
+}
+
+.ribbon-6 {
+  background: var(--ribbon-6);
+}
+
+.ribbon-plain,
+.ribbon-none {
+  background: var(--ground);
+  color: var(--muted);
+  border-color: var(--rule);
+}
+
+/* ---------- Buttons and forms ---------- */
+
+.btn {
+  min-height: 52px;
+  padding: 0 16px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.btn-primary {
+  background: var(--ink);
+  color: #fff;
+}
+
+.btn-danger {
+  border-color: var(--minus);
+  color: var(--minus);
+}
+
+.btn-wide {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.stack {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.textbtn {
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--minus);
+  text-decoration: underline;
+}
+
+.addform {
+  margin-bottom: 10px;
+}
+
+.addform label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.addform-row {
+  display: flex;
+  gap: 8px;
+}
+
+.addform input {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 12px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  font-size: 1.25rem;
+}
+
+.addform input::placeholder {
+  color: #9aa3b0;
+}
+
+.disclosure-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.disclosure-action {
+  flex: none;
+  color: var(--focus);
+  font-weight: 700;
+}
+
+.disclosure {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 12px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  text-align: left;
+}
+
+.pattern {
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.pattern p {
+  margin: 0 0 8px;
+}
+
+.pattern ol {
+  margin: 0 0 8px;
+  padding-left: 1.6em;
+}
+
+.pattern li {
+  padding: 2px 0;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.segmented button {
+  min-height: 48px;
+  background: var(--paper);
+  border: 0;
+  font-weight: 700;
+}
+
+.segmented button.is-on {
+  background: var(--ink);
+  color: #fff;
+}
+
+/* ---------- Results ---------- */
+
+.result {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 8px 12px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.result-score {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.result-points {
+  color: var(--ink-2);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 64px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+/* ---------- The score card ---------- */
+
+.card-screen {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 720px;
+  margin: 6px auto 0;
+}
+
+.total {
+  text-align: right;
+}
+
+.total-value {
+  display: block;
+  font-size: 2.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.total-mark {
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 2px solid #fff;
+  border-radius: 4px;
+  font-size: 1rem;
+  vertical-align: middle;
+}
+
+.total-parts {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.card-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+.boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 6px;
+}
+
+.box {
+  position: relative;
+  display: grid;
+  grid-template-rows: 24px 1fr;
+  min-height: 76px;
+  padding: 0;
+  background: var(--paper);
+  border: 2px solid var(--rule);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.box-sel {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.box-n {
+  position: absolute;
+  top: 3px;
+  left: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.box-pen {
+  padding: 2px 6px 0 22px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.box-pen.has-pen {
+  background: var(--hi);
+  color: var(--hi-ink);
+}
+
+.box-pen.has-pen ~ .box-score {
+  /* keeps the number legible when the box also carries a penalty */
+  padding-top: 0;
+}
+
+.box-score {
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.plus {
+  color: var(--plus);
+}
+
+.minus {
+  color: var(--minus);
+}
+
+.zero {
+  color: var(--ink);
+}
+
+.current {
+  padding: 6px 10px;
+  background: var(--paper);
+  border-left: 4px solid var(--ink);
+  border-radius: 6px;
+}
+
+.current-label {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+.current-pens {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 0;
+  font-size: 0.9rem;
+}
+
+.chip {
+  min-height: 36px;
+  padding: 0 12px;
+  background: var(--hi);
+  border: 1.5px solid var(--hi-ink);
+  border-radius: 20px;
+  color: var(--hi-ink);
+  font-weight: 700;
+}
+
+/* The key pad sits at the bottom, in thumb reach. */
+
+.pad {
+  flex: none;
+  display: grid;
+  gap: 8px;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  background: #dfe3e8;
+  border-top: 2px solid var(--ink);
+}
+
+.pad > * {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.pad-scores {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-areas:
+    'p1 p2 p3 z'
+    'm1 m2 m3 z';
+}
+
+.sp1 {
+  grid-area: p1;
+}
+
+.sp2 {
+  grid-area: p2;
+}
+
+.sp3 {
+  grid-area: p3;
+}
+
+.sp0 {
+  grid-area: z;
+}
+
+.sm1 {
+  grid-area: m1;
+}
+
+.sm2 {
+  grid-area: m2;
+}
+
+.sm3 {
+  grid-area: m3;
+}
+
+.key {
+  min-height: 56px;
+  padding: 0 6px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.key-score.plus {
+  border-color: var(--plus);
+}
+
+.key-score.minus {
+  border-color: var(--minus);
+}
+
+.key-score.zero {
+  background: var(--ink);
+  color: #fff;
+  font-size: 1.75rem;
+}
+
+.pad-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.pad-row .key {
+  flex: 1;
+  min-height: 52px;
+}
+
+.pad-label {
+  flex: none;
+  align-self: center;
+  width: 3.8em;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.key-pen {
+  background: var(--hi);
+  border-color: var(--hi-ink);
+  color: var(--hi-ink);
+}
+
+.pad-row .key-undo,
+.pad-row .key-mark {
+  font-size: 1rem;
+}
+
+.pad-row .key-mark {
+  flex: 1 1 auto;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.pad-row .key-undo {
+  flex: 1.3;
+}
+
+.key-mark.is-on {
+  background: var(--minus);
+  border-color: var(--minus);
+  color: #fff;
+}
+
+.pad-row .key-save {
+  flex: 1.2 0 auto;
+  padding: 0 14px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 1.1rem;
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .pad-scores {
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-areas: 'm3 m2 m1 z p1 p2 p3';
+  }
+
+  .key-score.zero {
+    font-size: 1.35rem;
+  }
+}
+
+/* Tablets sit further from the eye than a phone in the hand. */
+@media (min-width: 900px) {
+  :root {
+    font-size: 19px;
+  }
+
+  .content,
+  .topbar-row,
+  .card-head,
+  .pad > * {
+    max-width: 860px;
+  }
+
+  .key {
+    min-height: 64px;
+  }
+
+  .pad-row .key {
+    min-height: 60px;
+  }
+}
+
+/* Short phones: give the boxes room. */
+@media (max-height: 700px) {
+  .box {
+    min-height: 66px;
+  }
+
+  .total-value {
+    font-size: 2.25rem;
+  }
+}

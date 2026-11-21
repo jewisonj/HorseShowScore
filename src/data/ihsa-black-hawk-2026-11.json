@@ -1,0 +1,793 @@
+{
+  "fixture_version": 1,
+  "description": "Test data for Horse Show Scorer: two IHSA Western meets with their classes and the shape of their 12 patterns (names and box counts). Maneuver wording is deliberately left out of this public repo. Boxes with an empty label show as 'Maneuver N'.",
+  "source": {
+    "document": "The show's pattern book (14 pages)",
+    "pages": {
+      "cover": 1,
+      "schedule": 2,
+      "patterns": "3-14"
+    }
+  },
+  "event": {
+    "id": "evt-bhc-2026-11",
+    "name": "IHSA Western Meets",
+    "association": "IHSA",
+    "host": "Black Hawk College",
+    "start_date": "2026-11-21",
+    "end_date": "2026-11-22",
+    "is_test": true
+  },
+  "meets": [
+    {
+      "id": "meet-5",
+      "label": "Meet #5",
+      "date": "2026-11-21",
+      "coach_meeting": "12:00",
+      "start_time": "13:00",
+      "judges": [],
+      "classes": [
+        {
+          "class_no": "17",
+          "name": "Open Reining",
+          "card_family": "pattern",
+          "rule_set": "ihsa-reining",
+          "pattern_id": "nrha-17",
+          "notes": ""
+        },
+        {
+          "class_no": "15",
+          "name": "Level II Ranch Riding",
+          "card_family": "pattern",
+          "rule_set": "ihsa-ranch-riding",
+          "pattern_id": "aqha-rr-10",
+          "notes": ""
+        },
+        {
+          "class_no": "16",
+          "name": "Open Western Horsemanship",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-m",
+          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern."
+        },
+        {
+          "class_no": "14",
+          "name": "Level II Western Horsemanship",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-m",
+          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern."
+        },
+        {
+          "class_no": "13",
+          "name": "Level I Western Horsemanship",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-t",
+          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern."
+        },
+        {
+          "class_no": "12B",
+          "name": "Rookie B Western Horsemanship",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-k",
+          "notes": "Work the rail, exit to the paddock. Patterns are worked from the gate."
+        },
+        {
+          "class_no": "12A",
+          "name": "Rookie A Western Horsemanship",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-q",
+          "notes": "Lope on the rail. Exit to the paddock. Patterns are worked from the gate."
+        },
+        {
+          "class_no": "11",
+          "name": "Beginner Western Horsemanship",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-q",
+          "notes": "Walk and jog only. Exit to the paddock. Patterns are worked from the gate."
+        }
+      ]
+    },
+    {
+      "id": "meet-6",
+      "label": "Meet #6",
+      "date": "2026-11-22",
+      "coach_meeting": "08:00",
+      "start_time": "09:00",
+      "judges": [],
+      "classes": [
+        {
+          "class_no": "17",
+          "name": "Open Reining",
+          "card_family": "pattern",
+          "rule_set": "ihsa-reining",
+          "pattern_id": "nrha-8",
+          "notes": ""
+        },
+        {
+          "class_no": "15",
+          "name": "Level II Ranch Riding",
+          "card_family": "pattern",
+          "rule_set": "ihsa-ranch-riding",
+          "pattern_id": "aqha-rr-15",
+          "notes": ""
+        },
+        {
+          "class_no": "16",
+          "name": "Open Western Horsemanship",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-r",
+          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern."
+        },
+        {
+          "class_no": "14",
+          "name": "Level II Western Horsemanship",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-r",
+          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern."
+        },
+        {
+          "class_no": "13",
+          "name": "Level I Western Horsemanship",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-i",
+          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern."
+        },
+        {
+          "class_no": "12B",
+          "name": "Rookie B Western Horsemanship",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-s",
+          "notes": "Work the rail, exit to the paddock. Patterns are worked from the gate."
+        },
+        {
+          "class_no": "12A",
+          "name": "Rookie A Western Horsemanship",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-b",
+          "notes": "Lope on the rail. Exit to the paddock. Patterns are worked from the gate."
+        },
+        {
+          "class_no": "11",
+          "name": "Beginner Western Horsemanship",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-b",
+          "notes": "Walk and jog only. Exit to the paddock. Patterns are worked from the gate."
+        }
+      ]
+    }
+  ],
+  "patterns": [
+    {
+      "id": "nrha-17",
+      "name": "NRHA Reining Pattern 17",
+      "kind": "reining",
+      "source_page": 3,
+      "start_note": "",
+      "finish_note": "",
+      "boxes": [
+        {
+          "n": 1,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 2,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 3,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 4,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 5,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 6,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 7,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 8,
+          "label": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "aqha-rr-10",
+      "name": "AQHA Ranch Riding Pattern 10",
+      "kind": "ranch_riding",
+      "source_page": 4,
+      "start_note": "",
+      "finish_note": "",
+      "boxes": [
+        {
+          "n": 1,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 2,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 3,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 4,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 5,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 6,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 7,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 8,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 9,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 10,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 11,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 12,
+          "label": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "hms-m",
+      "name": "Level II/Open M",
+      "kind": "horsemanship",
+      "source_page": 5,
+      "start_note": "",
+      "finish_note": "",
+      "boxes": [
+        {
+          "n": 1,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 2,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 3,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 4,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 5,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 6,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 7,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 8,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 9,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 10,
+          "label": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "hms-t",
+      "name": "Level I T",
+      "kind": "horsemanship",
+      "source_page": 6,
+      "start_note": "",
+      "finish_note": "",
+      "boxes": [
+        {
+          "n": 1,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 2,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 3,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 4,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 5,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 6,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 7,
+          "label": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "hms-k",
+      "name": "Rookie K",
+      "kind": "horsemanship",
+      "source_page": 7,
+      "start_note": "",
+      "finish_note": "",
+      "boxes": [
+        {
+          "n": 1,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 2,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 3,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 4,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 5,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 6,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 7,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 8,
+          "label": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "hms-q",
+      "name": "Beginner Q",
+      "kind": "horsemanship",
+      "source_page": 8,
+      "start_note": "",
+      "finish_note": "",
+      "boxes": [
+        {
+          "n": 1,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 2,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 3,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 4,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 5,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 6,
+          "label": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "nrha-8",
+      "name": "NRHA Reining Pattern 8",
+      "kind": "reining",
+      "source_page": 9,
+      "start_note": "",
+      "finish_note": "",
+      "boxes": [
+        {
+          "n": 1,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 2,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 3,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 4,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 5,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 6,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 7,
+          "label": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "aqha-rr-15",
+      "name": "AQHA Ranch Riding Pattern 15",
+      "kind": "ranch_riding",
+      "source_page": 10,
+      "start_note": "",
+      "finish_note": "",
+      "boxes": [
+        {
+          "n": 1,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 2,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 3,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 4,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 5,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 6,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 7,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 8,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 9,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 10,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 11,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 12,
+          "label": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "hms-r",
+      "name": "Level II/Open R",
+      "kind": "horsemanship",
+      "source_page": 11,
+      "start_note": "",
+      "finish_note": "",
+      "boxes": [
+        {
+          "n": 1,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 2,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 3,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 4,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 5,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 6,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 7,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 8,
+          "label": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "hms-i",
+      "name": "Level I I",
+      "kind": "horsemanship",
+      "source_page": 12,
+      "start_note": "",
+      "finish_note": "",
+      "boxes": [
+        {
+          "n": 1,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 2,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 3,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 4,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 5,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 6,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 7,
+          "label": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "hms-s",
+      "name": "Rookie S",
+      "kind": "horsemanship",
+      "source_page": 13,
+      "start_note": "",
+      "finish_note": "",
+      "boxes": [
+        {
+          "n": 1,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 2,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 3,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 4,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 5,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 6,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 7,
+          "label": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "hms-b",
+      "name": "Beginner B",
+      "kind": "horsemanship",
+      "source_page": 14,
+      "start_note": "",
+      "finish_note": "",
+      "boxes": [
+        {
+          "n": 1,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 2,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 3,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 4,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 5,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 6,
+          "label": "",
+          "tags": []
+        },
+        {
+          "n": 7,
+          "label": "",
+          "tags": []
+        }
+      ]
+    }
+  ],
+  "open_items": [
+    "Rule sets ihsa-reining, ihsa-ranch-riding and ihsa-horsemanship are placeholders until the real IHSA cards are seen.",
+    "Whether horsemanship patterns are scored box by box is unknown. card_family is placings for now.",
+    "Maneuver labels, judges, riders, teams, horses and the horse draw are not in this file."
+  ]
+}
