@@ -6,13 +6,16 @@ A free judging and scoring tool for small horse shows: IHSA meets, ARHA and loca
 
 **Phase 0 prototype.** It exists to answer one question: can someone keep up with a judge using these screens?
 
-- Two card screens work: the **scored pattern card** (reining, ranch riding) and the **placings card** (horsemanship).
-- It is loaded with the classes of two real IHSA meets (November 21–22, 2026) and the shape of their 12 patterns: names and box counts. Maneuver wording is left out of this public repo, so boxes show as "Maneuver 1", "Maneuver 2" and the operator follows the show's pattern sheet.
+- The **score card** follows the IHSA score sheets: a penalty strip over a score box for each maneuver, then rail work (horsemanship) and F&E, which are added to the score. Reining and ranch riding score −1½ to +1½. Horsemanship scores −3 to +3.
+- Each box is named above it: a short code on a phone (`Rr S`, `4 LS`, `S&B`), the words from the sheet on a tablet.
+- Tapping a penalty value **asks which penalty**, from the list for that value, with the ones that fit the maneuver first. A penalty can be **circled**: the horse's fault, shown on the card, not counted.
+- The **placings card** takes the judge's order for horsemanship classes and gives IHSA points.
+- It is loaded with two real IHSA meets (November 21–22, 2026). Saturday has the show's 12 classes in running order and the draw: back numbers and horses. Sunday has the class list.
 - Everything is saved **on the device only**. There is no sign-in and no server sync yet.
 - Every screen says **"Unofficial test"**. The show's own system is the official record.
-- Rule values are **placeholders** until the real IHSA score sheets are seen. Each card says which values it is using.
+- **Penalty values are placeholders.** The IHSA sheets do not list them, so reining follows NRHA and ranch riding follows the AQHA sheet. Each card says so.
 
-What is not built yet: sync to Supabase, seats and PINs, entries and horse draw import, teams and high point, office screens, entering your own pattern wording.
+What is not built yet: sync to Supabase, seats and PINs, importing entries from a file or sheet, rider names, tie-breakers, teams and high point, office screens, entering your own patterns.
 
 ## Try it
 
@@ -25,13 +28,14 @@ Then open the address it prints. On a phone on the same Wi-Fi, use the Network a
 
 A quick walk through:
 
-1. Pick a meet, then a class.
-2. Type back numbers with spaces between them (`214 187 302`) and press **Add**.
-3. Tap a rider to open the card. Tap a score for each maneuver. The card moves to the next box by itself.
-4. A penalty goes into whichever box is outlined. Tap an earlier box first if the judge called it late.
-5. **Save run** takes you back to the class, where results and IHSA points appear.
-6. In a horsemanship class, press **Place the class** and tap riders in the judge's order.
-7. From the first screen, **Export results as CSV**.
+1. Pick a meet, then a class. Saturday's riders are already there in draw order. Elsewhere, type back numbers with spaces between them (`214 187 302`) and press **Add**.
+2. Tap a rider to open the card. Tap a score for each maneuver. The card moves to the next box by itself, and to F&E after the last one.
+3. A penalty goes into whichever box is outlined. Tap an earlier box first if the judge called it late. Pick the penalty from the list, or **Just the number**.
+4. Tap a penalty under "Penalties here" to change it, circle it or remove it.
+5. In horsemanship, tap the **Rail** box to give the rail work score.
+6. **Save run** takes you back to the class, where results and IHSA points appear.
+7. In a horsemanship class, press **Place the class** and tap riders in the judge's order. They are listed best score first.
+8. From the first screen, **Export results as CSV**.
 
 ### What to watch for when testing
 
@@ -39,6 +43,8 @@ A quick walk through:
 - Do penalties land in the right box? The judge may call one before or after the maneuver score.
 - Is anything too small to hit while watching the ring?
 - Twelve-box patterns wrap to three rows. Is the box being scored always in view?
+- Does the total match the judge's paper card? If not, which number differs?
+- Are the boxes the same as on the judge's sheet? The sheet may group maneuvers differently from the pattern book.
 - One-handed on a phone, as a judge with no scribe.
 
 ## Put it on Vercel
@@ -63,7 +69,8 @@ No environment variables are needed for the prototype. Once it is open on a phon
 ```
 src/engine/     Scoring engine. Pure TypeScript, no UI, no storage.
 src/rules/      Rule sets as data: scales, penalty values, marks.
-src/data/       Test data: meets, classes, pattern shapes.
+src/data/       Test data: meets, classes, the draw, patterns.
+src/seed.ts     Puts the draw on the device the first time.
 src/store.ts    Saves to the device on every tap.
 src/results.ts  Placings, points and CSV from what is stored.
 src/ui/         The screens.
@@ -89,6 +96,9 @@ The project is at `https://vczrsrkjmbuxzzmmfypr.supabase.co`. The prototype does
 
 The requirement, decision-log and scoring-reference documents live in the Claude Project "Horse Show Scorer", not in this repo.
 
-## Patterns and copyright
+## What is and is not in this public repo
 
-This repo holds pattern names and box counts only. It has no maneuver wording and no diagrams. NRHA states its patterns may not be reproduced without approval, and other associations' patterns raise the same question. The plan is for each show to enter its own patterns in the app.
+- **Patterns:** names, box counts, short maneuver codes and a few words per box, written in our own words. No pattern text copied from an association and no diagrams. NRHA states its patterns may not be reproduced without approval, and other associations' patterns raise the same question.
+- **Penalty lists:** short descriptions in our own words of what each penalty value is for.
+- **The draw:** back numbers and horse names only.
+- **No people:** no rider names, schools, coaches or judges. No scores from a real show.

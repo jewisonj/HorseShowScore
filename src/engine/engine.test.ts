@@ -80,6 +80,73 @@ describe('card totals', () => {
   })
 })
 
+// The arithmetic of IHSA score sheets filled in at a real meet on 7 November 2026.
+// Each one is how the judge's own total works out: 70 + maneuvers + rail work + F&E - penalties.
+describe('IHSA sheets: rail work and F&E are added to the score', () => {
+  it('reining: maneuvers +1½, F&E 2 = 73½', () => {
+    const t = cardTotal({
+      base: h(70),
+      boxes: [h(0), h(0), h(0), h(0), h(0.5), h(0.5), h(0.5)],
+      extras: [h(2)],
+      penalties: [],
+    })
+    expect(t.extraSum).toBe(h(2))
+    expect(t.score).toBe(h(73.5))
+  })
+
+  it('reining: maneuvers −1, F&E 1 = 70', () => {
+    const t = cardTotal({
+      base: h(70),
+      boxes: [h(0), h(-0.5), h(0), h(0), h(-0.5), h(0.5), h(-0.5)],
+      extras: [h(1)],
+      penalties: [],
+    })
+    expect(t.score).toBe(h(70))
+  })
+
+  it('ranch riding: maneuvers +1½, F&E 1 = 72½', () => {
+    const t = cardTotal({
+      base: h(70),
+      boxes: [h(0), h(0), h(0), h(1), h(0.5), h(0), h(0.5), h(0.5), h(0.5), h(-0.5), h(0), h(-1)],
+      extras: [h(1)],
+      penalties: [],
+    })
+    expect(t.score).toBe(h(72.5))
+  })
+
+  it('horsemanship: maneuvers −½, rail 2, F&E 1, penalty 1 = 71½', () => {
+    const t = cardTotal({
+      base: h(70),
+      boxes: [h(0), h(-1), h(-1), h(0), h(0), h(1), h(0.5)],
+      extras: [h(2), h(1)],
+      penalties: [h(1)],
+    })
+    expect(t.boxSum).toBe(h(-0.5))
+    expect(t.score).toBe(h(71.5))
+  })
+
+  it('horsemanship: maneuvers −4, rail 1, F&E 1, penalty 3 = 65', () => {
+    const t = cardTotal({
+      base: h(70),
+      boxes: [h(-0.5), h(-1), h(-0.5), h(0), h(-1), h(-1), h(0)],
+      extras: [h(1), h(1)],
+      penalties: [h(3)],
+    })
+    expect(t.score).toBe(h(65))
+  })
+
+  it('horsemanship: every maneuver +½, rail 3, F&E 3 = 79', () => {
+    const t = cardTotal({ base: h(70), boxes: Array(6).fill(h(0.5)), extras: [h(3), h(3)], penalties: [] })
+    expect(t.score).toBe(h(79))
+  })
+
+  it('an extra with no score yet leaves the card incomplete', () => {
+    const t = cardTotal({ base: h(70), boxes: [h(0)], extras: [null], penalties: [] })
+    expect(t.complete).toBe(false)
+    expect(t.score).toBe(h(70))
+  })
+})
+
 describe('several judges', () => {
   it('five judges, drop high and low: 218', () => {
     expect(dropHighLow([h(72), h(73.5), h(71), h(74), h(72.5)])).toBe(h(218))

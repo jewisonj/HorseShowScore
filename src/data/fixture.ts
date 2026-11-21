@@ -2,6 +2,9 @@ import raw from './ihsa-black-hawk-2026-11.json'
 
 export interface PatternBox {
   n: number
+  /** Short code shown above the box on a phone, e.g. "Rr S" or "S&B" */
+  abbr: string
+  /** A few words, in the style of the maneuver description row on a score sheet */
   label: string
   tags: string[]
 }
@@ -11,20 +14,30 @@ export interface Pattern {
   name: string
   kind: string
   source_page: number
-  start_note: string
-  finish_note: string
   boxes: PatternBox[]
 }
 
 export type CardFamily = 'pattern' | 'placings'
 
+/** One line of the draw: who goes when, on which horse. No names. */
+export interface Entry {
+  draw: number
+  back_no: string
+  horse: string
+}
+
 export interface ShowClass {
+  /** Unique within the meet. The show's own running class number where known. */
+  id: string
+  /** The IHSA class number, 11 to 17. Sections of one class share it. */
   class_no: string
   name: string
+  section: string
   card_family: CardFamily
   rule_set: string
   pattern_id: string
   notes: string
+  entries: Entry[]
 }
 
 export interface Meet {
@@ -57,8 +70,8 @@ export function getMeet(meetId: string): Meet | undefined {
   return meets.find((m) => m.id === meetId)
 }
 
-export function getClass(meetId: string, classNo: string): ShowClass | undefined {
-  return getMeet(meetId)?.classes.find((c) => c.class_no === classNo)
+export function getClass(meetId: string, classId: string): ShowClass | undefined {
+  return getMeet(meetId)?.classes.find((c) => c.id === classId)
 }
 
 export function getPattern(patternId: string): Pattern {
@@ -67,18 +80,13 @@ export function getPattern(patternId: string): Pattern {
   return p
 }
 
-/** A box label for the screen. Patterns without wording show "Maneuver 3". */
+/** "3. LF right, SS right, stop" for the line that names the box being scored. */
 export function boxLabel(box: PatternBox): string {
   return box.label.trim() === '' ? `Maneuver ${box.n}` : `${box.n}. ${box.label}`
 }
 
-/** True when the pattern carries its own maneuver wording. */
-export function hasLabels(pattern: Pattern): boolean {
-  return pattern.boxes.some((b) => b.label.trim() !== '')
-}
-
-export function classKey(meetId: string, classNo: string): string {
-  return `${meetId}:${classNo}`
+export function classKey(meetId: string, classId: string): string {
+  return `${meetId}:${classId}`
 }
 
 /** "Saturday, November 21" from an ISO date, without time zone drift. */

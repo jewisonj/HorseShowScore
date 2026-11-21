@@ -5,7 +5,8 @@ Read `README.md` first. The requirements, decision log and scoring references li
 ## Ground rules
 
 - Scores are integers of half points (70½ = 141). Never use floats for scoring. Use `formatHalf` to display.
-- Rules are data. Scales, penalty values, marks and points tables go in `src/rules/` (later the `rule_sets` table), not in components.
+- Rules are data. Scales, penalty values and their lists, extra boxes (rail work, F&E), marks and points tables go in `src/rules/` (later the `rule_sets` table), not in components.
+- A card's score is 70 + maneuvers + extras − penalties. A circled penalty stays on the card and is not counted.
 - The scoring engine in `src/engine/` stays pure: no React, no storage, no network.
 - Every worked example in the requirements (doc 02, section 6) has a test in `src/engine/engine.test.ts`. If a rule changes, change the doc and the test together.
 - Nothing about a rule set is verified until a person checks it against the rulebook. Keep `verified: false` and the on-screen note until then.
@@ -17,9 +18,12 @@ Read `README.md` first. The requirements, decision log and scoring references li
 
 Do not commit any of these unless the owner says so:
 
-- Association pattern wording or diagrams. The test data carries pattern names and box counts only.
-- Real people's names: riders, judges, coaches.
+- Association pattern text or diagrams. The test data carries pattern names, box counts, short maneuver codes and a few words per box in our own words. The owner asked for those on 2026-11-21.
+- Real people's names: riders, judges, coaches. Their schools too. The draw in the test data is back numbers and horses only.
+- Scores or score sheets from a real show. IHSA cards are not public.
 - The planning documents from the Claude Project.
+
+`src/results.test.ts` has a test that fails if a judge or an extra field turns up in the test data.
 
 ## Secrets
 

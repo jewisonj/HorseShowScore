@@ -1,14 +1,6 @@
 {
-  "fixture_version": 1,
-  "description": "Test data for Horse Show Scorer: two IHSA Western meets with their classes and the shape of their 12 patterns (names and box counts). Maneuver wording is deliberately left out of this public repo. Boxes with an empty label show as 'Maneuver N'.",
-  "source": {
-    "document": "The show's pattern book (14 pages)",
-    "pages": {
-      "cover": 1,
-      "schedule": 2,
-      "patterns": "3-14"
-    }
-  },
+  "fixture_version": 2,
+  "description": "Test data for Horse Show Scorer: two IHSA Western meets. Saturday has the show's 12 classes in running order with the draw (back numbers and horses). Sunday has the class list only. Patterns carry short maneuver codes and labels in our own words. No people's names, no pattern diagrams.",
   "event": {
     "id": "evt-bhc-2026-11",
     "name": "IHSA Western Meets",
@@ -28,68 +20,523 @@
       "judges": [],
       "classes": [
         {
+          "id": "1",
           "class_no": "17",
-          "name": "Open Reining",
+          "name": "Reining",
+          "section": "",
           "card_family": "pattern",
           "rule_set": "ihsa-reining",
           "pattern_id": "nrha-17",
-          "notes": ""
+          "notes": "",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "1025",
+              "horse": "George"
+            },
+            {
+              "draw": 2,
+              "back_no": "102",
+              "horse": "Bunny"
+            },
+            {
+              "draw": 3,
+              "back_no": "1007",
+              "horse": "Cisco"
+            },
+            {
+              "draw": 4,
+              "back_no": "553",
+              "horse": "Rey"
+            },
+            {
+              "draw": 5,
+              "back_no": "576",
+              "horse": "George"
+            }
+          ]
         },
         {
-          "class_no": "15",
-          "name": "Level II Ranch Riding",
-          "card_family": "pattern",
-          "rule_set": "ihsa-ranch-riding",
-          "pattern_id": "aqha-rr-10",
-          "notes": ""
-        },
-        {
-          "class_no": "16",
-          "name": "Open Western Horsemanship",
-          "card_family": "placings",
-          "rule_set": "ihsa-horsemanship",
-          "pattern_id": "hms-m",
-          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern."
-        },
-        {
-          "class_no": "14",
-          "name": "Level II Western Horsemanship",
-          "card_family": "placings",
-          "rule_set": "ihsa-horsemanship",
-          "pattern_id": "hms-m",
-          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern."
-        },
-        {
-          "class_no": "13",
-          "name": "Level I Western Horsemanship",
-          "card_family": "placings",
-          "rule_set": "ihsa-horsemanship",
-          "pattern_id": "hms-t",
-          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern."
-        },
-        {
+          "id": "2",
           "class_no": "12B",
-          "name": "Rookie B Western Horsemanship",
+          "name": "Rookie B Horsemanship, Sec. A",
+          "section": "A",
           "card_family": "placings",
           "rule_set": "ihsa-horsemanship",
           "pattern_id": "hms-k",
-          "notes": "Work the rail, exit to the paddock. Patterns are worked from the gate."
+          "notes": "Work the rail, exit to the paddock. Patterns are worked from the gate.",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "1004",
+              "horse": "Hooker"
+            },
+            {
+              "draw": 2,
+              "back_no": "1022",
+              "horse": "Sheldon"
+            },
+            {
+              "draw": 3,
+              "back_no": "108",
+              "horse": "Kash"
+            },
+            {
+              "draw": 4,
+              "back_no": "106",
+              "horse": "Marylin"
+            },
+            {
+              "draw": 5,
+              "back_no": "124",
+              "horse": "Rock"
+            },
+            {
+              "draw": 6,
+              "back_no": "122",
+              "horse": "Louie"
+            },
+            {
+              "draw": 7,
+              "back_no": "127",
+              "horse": "Survivor"
+            }
+          ]
         },
         {
-          "class_no": "12A",
-          "name": "Rookie A Western Horsemanship",
+          "id": "3",
+          "class_no": "15",
+          "name": "Ranch Riding",
+          "section": "",
+          "card_family": "pattern",
+          "rule_set": "ihsa-ranch-riding",
+          "pattern_id": "aqha-rr-10",
+          "notes": "",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "590",
+              "horse": "Bunny"
+            },
+            {
+              "draw": 2,
+              "back_no": "669",
+              "horse": "Charlotte"
+            },
+            {
+              "draw": 3,
+              "back_no": "678",
+              "horse": "Missy"
+            },
+            {
+              "draw": 4,
+              "back_no": "558",
+              "horse": "Felix"
+            },
+            {
+              "draw": 5,
+              "back_no": "673",
+              "horse": "Rey"
+            },
+            {
+              "draw": 6,
+              "back_no": "1019",
+              "horse": "Super Pete"
+            },
+            {
+              "draw": 7,
+              "back_no": "663",
+              "horse": "Henry"
+            },
+            {
+              "draw": 8,
+              "back_no": "642",
+              "horse": "Bunny"
+            },
+            {
+              "draw": 9,
+              "back_no": "1028",
+              "horse": "Charlotte"
+            },
+            {
+              "draw": 10,
+              "back_no": "415",
+              "horse": "Missy"
+            }
+          ]
+        },
+        {
+          "id": "4",
+          "class_no": "13",
+          "name": "Level I Horsemanship, Sec. A",
+          "section": "A",
           "card_family": "placings",
           "rule_set": "ihsa-horsemanship",
-          "pattern_id": "hms-q",
-          "notes": "Lope on the rail. Exit to the paddock. Patterns are worked from the gate."
+          "pattern_id": "hms-t",
+          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern.",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "125",
+              "horse": "Hooker"
+            },
+            {
+              "draw": 2,
+              "back_no": "1030",
+              "horse": "Peyton"
+            },
+            {
+              "draw": 3,
+              "back_no": "662",
+              "horse": "Sheldon"
+            },
+            {
+              "draw": 4,
+              "back_no": "1029",
+              "horse": "Shooter"
+            },
+            {
+              "draw": 5,
+              "back_no": "1023",
+              "horse": "Survivor"
+            },
+            {
+              "draw": 6,
+              "back_no": "708",
+              "horse": "Hollie"
+            }
+          ]
         },
         {
+          "id": "5",
+          "class_no": "12B",
+          "name": "Rookie B Horsemanship, Sec. B",
+          "section": "B",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-k",
+          "notes": "Work the rail, exit to the paddock. Patterns are worked from the gate.",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "1011",
+              "horse": "Hank"
+            },
+            {
+              "draw": 2,
+              "back_no": "120",
+              "horse": "Henry"
+            },
+            {
+              "draw": 3,
+              "back_no": "91",
+              "horse": "Super Pete"
+            },
+            {
+              "draw": 4,
+              "back_no": "1024",
+              "horse": "Kash"
+            },
+            {
+              "draw": 5,
+              "back_no": "70",
+              "horse": "Marylin"
+            },
+            {
+              "draw": 6,
+              "back_no": "100",
+              "horse": "Louie"
+            },
+            {
+              "draw": 7,
+              "back_no": "126",
+              "horse": "Cisco"
+            }
+          ]
+        },
+        {
+          "id": "6",
+          "class_no": "16",
+          "name": "Open Horsemanship",
+          "section": "",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-m",
+          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern.",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "1028",
+              "horse": "Jazz"
+            },
+            {
+              "draw": 2,
+              "back_no": "102",
+              "horse": "Archie (Roan)"
+            },
+            {
+              "draw": 3,
+              "back_no": "576",
+              "horse": "Survivor"
+            },
+            {
+              "draw": 4,
+              "back_no": "1025",
+              "horse": "Felix"
+            },
+            {
+              "draw": 5,
+              "back_no": "1007",
+              "horse": "Hank"
+            }
+          ]
+        },
+        {
+          "id": "7",
+          "class_no": "13",
+          "name": "Level I Horsemanship, Sec. B",
+          "section": "B",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-t",
+          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern.",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "111",
+              "horse": "Hooker"
+            },
+            {
+              "draw": 2,
+              "back_no": "116",
+              "horse": "Peyton"
+            },
+            {
+              "draw": 3,
+              "back_no": "588",
+              "horse": "Sheldon"
+            },
+            {
+              "draw": 4,
+              "back_no": "1005",
+              "horse": "Shooter"
+            },
+            {
+              "draw": 5,
+              "back_no": "114",
+              "horse": "Hollie"
+            }
+          ]
+        },
+        {
+          "id": "8",
+          "class_no": "14",
+          "name": "Level II Horsemanship, Sec. A",
+          "section": "A",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-m",
+          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern.",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "590",
+              "horse": "Archie (Roan)"
+            },
+            {
+              "draw": 2,
+              "back_no": "669",
+              "horse": "Felix"
+            },
+            {
+              "draw": 3,
+              "back_no": "553",
+              "horse": "Survivor"
+            },
+            {
+              "draw": 4,
+              "back_no": "673",
+              "horse": "Hooker"
+            },
+            {
+              "draw": 5,
+              "back_no": "1014",
+              "horse": "Shooter"
+            },
+            {
+              "draw": 6,
+              "back_no": "642",
+              "horse": "George"
+            }
+          ]
+        },
+        {
+          "id": "9",
+          "class_no": "12B",
+          "name": "Rookie B Horsemanship, Sec. C",
+          "section": "C",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-k",
+          "notes": "Work the rail, exit to the paddock. Patterns are worked from the gate.",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "46",
+              "horse": "Missy"
+            },
+            {
+              "draw": 2,
+              "back_no": "104",
+              "horse": "Super Pete"
+            },
+            {
+              "draw": 3,
+              "back_no": "675",
+              "horse": "Kash"
+            },
+            {
+              "draw": 4,
+              "back_no": "1006",
+              "horse": "Marylin"
+            },
+            {
+              "draw": 5,
+              "back_no": "405",
+              "horse": "Rock"
+            },
+            {
+              "draw": 6,
+              "back_no": "37",
+              "horse": "Louie"
+            },
+            {
+              "draw": 7,
+              "back_no": "134",
+              "horse": "Survivor"
+            }
+          ]
+        },
+        {
+          "id": "10",
+          "class_no": "14",
+          "name": "Level II Horsemanship, Sec. B",
+          "section": "B",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-m",
+          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern.",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "678",
+              "horse": "Archie (Roan)"
+            },
+            {
+              "draw": 2,
+              "back_no": "558",
+              "horse": "Felix"
+            },
+            {
+              "draw": 3,
+              "back_no": "1019",
+              "horse": "Hooker"
+            },
+            {
+              "draw": 4,
+              "back_no": "663",
+              "horse": "Shooter"
+            },
+            {
+              "draw": 5,
+              "back_no": "415",
+              "horse": "George"
+            }
+          ]
+        },
+        {
+          "id": "11",
           "class_no": "11",
-          "name": "Beginner Western Horsemanship",
+          "name": "Beginner Horsemanship",
+          "section": "",
           "card_family": "placings",
           "rule_set": "ihsa-horsemanship",
           "pattern_id": "hms-q",
-          "notes": "Walk and jog only. Exit to the paddock. Patterns are worked from the gate."
+          "notes": "Walk and jog only. Exit to the paddock. Patterns are worked from the gate.",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "103",
+              "horse": "Felix"
+            },
+            {
+              "draw": 2,
+              "back_no": "113",
+              "horse": "Archie (Bay)"
+            },
+            {
+              "draw": 3,
+              "back_no": "133",
+              "horse": "Hollie"
+            },
+            {
+              "draw": 4,
+              "back_no": "117",
+              "horse": "Sheldon"
+            },
+            {
+              "draw": 5,
+              "back_no": "130",
+              "horse": "Peyton"
+            },
+            {
+              "draw": 6,
+              "back_no": "115",
+              "horse": "Shooter"
+            },
+            {
+              "draw": 7,
+              "back_no": "109",
+              "horse": "Hank"
+            },
+            {
+              "draw": 8,
+              "back_no": "112",
+              "horse": "Marylin"
+            }
+          ]
+        },
+        {
+          "id": "12",
+          "class_no": "12A",
+          "name": "Rookie A Horsemanship",
+          "section": "",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-q",
+          "notes": "Lope on the rail. Exit to the paddock. Patterns are worked from the gate.",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "105",
+              "horse": "Marylin"
+            },
+            {
+              "draw": 2,
+              "back_no": "128",
+              "horse": "Missy"
+            },
+            {
+              "draw": 3,
+              "back_no": "492",
+              "horse": "Archie (Bay)"
+            },
+            {
+              "draw": 4,
+              "back_no": "693",
+              "horse": "Peyton"
+            }
+          ]
         }
       ]
     },
@@ -102,68 +549,92 @@
       "judges": [],
       "classes": [
         {
+          "id": "17",
           "class_no": "17",
           "name": "Open Reining",
+          "section": "",
           "card_family": "pattern",
           "rule_set": "ihsa-reining",
           "pattern_id": "nrha-8",
-          "notes": ""
+          "notes": "",
+          "entries": []
         },
         {
+          "id": "15",
           "class_no": "15",
           "name": "Level II Ranch Riding",
+          "section": "",
           "card_family": "pattern",
           "rule_set": "ihsa-ranch-riding",
           "pattern_id": "aqha-rr-15",
-          "notes": ""
+          "notes": "",
+          "entries": []
         },
         {
+          "id": "16",
           "class_no": "16",
           "name": "Open Western Horsemanship",
+          "section": "",
           "card_family": "placings",
           "rule_set": "ihsa-horsemanship",
           "pattern_id": "hms-r",
-          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern."
+          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern.",
+          "entries": []
         },
         {
+          "id": "14",
           "class_no": "14",
           "name": "Level II Western Horsemanship",
+          "section": "",
           "card_family": "placings",
           "rule_set": "ihsa-horsemanship",
           "pattern_id": "hms-r",
-          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern."
+          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern.",
+          "entries": []
         },
         {
+          "id": "13",
           "class_no": "13",
           "name": "Level I Western Horsemanship",
+          "section": "",
           "card_family": "placings",
           "rule_set": "ihsa-horsemanship",
           "pattern_id": "hms-i",
-          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern."
+          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern.",
+          "entries": []
         },
         {
+          "id": "12B",
           "class_no": "12B",
           "name": "Rookie B Western Horsemanship",
+          "section": "",
           "card_family": "placings",
           "rule_set": "ihsa-horsemanship",
           "pattern_id": "hms-s",
-          "notes": "Work the rail, exit to the paddock. Patterns are worked from the gate."
+          "notes": "Work the rail, exit to the paddock. Patterns are worked from the gate.",
+          "entries": []
         },
         {
+          "id": "12A",
           "class_no": "12A",
           "name": "Rookie A Western Horsemanship",
+          "section": "",
           "card_family": "placings",
           "rule_set": "ihsa-horsemanship",
           "pattern_id": "hms-b",
-          "notes": "Lope on the rail. Exit to the paddock. Patterns are worked from the gate."
+          "notes": "Lope on the rail. Exit to the paddock. Patterns are worked from the gate.",
+          "entries": []
         },
         {
+          "id": "11",
           "class_no": "11",
           "name": "Beginner Western Horsemanship",
+          "section": "",
           "card_family": "placings",
           "rule_set": "ihsa-horsemanship",
           "pattern_id": "hms-b",
-          "notes": "Walk and jog only. Exit to the paddock. Patterns are worked from the gate."
+          "notes": "Walk and jog only. Exit to the paddock. Patterns are worked from the gate.",
+          "entries": []
         }
       ]
     }
@@ -174,48 +645,79 @@
       "name": "NRHA Reining Pattern 17",
       "kind": "reining",
       "source_page": 3,
-      "start_note": "",
-      "finish_note": "",
       "boxes": [
         {
           "n": 1,
-          "label": "",
-          "tags": []
+          "abbr": "Ll S",
+          "label": "LF left, SS left, stop",
+          "tags": [
+            "circle",
+            "stop"
+          ]
         },
         {
           "n": 2,
-          "label": "",
-          "tags": []
+          "abbr": "4 LS",
+          "label": "4 spins left",
+          "tags": [
+            "spin"
+          ]
         },
         {
           "n": 3,
-          "label": "",
-          "tags": []
+          "abbr": "Rr S",
+          "label": "LF right, SS right, stop",
+          "tags": [
+            "circle",
+            "stop"
+          ]
         },
         {
           "n": 4,
-          "label": "",
-          "tags": []
+          "abbr": "4 RS",
+          "label": "4 spins right",
+          "tags": [
+            "spin"
+          ]
         },
         {
           "n": 5,
-          "label": "",
-          "tags": []
+          "abbr": "Fig 8",
+          "label": "LF left, change, LF right, change",
+          "tags": [
+            "circle",
+            "lead_change"
+          ]
         },
         {
           "n": 6,
-          "label": "",
-          "tags": []
+          "abbr": "RRB",
+          "label": "Stop, RBR",
+          "tags": [
+            "run",
+            "stop",
+            "rollback"
+          ]
         },
         {
           "n": 7,
-          "label": "",
-          "tags": []
+          "abbr": "LRB",
+          "label": "Stop, RBL",
+          "tags": [
+            "run",
+            "stop",
+            "rollback"
+          ]
         },
         {
           "n": 8,
-          "label": "",
-          "tags": []
+          "abbr": "SB",
+          "label": "Stop, back",
+          "tags": [
+            "run",
+            "stop",
+            "backup"
+          ]
         }
       ]
     },
@@ -224,68 +726,105 @@
       "name": "AQHA Ranch Riding Pattern 10",
       "kind": "ranch_riding",
       "source_page": 4,
-      "start_note": "",
-      "finish_note": "",
       "boxes": [
         {
           "n": 1,
-          "label": "",
-          "tags": []
+          "abbr": "W",
+          "label": "Walk",
+          "tags": [
+            "walk"
+          ]
         },
         {
           "n": 2,
-          "label": "",
-          "tags": []
+          "abbr": "Ex T",
+          "label": "Extended trot",
+          "tags": [
+            "trot"
+          ]
         },
         {
           "n": 3,
-          "label": "",
-          "tags": []
+          "abbr": "W",
+          "label": "Walk",
+          "tags": [
+            "walk"
+          ]
         },
         {
           "n": 4,
-          "label": "",
-          "tags": []
+          "abbr": "S, SPL",
+          "label": "Stop, side pass left over log",
+          "tags": [
+            "stop",
+            "obstacle"
+          ]
         },
         {
           "n": 5,
-          "label": "",
-          "tags": []
+          "abbr": "T",
+          "label": "Trot",
+          "tags": [
+            "trot"
+          ]
         },
         {
           "n": 6,
-          "label": "",
-          "tags": []
+          "abbr": "RL",
+          "label": "Lope right lead",
+          "tags": [
+            "lope"
+          ]
         },
         {
           "n": 7,
-          "label": "",
-          "tags": []
+          "abbr": "Ex RL",
+          "label": "Extended right lead",
+          "tags": [
+            "lope"
+          ]
         },
         {
           "n": 8,
-          "label": "",
-          "tags": []
+          "abbr": "Col, CL",
+          "label": "Collect, change leads",
+          "tags": [
+            "lope",
+            "lead_change"
+          ]
         },
         {
           "n": 9,
-          "label": "",
-          "tags": []
+          "abbr": "LL",
+          "label": "Lope left lead",
+          "tags": [
+            "lope"
+          ]
         },
         {
           "n": 10,
-          "label": "",
-          "tags": []
+          "abbr": "S&B",
+          "label": "Stop, back",
+          "tags": [
+            "stop",
+            "backup"
+          ]
         },
         {
           "n": 11,
-          "label": "",
-          "tags": []
+          "abbr": "180 R",
+          "label": "Half turn right",
+          "tags": [
+            "turn"
+          ]
         },
         {
           "n": 12,
-          "label": "",
-          "tags": []
+          "abbr": "T",
+          "label": "Trot",
+          "tags": [
+            "trot"
+          ]
         }
       ]
     },
@@ -294,58 +833,88 @@
       "name": "Level II/Open M",
       "kind": "horsemanship",
       "source_page": 5,
-      "start_note": "",
-      "finish_note": "",
       "boxes": [
         {
           "n": 1,
-          "label": "",
-          "tags": []
+          "abbr": "J",
+          "label": "Jog center line",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 2,
-          "label": "",
-          "tags": []
+          "abbr": "Ex J",
+          "label": "Extended jog",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 3,
-          "label": "",
-          "tags": []
+          "abbr": "RL",
+          "label": "Lope right lead, arc and diagonal",
+          "tags": [
+            "lope"
+          ]
         },
         {
           "n": 4,
-          "label": "",
-          "tags": []
+          "abbr": "CL",
+          "label": "Simple change at center",
+          "tags": [
+            "lead_change"
+          ]
         },
         {
           "n": 5,
-          "label": "",
-          "tags": []
+          "abbr": "Ex LL",
+          "label": "Extended left lead",
+          "tags": [
+            "lope"
+          ]
         },
         {
           "n": 6,
-          "label": "",
-          "tags": []
+          "abbr": "Col",
+          "label": "Collect lope around arc",
+          "tags": [
+            "lope"
+          ]
         },
         {
           "n": 7,
-          "label": "",
-          "tags": []
+          "abbr": "S, 360",
+          "label": "Stop, 360 turn",
+          "tags": [
+            "stop",
+            "turn"
+          ]
         },
         {
           "n": 8,
-          "label": "",
-          "tags": []
+          "abbr": "Ex J",
+          "label": "Extended jog",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 9,
-          "label": "",
-          "tags": []
+          "abbr": "Ex J, J",
+          "label": "Extended jog corner, jog",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 10,
-          "label": "",
-          "tags": []
+          "abbr": "S&B",
+          "label": "Stop at cone, back",
+          "tags": [
+            "stop",
+            "backup"
+          ]
         }
       ]
     },
@@ -354,43 +923,65 @@
       "name": "Level I T",
       "kind": "horsemanship",
       "source_page": 6,
-      "start_note": "",
-      "finish_note": "",
       "boxes": [
         {
           "n": 1,
-          "label": "",
-          "tags": []
+          "abbr": "J",
+          "label": "Jog",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 2,
-          "label": "",
-          "tags": []
+          "abbr": "S, 180 L",
+          "label": "Stop, pivot left 180",
+          "tags": [
+            "stop",
+            "turn"
+          ]
         },
         {
           "n": 3,
-          "label": "",
-          "tags": []
+          "abbr": "LL",
+          "label": "Lope left circle",
+          "tags": [
+            "lope",
+            "circle"
+          ]
         },
         {
           "n": 4,
-          "label": "",
-          "tags": []
+          "abbr": "S&B",
+          "label": "Stop, back",
+          "tags": [
+            "stop",
+            "backup"
+          ]
         },
         {
           "n": 5,
-          "label": "",
-          "tags": []
+          "abbr": "180 R",
+          "label": "Pivot right 180",
+          "tags": [
+            "turn"
+          ]
         },
         {
           "n": 6,
-          "label": "",
-          "tags": []
+          "abbr": "RL",
+          "label": "Lope right lead, two corners",
+          "tags": [
+            "lope"
+          ]
         },
         {
           "n": 7,
-          "label": "",
-          "tags": []
+          "abbr": "Ex J",
+          "label": "Extended jog, corners",
+          "tags": [
+            "jog"
+          ]
         }
       ]
     },
@@ -399,48 +990,71 @@
       "name": "Rookie K",
       "kind": "horsemanship",
       "source_page": 7,
-      "start_note": "",
-      "finish_note": "",
       "boxes": [
         {
           "n": 1,
-          "label": "",
-          "tags": []
+          "abbr": "Ex J",
+          "label": "Extended jog",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 2,
-          "label": "",
-          "tags": []
+          "abbr": "S&B",
+          "label": "Stop, back one length",
+          "tags": [
+            "stop",
+            "backup"
+          ]
         },
         {
           "n": 3,
-          "label": "",
-          "tags": []
+          "abbr": "180 L",
+          "label": "Pivot left 180",
+          "tags": [
+            "turn"
+          ]
         },
         {
           "n": 4,
-          "label": "",
-          "tags": []
+          "abbr": "LL",
+          "label": "Lope left lead diagonal",
+          "tags": [
+            "lope"
+          ]
         },
         {
           "n": 5,
-          "label": "",
-          "tags": []
+          "abbr": "LL",
+          "label": "Left lead arc",
+          "tags": [
+            "lope"
+          ]
         },
         {
           "n": 6,
-          "label": "",
-          "tags": []
+          "abbr": "J",
+          "label": "Jog",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 7,
-          "label": "",
-          "tags": []
+          "abbr": "W",
+          "label": "Walk",
+          "tags": [
+            "walk"
+          ]
         },
         {
           "n": 8,
-          "label": "",
-          "tags": []
+          "abbr": "S",
+          "label": "Stop",
+          "tags": [
+            "stop"
+          ]
         }
       ]
     },
@@ -449,38 +1063,57 @@
       "name": "Beginner Q",
       "kind": "horsemanship",
       "source_page": 8,
-      "start_note": "",
-      "finish_note": "",
       "boxes": [
         {
           "n": 1,
-          "label": "",
-          "tags": []
+          "abbr": "Ex J",
+          "label": "Extended jog, arc left",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 2,
-          "label": "",
-          "tags": []
+          "abbr": "J ¾ L",
+          "label": "Jog ¾ circle left",
+          "tags": [
+            "jog",
+            "circle"
+          ]
         },
         {
           "n": 3,
-          "label": "",
-          "tags": []
+          "abbr": "J ¾ R",
+          "label": "Jog ¾ circle right",
+          "tags": [
+            "jog",
+            "circle"
+          ]
         },
         {
           "n": 4,
-          "label": "",
-          "tags": []
+          "abbr": "W",
+          "label": "Walk",
+          "tags": [
+            "walk"
+          ]
         },
         {
           "n": 5,
-          "label": "",
-          "tags": []
+          "abbr": "S&B",
+          "label": "Stop, back",
+          "tags": [
+            "stop",
+            "backup"
+          ]
         },
         {
           "n": 6,
-          "label": "",
-          "tags": []
+          "abbr": "J",
+          "label": "Jog to cone",
+          "tags": [
+            "jog"
+          ]
         }
       ]
     },
@@ -489,43 +1122,70 @@
       "name": "NRHA Reining Pattern 8",
       "kind": "reining",
       "source_page": 9,
-      "start_note": "",
-      "finish_note": "",
       "boxes": [
         {
           "n": 1,
-          "label": "",
-          "tags": []
+          "abbr": "4 LS",
+          "label": "4 spins left",
+          "tags": [
+            "spin"
+          ]
         },
         {
           "n": 2,
-          "label": "",
-          "tags": []
+          "abbr": "4 RS",
+          "label": "4 spins right",
+          "tags": [
+            "spin"
+          ]
         },
         {
           "n": 3,
-          "label": "",
-          "tags": []
+          "abbr": "RrR CL",
+          "label": "LF, SS, LF right, change",
+          "tags": [
+            "circle",
+            "lead_change"
+          ]
         },
         {
           "n": 4,
-          "label": "",
-          "tags": []
+          "abbr": "LlL CL",
+          "label": "LF, SS, LF left, change",
+          "tags": [
+            "circle",
+            "lead_change"
+          ]
         },
         {
           "n": 5,
-          "label": "",
-          "tags": []
+          "abbr": "LRB",
+          "label": "Stop, RBL",
+          "tags": [
+            "run",
+            "stop",
+            "rollback"
+          ]
         },
         {
           "n": 6,
-          "label": "",
-          "tags": []
+          "abbr": "RRB",
+          "label": "Stop, RBR",
+          "tags": [
+            "run",
+            "stop",
+            "rollback"
+          ]
         },
         {
           "n": 7,
-          "label": "",
-          "tags": []
+          "abbr": "SB",
+          "label": "Stop, back",
+          "tags": [
+            "run",
+            "stop",
+            "backup"
+          ]
         }
       ]
     },
@@ -534,68 +1194,106 @@
       "name": "AQHA Ranch Riding Pattern 15",
       "kind": "ranch_riding",
       "source_page": 10,
-      "start_note": "",
-      "finish_note": "",
       "boxes": [
         {
           "n": 1,
-          "label": "",
-          "tags": []
+          "abbr": "Ex T",
+          "label": "Extended trot",
+          "tags": [
+            "trot"
+          ]
         },
         {
           "n": 2,
-          "label": "",
-          "tags": []
+          "abbr": "S, RRB",
+          "label": "Stop, rollback right",
+          "tags": [
+            "stop",
+            "rollback"
+          ]
         },
         {
           "n": 3,
-          "label": "",
-          "tags": []
+          "abbr": "RL",
+          "label": "Lope right lead",
+          "tags": [
+            "lope"
+          ]
         },
         {
           "n": 4,
-          "label": "",
-          "tags": []
+          "abbr": "Ex RL",
+          "label": "Extended right lead",
+          "tags": [
+            "lope"
+          ]
         },
         {
           "n": 5,
-          "label": "",
-          "tags": []
+          "abbr": "T",
+          "label": "Trot",
+          "tags": [
+            "trot"
+          ]
         },
         {
           "n": 6,
-          "label": "",
-          "tags": []
+          "abbr": "W",
+          "label": "Walk",
+          "tags": [
+            "walk"
+          ]
         },
         {
           "n": 7,
-          "label": "",
-          "tags": []
+          "abbr": "W/Os",
+          "label": "Walk logs",
+          "tags": [
+            "walk",
+            "obstacle"
+          ]
         },
         {
           "n": 8,
-          "label": "",
-          "tags": []
+          "abbr": "W",
+          "label": "Walk",
+          "tags": [
+            "walk"
+          ]
         },
         {
           "n": 9,
-          "label": "",
-          "tags": []
+          "abbr": "T",
+          "label": "Trot",
+          "tags": [
+            "trot"
+          ]
         },
         {
           "n": 10,
-          "label": "",
-          "tags": []
+          "abbr": "S, 360 L",
+          "label": "Stop, 360 turn left",
+          "tags": [
+            "stop",
+            "turn"
+          ]
         },
         {
           "n": 11,
-          "label": "",
-          "tags": []
+          "abbr": "LL",
+          "label": "Lope left lead",
+          "tags": [
+            "lope"
+          ]
         },
         {
           "n": 12,
-          "label": "",
-          "tags": []
+          "abbr": "S&B",
+          "label": "Stop, back",
+          "tags": [
+            "stop",
+            "backup"
+          ]
         }
       ]
     },
@@ -604,48 +1302,75 @@
       "name": "Level II/Open R",
       "kind": "horsemanship",
       "source_page": 11,
-      "start_note": "",
-      "finish_note": "",
       "boxes": [
         {
           "n": 1,
-          "label": "",
-          "tags": []
+          "abbr": "W",
+          "label": "Walk two lengths",
+          "tags": [
+            "walk"
+          ]
         },
         {
           "n": 2,
-          "label": "",
-          "tags": []
+          "abbr": "J",
+          "label": "Jog to center",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 3,
-          "label": "",
-          "tags": []
+          "abbr": "S, 270 L",
+          "label": "Stop, 270 turn left",
+          "tags": [
+            "stop",
+            "turn"
+          ]
         },
         {
           "n": 4,
-          "label": "",
-          "tags": []
+          "abbr": "LL",
+          "label": "Lope left circle",
+          "tags": [
+            "lope",
+            "circle"
+          ]
         },
         {
           "n": 5,
-          "label": "",
-          "tags": []
+          "abbr": "CL",
+          "label": "Simple change through jog",
+          "tags": [
+            "lead_change"
+          ]
         },
         {
           "n": 6,
-          "label": "",
-          "tags": []
+          "abbr": "Ex RL",
+          "label": "Extended right lead circle",
+          "tags": [
+            "lope",
+            "circle"
+          ]
         },
         {
           "n": 7,
-          "label": "",
-          "tags": []
+          "abbr": "Col, Ex T",
+          "label": "Collect, extended trot",
+          "tags": [
+            "lope",
+            "trot"
+          ]
         },
         {
           "n": 8,
-          "label": "",
-          "tags": []
+          "abbr": "S&B",
+          "label": "Stop, back",
+          "tags": [
+            "stop",
+            "backup"
+          ]
         }
       ]
     },
@@ -654,43 +1379,64 @@
       "name": "Level I I",
       "kind": "horsemanship",
       "source_page": 12,
-      "start_note": "",
-      "finish_note": "",
       "boxes": [
         {
           "n": 1,
-          "label": "",
-          "tags": []
+          "abbr": "J",
+          "label": "Jog at cone",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 2,
-          "label": "",
-          "tags": []
+          "abbr": "Ex J",
+          "label": "Extended jog, two corners left",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 3,
-          "label": "",
-          "tags": []
+          "abbr": "S&B",
+          "label": "Stop, back one length",
+          "tags": [
+            "stop",
+            "backup"
+          ]
         },
         {
           "n": 4,
-          "label": "",
-          "tags": []
+          "abbr": "360 L",
+          "label": "Pivot left 360",
+          "tags": [
+            "turn"
+          ]
         },
         {
           "n": 5,
-          "label": "",
-          "tags": []
+          "abbr": "Ex LL",
+          "label": "Extended lope, circle left",
+          "tags": [
+            "lope",
+            "circle"
+          ]
         },
         {
           "n": 6,
-          "label": "",
-          "tags": []
+          "abbr": "Lope",
+          "label": "Collect lope, straight",
+          "tags": [
+            "lope"
+          ]
         },
         {
           "n": 7,
-          "label": "",
-          "tags": []
+          "abbr": "S",
+          "label": "Stop at cone",
+          "tags": [
+            "stop"
+          ]
         }
       ]
     },
@@ -699,43 +1445,64 @@
       "name": "Rookie S",
       "kind": "horsemanship",
       "source_page": 13,
-      "start_note": "",
-      "finish_note": "",
       "boxes": [
         {
           "n": 1,
-          "label": "",
-          "tags": []
+          "abbr": "J",
+          "label": "Jog",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 2,
-          "label": "",
-          "tags": []
+          "abbr": "LL",
+          "label": "Lope left circle",
+          "tags": [
+            "lope",
+            "circle"
+          ]
         },
         {
           "n": 3,
-          "label": "",
-          "tags": []
+          "abbr": "CL",
+          "label": "Simple change",
+          "tags": [
+            "lead_change"
+          ]
         },
         {
           "n": 4,
-          "label": "",
-          "tags": []
+          "abbr": "RL",
+          "label": "Lope right arc",
+          "tags": [
+            "lope"
+          ]
         },
         {
           "n": 5,
-          "label": "",
-          "tags": []
+          "abbr": "Ex T",
+          "label": "Extended trot",
+          "tags": [
+            "trot"
+          ]
         },
         {
           "n": 6,
-          "label": "",
-          "tags": []
+          "abbr": "S&B",
+          "label": "Stop, back",
+          "tags": [
+            "stop",
+            "backup"
+          ]
         },
         {
           "n": 7,
-          "label": "",
-          "tags": []
+          "abbr": "J",
+          "label": "Jog to cone",
+          "tags": [
+            "jog"
+          ]
         }
       ]
     },
@@ -744,50 +1511,71 @@
       "name": "Beginner B",
       "kind": "horsemanship",
       "source_page": 14,
-      "start_note": "",
-      "finish_note": "",
       "boxes": [
         {
           "n": 1,
-          "label": "",
-          "tags": []
+          "abbr": "J",
+          "label": "Jog to cone",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 2,
-          "label": "",
-          "tags": []
+          "abbr": "J sq R",
+          "label": "Jog a square right",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 3,
-          "label": "",
-          "tags": []
+          "abbr": "S, 90 R",
+          "label": "Stop, pivot right 90",
+          "tags": [
+            "stop",
+            "turn"
+          ]
         },
         {
           "n": 4,
-          "label": "",
-          "tags": []
+          "abbr": "Ex J",
+          "label": "Extended jog, corner",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 5,
-          "label": "",
-          "tags": []
+          "abbr": "W",
+          "label": "Walk",
+          "tags": [
+            "walk"
+          ]
         },
         {
           "n": 6,
-          "label": "",
-          "tags": []
+          "abbr": "Ex J",
+          "label": "Extended jog to start",
+          "tags": [
+            "jog"
+          ]
         },
         {
           "n": 7,
-          "label": "",
-          "tags": []
+          "abbr": "S&B",
+          "label": "Stop, back",
+          "tags": [
+            "stop",
+            "backup"
+          ]
         }
       ]
     }
   ],
   "open_items": [
-    "Rule sets ihsa-reining, ihsa-ranch-riding and ihsa-horsemanship are placeholders until the real IHSA cards are seen.",
-    "Whether horsemanship patterns are scored box by box is unknown. card_family is placings for now.",
-    "Maneuver labels, judges, riders, teams, horses and the horse draw are not in this file."
+    "Box grouping follows our reading of the pattern book. The printed IHSA score sheet for a meet may group maneuvers differently.",
+    "Penalty values are placeholders: the IHSA sheets seen so far do not list them.",
+    "Rider names, schools, judges and Sunday's draw are not in this file."
   ]
 }

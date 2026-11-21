@@ -1,23 +1,29 @@
 import { useState } from 'react'
 import { formatHalf } from '../engine'
-import { classKey, getClass, getMeet, getPattern, hasLabels } from '../data/fixture'
+import { classKey, getClass, getMeet, getPattern } from '../data/fixture'
 import { classResults, placingWarnings, totalFor } from '../results'
 import { ruleSetFor } from '../rules/rulesets'
 import { addRiders, classState, parseBackNumbers, useAppState, type Run } from '../store'
-import { BackNumber, Ribbon, Screen, go, pts } from './bits'
+import { BackNumber, Code, Ribbon, Screen, go, pts } from './bits'
 
 function inProgress(run: Run): boolean {
-  return !run.scored && (run.boxes.some((b) => b !== null) || run.penalties.length > 0 || run.mark !== 'none')
+  return (
+    !run.scored &&
+    (run.boxes.some((b) => b !== null) ||
+      Object.values(run.extras ?? {}).some((v) => v !== null) ||
+      run.penalties.length > 0 ||
+      run.mark !== 'none')
+  )
 }
 
-export function ClassScreen({ meetId, classNo }: { meetId: string; classNo: string }) {
+export function ClassScreen({ meetId, classId }: { meetId: string; classId: string }) {
   const state = useAppState()
   const [text, setText] = useState('')
   const [showPattern, setShowPattern] = useState(false)
   const [notice, setNotice] = useState('')
 
   const meet = getMeet(meetId)
-  const cls = getClass(meetId, classNo)
+  const cls = getClass(meetId, classId)
   if (!meet || !cls) {
     return (
       <Screen title="Class not found" backTo="/" backLabel="Meets">
@@ -27,11 +33,11 @@ export function ClassScreen({ meetId, classNo }: { meetId: string; classNo: stri
   }
   const pattern = getPattern(cls.pattern_id)
   const rules = ruleSetFor(cls.rule_set)
-  const key = classKey(meetId, classNo)
+  const key = classKey(meetId, classId)
   const cs = classState(state, key)
   const results = classResults(cs, cls)
   const warnings = cls.card_family === 'placings' ? placingWarnings(cs, cls) : []
-  const base = `/m/${meetId}/c/${classNo}`
+  const base = `/m/${meetId}/c/${classId}`
 
   function onAdd() {
     const numbers = parseBackNumbers(text)
@@ -43,7 +49,7 @@ export function ClassScreen({ meetId, classNo }: { meetId: string; classNo: stri
   }
 
   return (
-    <Screen title={cls.name} sub={`Class ${cls.class_no}, ${meet.label}`} backTo={`/m/${meetId}`} backLabel="Classes">
+    <Screen title={cls.name} sub={`Class ${cls.id}, ${meet.label}`} backTo={`/m/${meetId}`} backLabel="Classes">
       <section className="panel">
         <button className="disclosure" aria-expanded={showPattern} onClick={() => setShowPattern(!showPattern)}>
           <span className="disclosure-text">
@@ -55,21 +61,25 @@ export function ClassScreen({ meetId, classNo }: { meetId: string; classNo: stri
         {showPattern && (
           <div className="pattern">
             {cls.notes && <p>{cls.notes}</p>}
-            {pattern.start_note && <p className="muted">Start: {pattern.start_note}</p>}
-            {hasLabels(pattern) ? (
-              <ol>
-                {pattern.boxes.map((b) => (
-                  <li key={b.n}>{b.label}</li>
-                ))}
-              </ol>
-            ) : (
-              <p>
-                The card has {pattern.boxes.length} numbered boxes. Maneuver wording is not loaded, so follow the
-                show’s pattern sheet.
-              </p>
+            <ol className="boxlist">
+              {pattern.boxes.map((b) => (
+                <li key={b.n}>
+                  <span className="boxlist-row">
+                    <span className="boxlist-code">
+                      <Code value={b.abbr} />
+                    </span>
+                    <span>{b.label}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+            {rules.extras.length > 0 && (
+              <p>Then {rules.extras.map((e) => e.label.toLowerCase().replace('form and effectiveness', 'F&E')).join(' and ')}, added to the score.</p>
             )}
-            {pattern.finish_note && <p className="muted">Finish: {pattern.finish_note}</p>}
-            <p className="muted">Diagram: page {pattern.source_page} of the show’s pattern book.</p>
+            <p className="muted">
+              These boxes follow our reading of the pattern book, page {pattern.source_page}. If the judge’s sheet
+              groups the maneuvers differently, say so and it will be matched.
+            </p>
           </div>
         )}
       </section>
@@ -115,10 +125,12 @@ export function ClassScreen({ meetId, classNo }: { meetId: string; classNo: stri
             return (
               <li key={run.id}>
                 <button className="row" onClick={() => go(`${base}/r/${run.id}`)}>
+                  {run.draw !== undefined && <span className="draw" aria-label={`Draw ${run.draw}`}>{run.draw}</span>}
                   <BackNumber value={run.backNo} />
                   <span className="row-main">
                     <strong className={run.scored ? 'score' : 'muted'}>{status}</strong>
                     {run.mark !== 'none' && run.mark !== 'DQ' && <span className="tag">{run.mark}</span>}
+                    {run.horse && <span className="horse">{run.horse}</span>}
                   </span>
                   <span className="row-side">{run.scored ? 'Edit' : 'Score'}</span>
                 </button>
