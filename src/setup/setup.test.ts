@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { allShows, builtInShow, classKey, getClass, getMeet, getPattern, showOfMeet, type ShowFile } from '../data/fixture'
+import { allShows, builtInShows, classKey, getClass, getMeet, getPattern, showOfMeet, type ShowFile } from '../data/fixture'
 import { clearShows, readShowFile, saveShow, userShows } from '../data/shows'
 import { sheetPlacings } from '../results'
 import { loadDraw } from '../seed'
@@ -31,6 +31,25 @@ function springShow(): ShowFile {
     patterns: [reining, hms, ranch],
   })
 }
+
+describe('the sample shows that ship with the app', () => {
+  it('are one show per day, each with only its own classes and patterns', () => {
+    expect(builtInShows.map((s) => [s.id, s.name, s.meets.map((m) => `${m.id} ${m.label} ${m.date}`)])).toEqual([
+      ['evt-bhc-2026-11-21', 'IHSA Western Show, November 21', ['meet-5 Saturday 2026-11-21']],
+      ['evt-bhc-2026-11-22', 'IHSA Western Show, November 22', ['meet-6 Sunday 2026-11-22']],
+    ])
+    for (const show of builtInShows) {
+      const used = new Set(show.meets.flatMap((m) => m.classes.map((c) => c.pattern_id)))
+      expect(show.patterns.map((p) => p.id).sort()).toEqual([...used].sort())
+    }
+    // No pattern is in both shows, so pattern ids stay unique across shows.
+    const all = builtInShows.flatMap((s) => s.patterns.map((p) => p.id))
+    expect(new Set(all).size).toBe(all.length)
+    // The days kept their ids, so scores already on a device stay with their classes.
+    expect(showOfMeet('meet-5')?.id).toBe('evt-bhc-2026-11-21')
+    expect(showOfMeet('meet-6')?.id).toBe('evt-bhc-2026-11-22')
+  })
+})
 
 describe('reading a class name', () => {
   it('finds the division, telling Level II from Level I', () => {
@@ -141,7 +160,7 @@ describe('setting up a show', () => {
     expect(show.patterns[0].boxes.map((b) => b.n)).toEqual([1, 2, 3, 4, 5, 6, 7])
     expect(show.patterns[0].boxes[0].tags).toEqual(['spin'])
     expect(new Set(show.patterns.map((p) => p.id)).size).toBe(3)
-    expect(show.patterns.every((p) => !builtInShow.patterns.some((b) => b.id === p.id))).toBe(true)
+    expect(show.patterns.every((p) => !builtInShows.some((s) => s.patterns.some((b) => b.id === p.id)))).toBe(true)
   })
 
   it('offers the patterns of other shows for reuse, one per name', () => {
@@ -157,7 +176,7 @@ describe('shows on this device', () => {
   it('a saved show is found by its days and classes, beside the sample show', () => {
     const show = springShow()
     expect(saveShow(show)).toBe(true)
-    expect(allShows().map((s) => s.id)).toEqual([builtInShow.id, show.id])
+    expect(allShows().map((s) => s.id)).toEqual([...builtInShows.map((s) => s.id), show.id])
     const meet = show.meets[0]
     expect(getMeet(meet.id)?.label).toBe('Saturday')
     expect(showOfMeet(meet.id)?.id).toBe(show.id)

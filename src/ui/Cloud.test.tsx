@@ -78,7 +78,7 @@ describe('the show list with a server', () => {
     server.down = true
     render(<Home />)
     expect(await screen.findByText(/Could not reach the server/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: /IHSA Western Meets/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /IHSA Western Show, November 21/ })).toBeTruthy()
   })
 })
 

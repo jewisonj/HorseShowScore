@@ -17,7 +17,7 @@ Read `README.md` first. The requirements, decision log and scoring references li
 ## Shows
 
 - A show is one self-contained file (`ShowFile`): days, classes, draw and patterns. Meet ids and pattern ids are unique across shows, so a class is found from its meet id and class id alone.
-- The sample show ships in `src/data/`. Shows made in setup live in the device's storage and move between devices as show files until sync is built.
+- The sample shows ship in `src/data/`: one show per day, because IHSA runs each day as its own show and each show has its own workbook. One sheet, one show. Shows made in setup live in the device's storage and move between devices as show files until sync is built.
 - The show workbook is read only, in the browser, from an Excel file: a download, or a copy the server fetches from the sheet's link (`supabase/functions/fetch-workbook`, one GET of Google's export address for a link-shared sheet). Never write to anyone's Google Sheet. `src/setup/workbook.ts` says exactly which cells are relied on.
 - A sheet's link is remembered on the setup computer only (`src/setup/sheetLink.ts`). Never put it in a show: published shows are public and the link opens the whole workbook.
 - Tests build their own small workbook with made-up names (`src/setup/testWorkbook.ts`). Do not commit a real show workbook.

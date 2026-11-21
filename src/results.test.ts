@@ -351,7 +351,7 @@ describe('CSV export', () => {
     expect(lines).toHaveLength(1 + 75)
     const cells = (line: string) => Object.fromEntries(CSV_HEADER.map((name, i) => [name, line.split(',')[i]]))
     expect(cells(lines[1])).toEqual({
-      meet: 'Meet #5',
+      meet: 'Saturday',
       date: '2026-11-21',
       judge: '',
       show_class: '1',
@@ -374,7 +374,7 @@ describe('CSV export', () => {
     })
     // Not scored: no placing, no score, no points. Partial data is normal.
     const second = getClass('meet-5', REINING)!.entries[1].rider
-    expect(lines[2]).toBe(`Meet #5,2026-11-21,,1,17,Reining,NRHA Reining Pattern 17,2,102,${second},Bunny,,,,,,,,,unverified`)
+    expect(lines[2]).toBe(`Saturday,2026-11-21,,1,17,Reining,NRHA Reining Pattern 17,2,102,${second},Bunny,,,,,,,,,unverified`)
   })
 
   it('is just the header when nothing has been entered', () => {

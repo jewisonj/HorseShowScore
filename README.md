@@ -14,7 +14,7 @@ A free judging and scoring tool for small horse shows: IHSA meets, ARHA and loca
 - The first screen is a **show picker**. A show set up on a computer is **published to the server** and every phone lists it. A show file still works where there is no signal.
 - **Show setup** reads the Google Sheets show workbook (downloaded as an Excel file) for the classes, running order and draw. Patterns are picked from other shows, typed in, or **read from the pattern book PDF** by a reader on the server.
 - A class's placings can be **copied for the show workbook** and pasted into its Placings column.
-- It is loaded with two real IHSA meets (November 21–22, 2026). Saturday has the show's 12 classes in running order and the draw: back numbers, riders and horses. Sunday has the class list.
+- It comes with two sample shows, one per day, from a real IHSA weekend (November 21–22, 2026). Each day is its own show, as IHSA runs them. Saturday has the show's 12 classes in running order and the draw: back numbers, riders and horses. Sunday has the class list.
 - **Scores are saved on the device only.** Shows come from the server; scores do not go to it yet. Only the people who set up shows sign in.
 - Every screen says **"Unofficial test"**. The show's own system is the official record.
 - **Penalty values are placeholders.** The IHSA sheets do not list them, so reining follows NRHA and ranch riding follows the AQHA sheet. Each card says so.

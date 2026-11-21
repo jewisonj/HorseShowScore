@@ -29,14 +29,17 @@ function pickPattern(className: string, optionText: RegExp) {
 describe('the first screen', () => {
   it('lists the shows on this device and offers to create or open one', () => {
     render(<Home />)
-    expect(screen.getByRole('button', { name: /IHSA Western Meets/ })).toBeTruthy()
+    // The sample weekend is two shows, one per day, each marked as a sample.
+    expect(screen.getByRole('button', { name: /IHSA Western Show, November 21.*Sample that comes with the app/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /IHSA Western Show, November 22/ })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Create a show' }))
     expect(window.location.hash).toBe('#/new')
     expect(screen.getByRole('button', { name: 'Open a show file' })).toBeTruthy()
   })
 
   it('the sample show cannot be changed or removed', () => {
-    render(<ShowScreen showId="evt-bhc-2026-11" />)
+    render(<ShowScreen showId="evt-bhc-2026-11-21" />)
+    expect(screen.getAllByRole('button', { name: /Saturday/ })).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Download the show file' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Change the setup' })).toBeNull()
     expect(screen.queryByRole('button', { name: /Remove this show/ })).toBeNull()

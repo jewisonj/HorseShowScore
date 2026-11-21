@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { publishShow, sameShow, startCloud, takeOffServer, useCloud } from '../cloud/cloud'
 import { useCloudCache } from '../data/cloudShows'
-import { builtInShow, classKey, formatDate, getShow } from '../data/fixture'
+import { classKey, formatDate, getShow, isBuiltIn } from '../data/fixture'
 import { removeShow, useUserShows } from '../data/shows'
 import { resultsCsv } from '../results'
 import { loadDraw } from '../seed'
@@ -35,7 +35,7 @@ export function ShowScreen({ showId }: { showId: string }) {
       </Screen>
     )
   }
-  const isSample = show.id === builtInShow.id
+  const isSample = isBuiltIn(show.id)
   const stamp = new Date().toISOString().slice(0, 10)
   // The copy being worked on here, and the copy every device reads from the server.
   const local = mine.find((s) => s.id === show.id)
@@ -190,7 +190,7 @@ export function ShowScreen({ showId }: { showId: string }) {
         The show file holds the classes, the draw and the patterns. It can be opened on another phone or tablet from
         the first screen where there is no signal. It does not carry scores.
       </p>
-      {isSample && <p className="hint">This is the sample show that comes with the app. It cannot be changed or removed.</p>}
+      {isSample && <p className="hint">This is a sample show that comes with the app. It cannot be changed, removed or published.</p>}
     </Screen>
   )
 }

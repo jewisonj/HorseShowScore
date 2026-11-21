@@ -1,5 +1,5 @@
 {
-  "fixture_version": 2,
+  "fixture_version": 3,
   "description": "Test data for Horse Show Scorer: two IHSA Western meets. Saturday has the show's 12 classes in running order with the draw (back number, rider and horse). Sunday has the class list only. Patterns carry short maneuver codes and labels in our own words. No pattern diagrams.",
   "event": {
     "id": "evt-bhc-2026-11",
@@ -10,10 +10,26 @@
     "end_date": "2026-11-22",
     "is_test": true
   },
+  "shows": [
+    {
+      "id": "evt-bhc-2026-11-21",
+      "name": "IHSA Western Show, November 21",
+      "meet_ids": [
+        "meet-5"
+      ]
+    },
+    {
+      "id": "evt-bhc-2026-11-22",
+      "name": "IHSA Western Show, November 22",
+      "meet_ids": [
+        "meet-6"
+      ]
+    }
+  ],
   "meets": [
     {
       "id": "meet-5",
-      "label": "Meet #5",
+      "label": "Saturday",
       "date": "2026-11-21",
       "coach_meeting": "12:00",
       "start_time": "13:00",
@@ -617,7 +633,7 @@
     },
     {
       "id": "meet-6",
-      "label": "Meet #6",
+      "label": "Sunday",
       "date": "2026-11-22",
       "coach_meeting": "08:00",
       "start_time": "09:00",

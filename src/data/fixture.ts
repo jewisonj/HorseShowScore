@@ -83,29 +83,42 @@ export const event = raw.event as ShowEvent
 export const meets = raw.meets as Meet[]
 export const patterns = raw.patterns as Pattern[]
 
-/** The sample show that ships with the app. */
-export const builtInShow: ShowFile = {
-  format: 'hss-show',
-  version: 1,
-  id: event.id,
-  name: event.name,
-  host: event.host,
-  association: event.association,
-  meets,
-  patterns,
+/**
+ * The sample shows that ship with the app. Each day is a show of its own, the
+ * way IHSA runs them and the way a show workbook holds them: one sheet, one show.
+ * A sample show carries only the patterns its own classes ride.
+ */
+export const builtInShows: ShowFile[] = (raw.shows as { id: string; name: string; meet_ids: string[] }[]).map((s) => {
+  const days = meets.filter((m) => s.meet_ids.includes(m.id))
+  const used = new Set(days.flatMap((m) => m.classes.map((c) => c.pattern_id)))
+  return {
+    format: 'hss-show',
+    version: 1,
+    id: s.id,
+    name: s.name,
+    host: event.host,
+    association: event.association,
+    meets: days,
+    patterns: patterns.filter((p) => used.has(p.id)),
+  }
+})
+
+/** True for a sample show that ships with the app. It cannot be changed, removed or published. */
+export function isBuiltIn(showId: string): boolean {
+  return builtInShows.some((s) => s.id === showId)
 }
 
 const patternsById = new Map(patterns.map((p) => [p.id, p]))
 
 /**
- * The sample show first, then the shows added on this device, then the published
+ * The sample shows first, then the shows added on this device, then the published
  * shows read from the server. A show on this device stands in front of the
  * published show with the same id: it is the copy being worked on.
  */
 export function allShows(): ShowFile[] {
   const mine = userShows()
-  const taken = new Set([builtInShow.id, ...mine.map((s) => s.id)])
-  return [builtInShow, ...mine, ...cloudShows().filter((s) => !taken.has(s.id))]
+  const taken = new Set([...builtInShows.map((s) => s.id), ...mine.map((s) => s.id)])
+  return [...builtInShows, ...mine, ...cloudShows().filter((s) => !taken.has(s.id))]
 }
 
 export function getShow(showId: string): ShowFile | undefined {
