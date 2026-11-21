@@ -25,7 +25,9 @@ Read `README.md` first. The requirements, decision log and scoring references li
 
 ## The server
 
-- Supabase holds published shows (`public.shows`, one show file per row) and the list of show admins. Scores are not on the server yet.
+- Supabase holds published shows (`public.shows`, one show file per row), the list of show admins, the scores judging devices send (`class_scores`) and published placings (`class_results`).
+- Scores go one way: a judging device sends each class of a published show as it is scored (`src/cloud/scores.ts`), in the background, a new row each time. It needs no sign-in, so anyone with the app can add a row; nobody but a show admin can read one. The judge's typed name goes with it, for admins only. Devices do not read scores back from the server.
+- Placings become public only when a show admin publishes a class on the admin page (`#/s/<show id>/results`). Published placings carry place, back number, rider and horse, all the way down. The database refuses a score, penalty or maneuver mark in them.
 - A published show is readable by anyone. It may hold only classes, the four draw fields and patterns. Never add judges, schools, coaches, scores, or rider height and weight to it.
 - Judges' names are not part of a show. The owner said on 2026-11-21 to remove them or let judges enter them. Setup does not ask for one, the workbook's judge column is not read, publishing strips them, and the database refuses a show that names one. A judge types a name on the day screen; it stays in that device's state and its results file.
 - Pictures of pattern book pages are published with the show. The owner decided this on 2026-11-21: the associations make their patterns public. Setup draws the page in the browser (`src/setup/pdfPages.ts`, pdf.js, loaded only there) and stores a JPEG in the public `pattern-pages` bucket; a pattern's `page_image` holds the path. Only paths the app makes are turned into addresses (`pageImageUrl`). The pictures go to the server only: the rule below about not committing pattern diagrams to this repo still stands.
@@ -41,7 +43,7 @@ Read `README.md` first. The requirements, decision log and scoring references li
 
 - `#/public` and `#/public/<show id>` are for riders, coaches and spectators (`src/ui/PublicScreens.tsx`). Read only: classes in running order, the draw and the patterns with their pictures.
 - They show exactly what is published on the server. Never a sample, never a copy being worked on in setup, and nothing from this device's own scores.
-- Results are not shown yet. When they are: placings only, never a score or a card, and only what a show admin has published.
+- Placings show under a class once a show admin has published them: placings only, never a score or a card.
 - The live server can be reached from the development sandbox with the publishable key in `.env`: reads, and checking that unsigned writes are refused. Test against it instead of assuming.
 
 ## This repo is public

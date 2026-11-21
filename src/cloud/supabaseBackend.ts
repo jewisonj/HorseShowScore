@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { ShowFile } from '../data/fixture'
-import type { CloudBackend, CloudUser } from './backend'
+import type { CloudBackend, CloudUser, PublicPlacing, SentRow } from './backend'
 
 function toUser(u: { id: string; email?: string } | null | undefined): CloudUser | null {
   return u ? { id: u.id, email: u.email ?? '' } : null
@@ -62,6 +62,46 @@ export function createSupabaseBackend(url: string, key: string): CloudBackend {
     async removeShow(id) {
       const { error } = await sb.from('shows').delete().eq('id', id)
       if (error) throw new Error(error.message)
+    },
+    async sendClassScores(send) {
+      // No .select(): a judging device may add a row but may not read one back.
+      const { error } = await sb.from('class_scores').insert({ show_id: send.showId, class_key: send.classKey, device: send.device, judge: send.judge, results: send.rows })
+      if (error) throw new Error(error.message)
+    },
+    async listClassScores(showId) {
+      const { data, error } = await sb
+        .from('class_scores')
+        .select('class_key, device, judge, results, sent_at')
+        .eq('show_id', showId)
+        .order('sent_at', { ascending: false })
+        .limit(1000)
+      if (error) throw new Error(error.message)
+      return (data ?? []).map((r: { class_key: string; device: string; judge: string; results: unknown; sent_at: string }) => ({
+        classKey: r.class_key,
+        device: r.device,
+        judge: r.judge,
+        rows: Array.isArray(r.results) ? (r.results as SentRow[]) : [],
+        sentAt: r.sent_at,
+      }))
+    },
+    async publishPlacings(showId, classKey, placings) {
+      const { error } = await sb
+        .from('class_results')
+        .upsert({ show_id: showId, class_key: classKey, placings, published_at: new Date().toISOString() }, { onConflict: 'show_id,class_key' })
+      if (error) throw new Error(error.message)
+    },
+    async removePlacings(showId, classKey) {
+      const { error } = await sb.from('class_results').delete().eq('show_id', showId).eq('class_key', classKey)
+      if (error) throw new Error(error.message)
+    },
+    async listPlacings(showId) {
+      const { data, error } = await sb.from('class_results').select('class_key, placings, published_at').eq('show_id', showId)
+      if (error) throw new Error(error.message)
+      return (data ?? []).map((r: { class_key: string; placings: unknown; published_at: string }) => ({
+        classKey: r.class_key,
+        placings: Array.isArray(r.placings) ? (r.placings as PublicPlacing[]) : [],
+        publishedAt: r.published_at,
+      }))
     },
     async uploadPatternPage(path, image) {
       const { error } = await sb.storage.from('pattern-pages').upload(path, image, {

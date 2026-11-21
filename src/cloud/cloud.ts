@@ -44,6 +44,16 @@ function isConfigured(): boolean {
   return override !== undefined ? override !== null : serverAddress() !== null
 }
 
+/** The backend, for the other server modules. Null when this build has no server. */
+export function getBackend(): Promise<CloudBackend | null> {
+  return backend()
+}
+
+/** Plain words for something the server or the network said. */
+export function explainServerError(e: unknown): string {
+  return explain(e)
+}
+
 async function backend(): Promise<CloudBackend | null> {
   if (override !== undefined) return override
   const at = serverAddress()

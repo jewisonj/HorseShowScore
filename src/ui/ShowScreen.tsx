@@ -129,6 +129,11 @@ export function ShowScreen({ showId }: { showId: string }) {
                 Drop my changes and use the published show
               </button>
             )}
+            {cloud.admin && published && onServer && (
+              <button className="btn btn-primary" onClick={() => go(`/s/${show.id}/results`)}>
+                Publish placings
+              </button>
+            )}
             {published && onServer && (
               <button
                 className="btn"

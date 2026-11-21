@@ -7,6 +7,7 @@ import { MeetScreen } from './ui/MeetScreen'
 import { PlacingsScreen } from './ui/PlacingsScreen'
 import { RailScreen } from './ui/RailScreen'
 import { PublicHome, PublicShow } from './ui/PublicScreens'
+import { ResultsAdminScreen } from './ui/ResultsAdminScreen'
 import { ScoreCard } from './ui/ScoreCard'
 import { SetupScreen } from './ui/SetupScreen'
 import { ShowScreen } from './ui/ShowScreen'
@@ -43,6 +44,7 @@ function Route() {
   }
   if (p[0] === 's' && p[1]) {
     if (p[2] === 'setup') return <SetupScreen key={`setup:${p[1]}`} showId={p[1]} />
+    if (p[2] === 'results') return <ResultsAdminScreen key={`results:${p[1]}`} showId={p[1]} />
     return <ShowScreen showId={p[1]} />
   }
   if (p[0] === 'new') return <SetupScreen key="new" />

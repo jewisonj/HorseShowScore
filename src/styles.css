@@ -1628,3 +1628,51 @@ h2 {
   font-weight: 700;
   color: var(--ink-2);
 }
+
+/* ---------- Placings: the admin's publish page and the public list ---------- */
+
+.result-class {
+  margin: 12px 0;
+}
+
+.result-class h2 {
+  margin-top: 0;
+}
+
+.result-out,
+.public-posted {
+  color: var(--plus, #1b6b3a);
+  font-weight: 700;
+}
+
+.result-send {
+  margin: 10px 0 14px;
+}
+
+.result-rows {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 10px;
+}
+
+.result-rows li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.result-place,
+.public-place {
+  flex: none;
+  min-width: 3.6rem;
+  font-weight: 700;
+}
+
+.result-score {
+  flex: none;
+  margin-left: auto;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

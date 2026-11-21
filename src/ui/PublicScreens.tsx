@@ -1,7 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import type { PublishedClass } from '../cloud/backend'
 import { refreshShows, refreshShowsIfStale, startCloud, useCloud } from '../cloud/cloud'
+import { loadPlacings } from '../cloud/scores'
 import { useCloudCache } from '../data/cloudShows'
-import { formatDate, type ShowFile } from '../data/fixture'
+import { classKey, formatDate, type ShowFile } from '../data/fixture'
 import { BackNumber, Code, Screen, go } from './bits'
 import { showDates, whenChecked } from './Home'
 import { PatternPagePicture } from './PatternPagePicture'
@@ -66,7 +68,7 @@ export function PublicHome() {
         </div>
       )}
       {checkedAt && <p className="hint">Read from the server at {whenChecked(checkedAt)}.</p>}
-      <p className="hint">Results are not shown here yet.</p>
+      <p className="hint">Placings appear under a class when the show publishes them.</p>
       <div className="stack">
         <button className="btn" onClick={() => go('/')}>
           For judges and show staff
@@ -80,6 +82,19 @@ export function PublicShow({ showId }: { showId: string }) {
   const cloud = useCloud()
   const { shows, checkedAt } = usePublishedShows()
   const show = shows.find((s) => s.id === showId)
+  // Placings a show admin has published. Read each time the page opens: they arrive class by class.
+  const [results, setResults] = useState<PublishedClass[]>([])
+  useEffect(() => {
+    let current = true
+    void startCloud()
+      .then(() => loadPlacings(showId))
+      .then((got) => {
+        if (current && got) setResults(got)
+      })
+    return () => {
+      current = false
+    }
+  }, [showId])
   if (!show) {
     return (
       <Screen title="Horse shows" backTo="/public" backLabel="Shows">
@@ -102,6 +117,7 @@ export function PublicShow({ showId }: { showId: string }) {
           {meet.classes.map((cls) => {
             const pattern = show.patterns.find((p) => p.id === cls.pattern_id)
             const riders = [...cls.entries].sort((a, b) => a.draw - b.draw)
+            const placings = results.find((r) => r.classKey === classKey(meet.id, cls.id))?.placings ?? []
             return (
               <details key={cls.id} className="public-class">
                 <summary>
@@ -113,8 +129,26 @@ export function PublicShow({ showId }: { showId: string }) {
                       {riders.length === 0 ? 'Draw not posted yet' : riders.length === 1 ? '1 rider' : `${riders.length} riders`}
                       {pattern ? `, ${pattern.name}` : ''}
                     </span>
+                    {placings.length > 0 && <span className="public-posted">Placings posted</span>}
                   </span>
                 </summary>
+                {placings.length > 0 && (
+                  <>
+                    <h3>Placings</h3>
+                    <ol className="public-draw">
+                      {placings.map((r) => (
+                        <li key={r.back_no}>
+                          <span className="public-place">{r.place === null ? 'No place' : `${r.place}${r.tied ? ' tie' : ''}`}</span>
+                          <BackNumber value={r.back_no} size="sm" />
+                          <span className="row-main">
+                            <strong>{r.rider || 'Rider not named'}</strong>
+                            {r.horse && <span className="muted">{r.horse}</span>}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </>
+                )}
                 {riders.length > 0 && (
                   <>
                     <h3>Draw</h3>
@@ -157,7 +191,7 @@ export function PublicShow({ showId }: { showId: string }) {
         </section>
       ))}
       {checkedAt && <p className="hint">Read from the server at {whenChecked(checkedAt)}. The draw can change up to the start of a class.</p>}
-      <p className="hint">Results are not shown here yet.</p>
+      <p className="hint">Placings appear under a class when the show publishes them. They are unofficial.</p>
     </Screen>
   )
 }

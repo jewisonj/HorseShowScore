@@ -148,6 +148,25 @@ const bucket = await db.query(`select public, file_size_limit, allowed_mime_type
 if (bucket.rows[0]?.public === true && Number(bucket.rows[0].file_size_limit) === 1048576) ok('the bucket is public to read and takes pictures up to 1 MB')
 else fail('the bucket is public to read and takes pictures up to 1 MB', JSON.stringify(bucket.rows))
 
+console.log('\n  Scores sent by judging devices, and published placings')
+const sent = (showId, extra = '') => `insert into public.class_scores (show_id, class_key, device, judge, results${extra ? ', sent_at' : ''}) values ('${showId}', 'm1:1', 'device-0123456789abcdef', 'Pat Example', '[{"place":1,"back_no":"101","score":141}]'::jsonb${extra})`
+await allowed('a judging device with only the app key sends scores for a published show', 'anon', sent('s-abc123'))
+await allowed('and sends again as more are entered', 'anon', sent('s-abc123'))
+await refused('but not for a show that is not published', 'anon', sent('s-draft1'), /row-level security/)
+await refused('nor for a show that does not exist', 'anon', sent('s-nosuch1'), /row-level security|foreign key/)
+await refused('a judging device cannot read what was sent, its own or anyone else\'s', 'anon', `select * from public.class_scores`, /permission denied/)
+await refused('nor change or remove it', 'anon', `delete from public.class_scores`, /permission denied/)
+await allowed('a signed-in person off the list sees none of it', OTHER, `select * from public.class_scores`, (r) => r.rows.length === 0)
+await allowed('a show admin reads every send', ADMIN, `select * from public.class_scores`, (r) => r.rows.length === 2)
+const placing = (extra = '') => `insert into public.class_results (show_id, class_key, placings) values ('s-abc123', 'm1:1', '[{"place":1,"back_no":"101","rider":"Avery Example","horse":"Dun It"${extra}}]'::jsonb)`
+await refused('a judging device cannot publish placings', 'anon', placing(), /permission denied/)
+await refused('nor can a signed-in person off the list', OTHER, placing(), /row-level security/)
+await refused('placings that carry a score are refused, even from a show admin', ADMIN, placing(',"score":141'), /class_results_no_scores/)
+await allowed('a show admin publishes a class\'s placings', ADMIN, placing())
+await allowed('and publishes them again after a correction', ADMIN, `insert into public.class_results (show_id, class_key, placings) values ('s-abc123', 'm1:1', '[]'::jsonb) on conflict (show_id, class_key) do update set placings = excluded.placings, published_at = now() returning class_key`, (r) => r.rows.length === 1)
+await allowed('anyone reads published placings', 'anon', `select class_key from public.class_results`, (r) => r.rows.length === 1)
+await refused('but cannot change them', 'anon', `update public.class_results set placings = '[]'::jsonb`, /permission denied/)
+
 console.log('\n  A second show admin')
 await db.exec(`insert into public.show_admins (user_id, note) values ('${OTHER}', 'show secretary');`)
 await allowed('can publish over a show someone else set up', OTHER, `insert into public.shows (id, name, definition) values (${show('s-abc123', 'Spring show, revised')}) on conflict (id) do update set name = excluded.name, definition = excluded.definition returning id`, (r) => r.rows.length === 1)

@@ -96,6 +96,11 @@ function subscribe(fn: () => void) {
   return () => listeners.delete(fn)
 }
 
+/** Be told after every change to the scores on this device. Returns a function that stops it. */
+export function watchState(fn: () => void): () => void {
+  return subscribe(fn)
+}
+
 export function getState(): AppState {
   return state
 }
