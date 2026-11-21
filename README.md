@@ -109,6 +109,8 @@ Rules that hold across the code:
 What the server does today:
 
 - **Published shows.** A show admin sets a show up, signs in and chooses Publish. Every phone lists it the next time it is online, and keeps it for when there is no signal. Anyone with the app can read a published show: classes, draw and patterns. Judges' names are never published: the database refuses a show that names one. Each judge types a name on the day screen of the device they score on, and it goes in that device's results file.
+- **Setup is for signed-in show admins.** A phone that is not signed in can pick a show, score it and open a show file. It is not offered Create a show.
+- **The workbook from its link.** In setup, paste the Google Sheets link and the server fetches an Excel copy (function `fetch-workbook`). The sheet must be shared so anyone with the link can view. It is only read.
 - **Pattern book reader.** In setup, a signed-in show admin hands over the pattern book as a PDF. An Edge Function sends it to Claude and answers with each pattern as boxes with short codes. A person ticks what to keep and checks it against the book.
 - **Scores are not on the server yet.** They stay on each device. `supabase/drafts/full-schema-draft.sql` is a sketch for that step, not a migration.
 
@@ -127,8 +129,9 @@ What the server does today:
    ```
    npx supabase login
    npx supabase functions deploy read-pattern-book --project-ref vczrsrkjmbuxzzmmfypr
+   npx supabase functions deploy fetch-workbook --project-ref vczrsrkjmbuxzzmmfypr
    ```
-   `supabase/config.toml` turns off the platform's own sign-in check for this function, because the function asks the database whether the caller is a show admin before it does anything.
+   `supabase/config.toml` turns off the platform's own sign-in check for these functions, because each one asks the database whether the caller is a show admin before it does anything.
 
 Optional function secrets: `PATTERN_READER_MODEL` (default `claude-sonnet-5-5`) and `PATTERN_READER_EFFORT` (default `medium`).
 

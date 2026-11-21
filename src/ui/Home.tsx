@@ -37,6 +37,8 @@ export function Home() {
   const backupRef = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState('')
   const shows = allShows()
+  // Where there is a server, creating a show is for the people on its list.
+  const canSetUp = !cloud.configured || cloud.admin
   const stamp = new Date().toISOString().slice(0, 10)
 
   return (
@@ -83,11 +85,13 @@ export function Home() {
         </>
       )}
 
-      <h2>Set up a show</h2>
+      <h2>{canSetUp ? 'Set up a show' : 'Setting up shows'}</h2>
       <div className="stack">
-        <button className="btn btn-primary btn-wide" onClick={() => go('/new')}>
-          Create a show
-        </button>
+        {canSetUp && (
+          <button className="btn btn-primary btn-wide" onClick={() => go('/new')}>
+            Create a show
+          </button>
+        )}
         <button className="btn" onClick={() => showFileRef.current?.click()}>
           Open a show file
         </button>
@@ -115,13 +119,15 @@ export function Home() {
         />
         {cloud.configured && (
           <button className="btn" onClick={() => go('/account')}>
-            {cloud.user ? `Signed in as ${cloud.user.email}` : 'Sign in to publish shows'}
+            {cloud.user ? `Signed in as ${cloud.user.email}` : 'Sign in to set up shows'}
           </button>
         )}
       </div>
       <p className="hint">
         {cloud.configured
-          ? 'Setting up a show is easiest on a computer. Sign in there, set the show up and publish it. It then appears in the list on every phone. A show file still works where there is no signal.'
+          ? canSetUp
+            ? 'Setting up a show is easiest on a computer. Set it up there and publish it. It then appears in the list on every phone. A show file still works where there is no signal.'
+            : 'Shows are created and changed by the people who run them, after signing in. Scoring needs no account. A show file from them can be opened here where there is no signal.'
           : 'Setting up a show is easiest on a computer. Save it there, send the show file to each phone, and open it here.'}
       </p>
 

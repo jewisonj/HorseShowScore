@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { fetchWorkbook, startCloud, useCloud } from '../cloud/cloud'
 import { classKey, getShow, type Meet, type Pattern, type ShowClass, type ShowFile } from '../data/fixture'
 import { saveShow } from '../data/shows'
 import { loadDraw } from '../seed'
@@ -14,6 +15,7 @@ import {
   patternLibrary,
   problemsIn,
 } from '../setup/draft'
+import { rememberSheetLink, sheetLinkFor } from '../setup/sheetLink'
 import { readShowWorkbook } from '../setup/workbook'
 import { readXlsx } from '../setup/xlsx'
 import { classState, getState, hasWork, resizeRuns } from '../store'
@@ -149,9 +151,33 @@ export function SetupScreen({ showId }: { showId?: string }) {
   const [notes, setNotes] = useState<string[]>([])
   const [problems, setProblems] = useState<string[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
+  const cloud = useCloud()
+  const [link, setLink] = useState(() => sheetLinkFor(draft.id))
+  const [fetching, setFetching] = useState(false)
+  useEffect(() => {
+    void startCloud()
+  }, [])
   // Patterns from other shows, leaving out any this show already has a copy of.
   const have = new Set(draft.patterns.map((p) => p.name.trim().toLowerCase()))
   const library = patternLibrary(draft.id).filter((p) => !have.has(p.name.trim().toLowerCase()))
+
+  // Where there is a server, shows are set up by the people on its list.
+  if (cloud.configured && !cloud.admin) {
+    return (
+      <Screen title="Sign in to set up shows" backTo="/" backLabel="Shows">
+        <p className="hint">
+          {cloud.user
+            ? 'This account is not on the list of people who can set up shows. The owner adds accounts to that list.'
+            : 'Shows are created and changed by the people who run them. Sign in to carry on.'}
+        </p>
+        <div className="stack">
+          <button className="btn btn-primary btn-wide" onClick={() => go('/account')}>
+            {cloud.user ? 'Use another account' : 'Sign in'}
+          </button>
+        </div>
+      </Screen>
+    )
+  }
 
   if (showId && !existing) {
     return (
@@ -198,8 +224,27 @@ export function SetupScreen({ showId }: { showId?: string }) {
   }
 
   async function onWorkbook(file: File) {
+    readWorkbook(new Uint8Array(await file.arrayBuffer()))
+  }
+
+  /** Have the server fetch the sheet from its link, then read it like a downloaded file. */
+  async function onLink() {
+    if (fetching) return
+    setFetching(true)
+    setNotes([])
+    const got = await fetchWorkbook(link)
+    setFetching(false)
+    if (!got.ok) {
+      setNotes([got.error])
+      return
+    }
+    rememberSheetLink(draft.id, link.trim())
+    readWorkbook(got.bytes)
+  }
+
+  function readWorkbook(bytes: Uint8Array) {
     try {
-      const wb = readXlsx(new Uint8Array(await file.arrayBuffer()))
+      const wb = readXlsx(bytes)
       const read = readShowWorkbook(wb, draft.id)
       // Keep pattern choices already made, by class name and then by division.
       const before = draft.meets.flatMap((m) => m.classes)
@@ -268,14 +313,41 @@ export function SetupScreen({ showId }: { showId?: string }) {
       </div>
 
       <h2>Bring in the show workbook</h2>
-      <p className="hint">
-        If the show is kept in the Google Sheets workbook, download it as an Excel file (File, Download, Microsoft
-        Excel) and choose it here. It fills in the classes, the running order and the draw. The file is read on this
-        computer. Nothing is sent anywhere and the sheet itself is never touched.
-      </p>
+      {cloud.configured ? (
+        <>
+          <p className="hint">
+            If the show is kept in the Google Sheets workbook, paste its link. It fills in the classes, the running
+            order and the draw, and can be read again whenever the draw changes. The sheet has to be shared so anyone
+            with the link can view. It is only read, never changed, and the link stays on this computer.
+          </p>
+          <label className="field">
+            <span>Google Sheets link</span>
+            <input
+              type="url"
+              inputMode="url"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              placeholder="https://docs.google.com/spreadsheets/d/..."
+              autoComplete="off"
+            />
+          </label>
+          <div className="row-actions">
+            <button className="btn btn-primary" disabled={fetching || link.trim() === ''} onClick={() => void onLink()}>
+              {fetching ? 'Reading the sheet' : 'Read the sheet'}
+            </button>
+          </div>
+          <p className="hint">Or download it as an Excel file (File, Download, Microsoft Excel) and choose that.</p>
+        </>
+      ) : (
+        <p className="hint">
+          If the show is kept in the Google Sheets workbook, download it as an Excel file (File, Download, Microsoft
+          Excel) and choose it here. It fills in the classes, the running order and the draw. The file is read on
+          this computer. Nothing is sent anywhere and the sheet itself is never touched.
+        </p>
+      )}
       <div className="row-actions">
-        <button className="btn btn-primary" onClick={() => fileRef.current?.click()}>
-          Choose the workbook
+        <button className={cloud.configured ? 'btn' : 'btn btn-primary'} onClick={() => fileRef.current?.click()}>
+          {cloud.configured ? 'Choose a downloaded workbook' : 'Choose the workbook'}
         </button>
         <input
           ref={fileRef}

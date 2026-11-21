@@ -6,3 +6,7 @@ project_id = "horseshowscore"
 # kind of key, so it is off here.
 [functions.read-pattern-book]
 verify_jwt = false
+
+# Same as above: it asks the database whether the caller is a show admin.
+[functions.fetch-workbook]
+verify_jwt = false

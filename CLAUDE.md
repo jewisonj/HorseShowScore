@@ -18,7 +18,8 @@ Read `README.md` first. The requirements, decision log and scoring references li
 
 - A show is one self-contained file (`ShowFile`): days, classes, draw and patterns. Meet ids and pattern ids are unique across shows, so a class is found from its meet id and class id alone.
 - The sample show ships in `src/data/`. Shows made in setup live in the device's storage and move between devices as show files until sync is built.
-- The show workbook is read only, in the browser, from an Excel download. Never write to anyone's Google Sheet. `src/setup/workbook.ts` says exactly which cells are relied on.
+- The show workbook is read only, in the browser, from an Excel file: a download, or a copy the server fetches from the sheet's link (`supabase/functions/fetch-workbook`, one GET of Google's export address for a link-shared sheet). Never write to anyone's Google Sheet. `src/setup/workbook.ts` says exactly which cells are relied on.
+- A sheet's link is remembered on the setup computer only (`src/setup/sheetLink.ts`). Never put it in a show: published shows are public and the link opens the whole workbook.
 - Tests build their own small workbook with made-up names (`src/setup/testWorkbook.ts`). Do not commit a real show workbook.
 
 ## The server
@@ -27,6 +28,7 @@ Read `README.md` first. The requirements, decision log and scoring references li
 - A published show is readable by anyone. It may hold only classes, the four draw fields and patterns. Never add judges, schools, coaches, scores, or rider height and weight to it.
 - Judges' names are not part of a show. The owner said on 2026-11-21 to remove them or let judges enter them. Setup does not ask for one, the workbook's judge column is not read, publishing strips them, and the database refuses a show that names one. A judge types a name on the day screen; it stays in that device's state and its results file.
 - `is_show_admin()` runs as the caller and is not callable without signing in. Keep it that way: Supabase's advisor flags owner-rights functions in `public`.
+- Where the app has a server, creating and changing shows is offered only to signed-in show admins (the first screen, setup, the show screen). That is for clarity, not safety: the database is what refuses everyone else. Opening a show file stays open to all, for arenas with no signal.
 - Only people in `show_admins` change shows. Rows are added by the owner in the SQL editor, never from the app.
 - New tables need row-level security, policies and explicit grants in the migration, and a check in `supabase/tests/check-migration.mjs` for each kind of caller.
 - The app talks to the server only through `CloudBackend` (`src/cloud/backend.ts`). Tests use `makeFakeBackend` and never touch the network.

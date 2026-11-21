@@ -167,7 +167,7 @@ export function ShowScreen({ showId }: { showId: string }) {
         <button className="btn" onClick={() => download(`${slug(show.name)}.show.json`, JSON.stringify(show), 'application/json')}>
           Download the show file
         </button>
-        {!isSample && (local !== undefined || cloud.admin) && (
+        {!isSample && (cloud.configured ? cloud.admin : local !== undefined) && (
           <button className="btn" onClick={() => go(`/s/${show.id}/setup`)}>
             Change the setup
           </button>

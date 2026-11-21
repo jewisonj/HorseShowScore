@@ -63,6 +63,24 @@ export function createSupabaseBackend(url: string, key: string): CloudBackend {
       const { error } = await sb.from('shows').delete().eq('id', id)
       if (error) throw new Error(error.message)
     },
+    async fetchWorkbook(link) {
+      const { data } = await sb.auth.getSession()
+      const token = data.session?.access_token
+      if (!token) throw new Error('Sign in first.')
+      const res = await fetch(`${url}/functions/v1/fetch-workbook`, {
+        method: 'POST',
+        headers: { apikey: key, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link }),
+      })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: unknown; message?: unknown } | null
+        const said = body && typeof body.error === 'string' ? body.error : ''
+        // Supabase itself answers 404 with its own words when the function has not been deployed.
+        if (res.status === 404 && !said) throw new Error('Reading a sheet from its link is not set up on the server yet.')
+        throw new Error(said || `The server did not answer (error ${res.status}).`)
+      }
+      return res.arrayBuffer()
+    },
     async readPatternBook(pdfBase64) {
       const { data } = await sb.auth.getSession()
       const token = data.session?.access_token

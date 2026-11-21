@@ -10,6 +10,9 @@ export interface FakeBackend extends CloudBackend {
   signedIn: CloudUser | null
   /** Set true to act like a server that cannot be reached. */
   down: boolean
+  /** The Excel file the server hands back for a sheet link. Null acts like a sheet that is not shared. */
+  workbook: Uint8Array | null
+  workbookLinks: string[]
   /** What the pattern book reader answers with. */
   reader: unknown
   readerCalls: number
@@ -22,6 +25,8 @@ export function makeFakeBackend(): FakeBackend {
     accounts: {},
     signedIn: null,
     down: false,
+    workbook: null,
+    workbookLinks: [],
     reader: { patterns: [], notes: '' },
     readerCalls: 0,
     async user() {
@@ -58,6 +63,13 @@ export function makeFakeBackend(): FakeBackend {
     async removeShow(id) {
       if (fake.down) throw new Error('Failed to fetch')
       if (await fake.isShowAdmin()) fake.shows = fake.shows.filter((s) => s.id !== id)
+    },
+    async fetchWorkbook(link) {
+      fake.workbookLinks.push(link)
+      if (fake.down) throw new Error('Failed to fetch')
+      if (!(await fake.isShowAdmin())) throw new Error('This account is not on the list of people who can set up shows.')
+      if (!fake.workbook) throw new Error('Google would not hand over that sheet.')
+      return fake.workbook.slice().buffer as ArrayBuffer
     },
     async readPatternBook() {
       fake.readerCalls++

@@ -1,10 +1,11 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { setBackendForTests, signIn, startCloud } from '../cloud/cloud'
+import { setBackendForTests, signIn, signOut, startCloud } from '../cloud/cloud'
 import { makeFakeBackend, type FakeBackend } from '../cloud/fakeBackend'
 import { clearCloudCache } from '../data/cloudShows'
 import type { ShowFile } from '../data/fixture'
 import { clearShows, saveShow, userShows } from '../data/shows'
+import { sampleShowWorkbook } from '../setup/testWorkbook'
 import { resultsCsv } from '../results'
 import { clearAll, getState } from '../store'
 import { AccountScreen } from './AccountScreen'
@@ -153,21 +154,113 @@ describe('the judge on this device', () => {
   })
 
   it('setup has no judge field', async () => {
+    await startCloud()
+    await signIn('admin@example.com', 'right')
     saveShow(show('s-fall00001', 'p-fall-1'))
     render(<SetupScreen showId="s-fall00001" />)
     expect(screen.queryByLabelText('Judge')).toBeNull()
   })
 })
 
+describe('setting up shows is for the people on the list', () => {
+  it('a phone that is not signed in is not offered Create a show, but can still open a show file', async () => {
+    render(<Home />)
+    expect(await screen.findByRole('button', { name: 'Sign in to set up shows' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Create a show' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Open a show file' })).toBeTruthy()
+  })
+
+  it('going straight to setup without signing in gives a sign-in screen, not setup', async () => {
+    render(<SetupScreen />)
+    expect(screen.getByRole('heading', { name: 'Sign in to set up shows' })).toBeTruthy()
+    expect(screen.queryByText('The show')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    expect(window.location.hash).toBe('#/account')
+  })
+
+  it('a signed-in account that is off the list is told so and gets no setup', async () => {
+    await startCloud()
+    await signIn('judge@example.com', 'right')
+    saveShow(show('s-fall00001', 'p-fall-1'))
+    render(<SetupScreen showId="s-fall00001" />)
+    expect(screen.getByText(/not on the list of people who can set up shows/)).toBeTruthy()
+    cleanup()
+    render(<Home />)
+    expect(screen.queryByRole('button', { name: 'Create a show' })).toBeNull()
+  })
+
+  it('a show admin is offered Create a show, and still is when the app is opened again with no signal', async () => {
+    await startCloud()
+    await signIn('admin@example.com', 'right')
+    render(<Home />)
+    expect(screen.getByRole('button', { name: 'Create a show' })).toBeTruthy()
+    cleanup()
+    // The app is closed and opened again where there is no signal.
+    server.down = true
+    setBackendForTests(server, true)
+    render(<Home />)
+    expect(screen.getByRole('button', { name: 'Create a show' })).toBeTruthy()
+    await startCloud()
+    expect(screen.getByRole('button', { name: 'Create a show' })).toBeTruthy()
+  })
+
+  it('signing out takes Create a show away, on this visit and the next', async () => {
+    await startCloud()
+    await signIn('admin@example.com', 'right')
+    await signOut()
+    setBackendForTests(server, true)
+    render(<Home />)
+    expect(screen.queryByRole('button', { name: 'Create a show' })).toBeNull()
+  })
+})
+
+describe('reading the workbook from its Google Sheets link', () => {
+  const LINK = 'https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdefgh/edit?usp=sharing'
+
+  it('fills in the classes and the draw, and remembers the link on this computer only', async () => {
+    await startCloud()
+    await signIn('admin@example.com', 'right')
+    server.workbook = sampleShowWorkbook()
+    render(<SetupScreen />)
+    fireEvent.change(screen.getByLabelText('Google Sheets link'), { target: { value: LINK } })
+    fireEvent.click(screen.getByRole('button', { name: 'Read the sheet' }))
+    expect(await screen.findByText(/Read \d+ classes and 6 rides over 2 days/)).toBeTruthy()
+    expect(server.workbookLinks).toEqual([LINK])
+    expect(localStorage.getItem('hss.sheetlinks.v1')).toContain(LINK)
+    // Nothing about the link is in the show that would be saved or published.
+    expect(JSON.stringify(userShows())).not.toContain('docs.google.com')
+  })
+
+  it('says what to do when the sheet is not shared by link', async () => {
+    await startCloud()
+    await signIn('admin@example.com', 'right')
+    server.workbook = null
+    render(<SetupScreen />)
+    fireEvent.change(screen.getByLabelText('Google Sheets link'), { target: { value: LINK } })
+    fireEvent.click(screen.getByRole('button', { name: 'Read the sheet' }))
+    expect(await screen.findByText(/Google would not hand over that sheet/)).toBeTruthy()
+  })
+
+  it('a link that is not a Google Sheet is refused on this computer, without asking the server', async () => {
+    await startCloud()
+    await signIn('admin@example.com', 'right')
+    render(<SetupScreen />)
+    fireEvent.change(screen.getByLabelText('Google Sheets link'), { target: { value: 'https://example.com/spreadsheets/d/abc' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Read the sheet' }))
+    expect(await screen.findByText(/not a Google Sheets link/)).toBeTruthy()
+    expect(server.workbookLinks).toEqual([])
+  })
+})
+
 describe('reading a pattern book in setup', () => {
   const pdf = () => new File([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31]).buffer as ArrayBuffer], 'patterns.pdf', { type: 'application/pdf' })
 
-  it('is offered only to a signed-in show admin', async () => {
+  it('is offered to a signed-in show admin', async () => {
     await startCloud()
+    await signIn('admin@example.com', 'right')
     saveShow(show('s-fall00001'))
     render(<SetupScreen showId="s-fall00001" />)
-    expect(screen.queryByRole('button', { name: /Read a pattern book/ })).toBeNull()
-    expect(screen.getByText(/A signed-in show admin can have the pattern book read here/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Read a pattern book/ })).toBeTruthy()
   })
 
   it('adds the ticked patterns and gives classes theirs', async () => {

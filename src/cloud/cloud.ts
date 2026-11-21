@@ -22,7 +22,74 @@ export interface CloudState {
   check: 'never' | 'checking' | 'ok' | 'failed'
 }
 
-let state: CloudState = { configured: false, user: null, admin: false, check: 'never' }
+// ---------------------------------------------------------------------------
+// The backend. Loaded only when it is first needed, so the scoring screens do
+// not carry the Supabase library.
+// ---------------------------------------------------------------------------
+let override: CloudBackend | null | undefined
+let loading: Promise<CloudBackend | null> | null = null
+let started = false
+let stopListening: (() => void) | null = null
+
+function serverAddress(): { url: string; key: string } | null {
+  // Tests never reach a real server. They hand in a fake with setBackendForTests.
+  if (import.meta.env.MODE === 'test') return null
+  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined
+  return url && key ? { url, key } : null
+}
+
+/** Whether this build has a server at all. Known at once, without waiting on anything. */
+function isConfigured(): boolean {
+  return override !== undefined ? override !== null : serverAddress() !== null
+}
+
+async function backend(): Promise<CloudBackend | null> {
+  if (override !== undefined) return override
+  const at = serverAddress()
+  if (!at) return null
+  loading ??= import('./supabaseBackend').then((m) => m.createSupabaseBackend(at.url, at.key)).catch(() => null)
+  return loading
+}
+
+// Who was signed in here last, and whether they could set up shows. It lets a
+// show admin open setup at once, and with no signal. It only decides which
+// buttons show: the server checks every change for itself.
+const ACCOUNT_KEY = 'hss.account.v1'
+
+function remembered(): { user: CloudUser; admin: boolean } | null {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(ACCOUNT_KEY) ?? 'null') as { user?: CloudUser; admin?: unknown } | null
+    if (!parsed || typeof parsed.user?.id !== 'string' || typeof parsed.user?.email !== 'string') return null
+    return { user: { id: parsed.user.id, email: parsed.user.email }, admin: parsed.admin === true }
+  } catch {
+    return null
+  }
+}
+
+function remember(user: CloudUser, admin: boolean) {
+  try {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify({ user, admin }))
+  } catch {
+    // Not worth stopping for.
+  }
+}
+
+function forget() {
+  try {
+    localStorage.removeItem(ACCOUNT_KEY)
+  } catch {
+    // Not worth stopping for.
+  }
+}
+
+function initial(): CloudState {
+  const configured = isConfigured()
+  const last = configured ? remembered() : null
+  return { configured, user: last?.user ?? null, admin: last?.admin ?? false, check: 'never' }
+}
+
+let state: CloudState = initial()
 const listeners = new Set<() => void>()
 
 function set(patch: Partial<CloudState>) {
@@ -43,33 +110,17 @@ export function useCloud(): CloudState {
   return useSyncExternalStore(subscribe, cloudState, cloudState)
 }
 
-// ---------------------------------------------------------------------------
-// The backend. Loaded only when it is first needed, so the scoring screens do
-// not carry the Supabase library.
-// ---------------------------------------------------------------------------
-let override: CloudBackend | null | undefined
-let loading: Promise<CloudBackend | null> | null = null
-let started = false
-let stopListening: (() => void) | null = null
-
-async function backend(): Promise<CloudBackend | null> {
-  if (override !== undefined) return override
-  // Tests never reach a real server. They hand in a fake with setBackendForTests.
-  if (import.meta.env.MODE === 'test') return null
-  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined
-  if (!url || !key) return null
-  loading ??= import('./supabaseBackend').then((m) => m.createSupabaseBackend(url, key)).catch(() => null)
-  return loading
-}
-
-/** For tests: use this backend, or none. Also forgets who was signed in. */
-export function setBackendForTests(fake: CloudBackend | null) {
+/**
+ * For tests: use this backend, or none. Forgets who was signed in unless told
+ * to keep it, which is how a test acts out "the app is opened again".
+ */
+export function setBackendForTests(fake: CloudBackend | null, keepAccount = false) {
   stopListening?.()
   stopListening = null
   override = fake
   started = false
-  state = { configured: false, user: null, admin: false, check: 'never' }
+  if (!keepAccount) forget()
+  state = initial()
   listeners.forEach((fn) => fn())
 }
 
@@ -84,16 +135,18 @@ function explain(e: unknown): string {
 
 async function learnUser(b: CloudBackend, user: CloudUser | null) {
   if (!user) {
+    forget()
     set({ user: null, admin: false })
     return
   }
-  set({ user })
+  const last = remembered()
+  set({ user, admin: last?.user.id === user.id ? last.admin : false })
   try {
     const admin = await b.isShowAdmin()
+    remember(user, admin)
     if (state.user?.id === user.id) set({ admin })
   } catch {
-    // Offline, or the database is not set up yet. Publishing stays hidden until this works.
-    if (state.user?.id === user.id) set({ admin: false })
+    // No signal. Keep what was last known about this account.
   }
 }
 
@@ -202,6 +255,7 @@ export async function signOut(): Promise<void> {
   } catch {
     // Signed out on this device either way.
   }
+  forget()
   set({ user: null, admin: false })
 }
 
@@ -250,6 +304,22 @@ export async function takeOffServer(show: ShowFile): Promise<string | null> {
     held: cache.held.filter((id) => id !== show.id),
   })
   return null
+}
+
+export type WorkbookResult = { ok: true; bytes: Uint8Array } | { ok: false; error: string }
+
+/** Have the server fetch a Google Sheet, shared by link, as an Excel file. The sheet is only read. */
+export async function fetchWorkbook(link: string): Promise<WorkbookResult> {
+  const b = await backend()
+  if (!b) return { ok: false, error: 'This copy of the app is not connected to a server.' }
+  if (!/^https:\/\/docs\.google\.com\/spreadsheets\/d\/[A-Za-z0-9_-]{25,}/.test(link.trim())) {
+    return { ok: false, error: 'That is not a Google Sheets link. Copy it from the address bar while the sheet is open, or from the Share button.' }
+  }
+  try {
+    return { ok: true, bytes: new Uint8Array(await b.fetchWorkbook(link.trim())) }
+  } catch (e) {
+    return { ok: false, error: explain(e) }
+  }
 }
 
 /** The largest pattern book the reader takes. */
