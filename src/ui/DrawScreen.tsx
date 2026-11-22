@@ -55,6 +55,8 @@ export function DrawScreen({ showId }: { showId: string }) {
   const [busy, setBusy] = useState(false)
   const [horseNote, setHorseNote] = useState('')
   const [ridersNote, setRidersNote] = useState('')
+  // After the sheet is read: riders waiting, with no horse, in classes the sheet is still drawing. By class key.
+  const [waitingOn, setWaitingOn] = useState<Record<string, string[]>>({})
   const [classNote, setClassNote] = useState<Record<string, string>>({})
   // Lines copied for the sheet that the device would not copy by itself, shown to be copied by hand.
   const [toCopy, setToCopy] = useState<Record<string, string>>({})
@@ -272,6 +274,27 @@ export function DrawScreen({ showId }: { showId: string }) {
     setRidersNote(`${count} classes and ${rides} rides are in. If you read the horses from the sheet before, read them again so they land on the right classes. Then draw, and publish the changes from the show page.`)
   }
 
+  /**
+   * The draw at the meeting is over and the sheet is right: every class it has
+   * drawn becomes exactly the riders on it. The riders still waiting with no
+   * horse came from the program, which the meeting has overtaken, or have
+   * scratched and left a spare horse on the sheet.
+   */
+  function finishSheetDraw() {
+    const gone: string[] = []
+    for (const [key, backNos] of Object.entries(waitingOn)) {
+      changeClass(key, (c) => {
+        const out = c.entries.filter((e) => backNos.includes(e.back_no) && !e.horse)
+        gone.push(...out.map((e) => e.back_no))
+        return { ...c, entries: c.entries.filter((e) => !out.includes(e)) }
+      })
+    }
+    setWaitingOn({})
+    setHorseNote(
+      `Taken out: ${gone.join(', ')}. Every class the sheet has drawn now has exactly the riders on the sheet. Publish the changes from the show page to send it to the phones.`,
+    )
+  }
+
   /** Change one class of the show. Saved on this computer before the screen shows it. */
   function changeClass(key: string, fn: (c: ShowClass) => ShowClass) {
     const current = getShow(showId)
@@ -452,12 +475,14 @@ export function DrawScreen({ showId }: { showId: string }) {
       const current = getShow(showId)
       // The sheet's own list of riders names anyone its draw has whom the class here did not.
       const names = new Map(readRoster(wb).map((r) => [r.backNo, r.rider]))
-      const nameOf = (backNo: string) => current?.meets.flatMap((m) => m.classes.flatMap((c) => c.entries)).find((e) => e.back_no === backNo && e.rider)?.rider ?? names.get(backNo) ?? ''
+      // The sheet's own rider list comes first: the program this show was set up from goes out of date at the meeting.
+      const nameOf = (backNo: string) => names.get(backNo) ?? current?.meets.flatMap((m) => m.classes.flatMap((c) => c.entries)).find((e) => e.back_no === backNo && e.rider)?.rider ?? ''
       const matched = new Set<string>()
       const unmatched: string[] = []
       const newRiders: string[] = []
       const takenOut: string[] = []
       const waiting: string[] = []
+      const waitingBy: Record<string, string[]> = {}
       const unfinished: string[] = []
       let drawn = 0
       for (const from of perClass) {
@@ -482,6 +507,7 @@ export function DrawScreen({ showId }: { showId: string }) {
           newRiders.push(...taken.added)
           takenOut.push(...taken.out)
           waiting.push(...taken.waiting)
+          if (taken.waiting.length > 0) waitingBy[key] = taken.waiting
           if (!taken.finished) unfinished.push(`${cls.name} (${from.backNos.filter(Boolean).length} of ${from.places.filter(Boolean).length})`)
           changeClass(key, (c) => ({ ...c, entries: taken.entries, alternates: from.alternates }))
         } else {
@@ -499,6 +525,7 @@ export function DrawScreen({ showId }: { showId: string }) {
         changeClass(key, (c) => ({ ...c, alternates: [] }))
       }
       setBook({ ...withHorses, places, alts, sets })
+      setWaitingOn(waitingBy)
       const some = (list: string[]) => `${list.slice(0, 8).join(', ')}${list.length > 8 ? ` and ${list.length - 8} more` : ''}`
       setHorseNote(
         broughtIn +
@@ -656,6 +683,24 @@ export function DrawScreen({ showId }: { showId: string }) {
         <p className="hint" role="status">
           {horseNote}
         </p>
+      )}
+      {Object.keys(waitingOn).length > 0 && (
+        <section className="panel" aria-label="Riders waiting with no horse">
+          <p className="hint">
+            {Object.values(waitingOn).reduce((n, list) => n + list.length, 0)} riders are in a class the sheet is still drawing, and are not on its draw. While the draw is going on,
+            leave them: they may be typed in next. When the draw is finished and the sheet is right, they are not riding in those classes.
+          </p>
+          <ul className="list">
+            {Object.entries(waitingOn).map(([key, backNos]) => (
+              <li key={key}>
+                <strong>{classes.find((c) => c.key === key)?.cls.name ?? key}:</strong> {backNos.join(', ')}
+              </li>
+            ))}
+          </ul>
+          <button className="btn btn-primary" onClick={finishSheetDraw}>
+            The sheet's draw is finished. Take out the riders it does not have
+          </button>
+        </section>
       )}
 
       <h2>Riders</h2>

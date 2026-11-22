@@ -608,6 +608,11 @@ describe('the sheet’s draw table, from before the riders draw to after', () =>
     // Nothing of the school went into the show.
     expect(JSON.stringify(getShow(SUNDAY))).not.toContain('Example College')
 
+    // The page offers to finish, and names who would go. Nothing happens until it is pressed.
+    const waiting = screen.getByRole('region', { name: 'Riders waiting with no horse' })
+    expect(within(waiting).getByRole('listitem').textContent).toMatch(/^Reining: (1025, 553|553, 1025)$/)
+    expect(getClass('meet-6', '1')!.entries).toHaveLength(6)
+
     // Read again when the last two are typed in: they are back, by name, in their places.
     server.workbook = makeXlsx({
       Draw: { A4: 1, B4: 'REINING', B6: 576, D6: 'BUNNY', B7: 1007, D7: 'GEORGE', B8: 102, D8: 'CISCO', B9: 999, D9: 'REY', B10: 553, D10: 'GEORGE', B11: 1025, D11: 'BUNNY', D18: 'KASH' },
@@ -638,5 +643,29 @@ describe('the sheet’s draw table, from before the riders draw to after', () =>
     expect(getClass('meet-6', '1')!.entries.map((e) => e.back_no)).toEqual(['576', '1007', '102', '999', '553'])
     // 1025 still rides Open Horsemanship.
     expect(getClass('meet-6', '6')!.entries.some((e) => e.back_no === '1025')).toBe(true)
+
+    // The meeting ends with a spare horse still on the sheet for Reining, and 553 gone from it. The class looks
+    // unfinished, so 553 waits, until the admin says the sheet's draw is finished.
+    server.workbook = makeXlsx({
+      Draw: { A4: 1, B4: 'REINING', B6: 576, D6: 'BUNNY', B7: 1007, D7: 'GEORGE', B8: 102, D8: 'CISCO', B9: 999, D9: 'REY', D10: 'GEORGE', D18: 'KASH' },
+      'Horse Points': HORSES,
+      Exhibitors: { B5: 999, C5: 'Nina New', D5: 'Example College', B6: 576, C6: 'Name On The Sheet', D6: 'Example College' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Read the horses from the sheet' }))
+    const last = await screen.findByRole('region', { name: 'Riders waiting with no horse' }, { timeout: 5000 })
+    expect(within(last).getByRole('listitem').textContent).toBe('Reining: 553')
+    // A rider the sheet names is named as the sheet has them.
+    expect(getClass('meet-6', '1')!.entries.find((e) => e.back_no === '576')!.rider).toBe('Name On The Sheet')
+    fireEvent.click(within(last).getByRole('button', { name: "The sheet's draw is finished. Take out the riders it does not have" }))
+    expect(await screen.findByText(/^Taken out: 553\. Every class the sheet has drawn now has exactly the riders on the sheet\./)).toBeTruthy()
+    expect(getClass('meet-6', '1')!.entries.map((e) => [e.draw, e.back_no, e.horse])).toEqual([
+      [1, '576', 'Bunny'],
+      [2, '1007', 'George'],
+      [3, '102', 'Cisco'],
+      [4, '999', 'Rey'],
+    ])
+    expect(screen.queryByRole('region', { name: 'Riders waiting with no horse' })).toBeNull()
+    // Classes the sheet has not drawn are left as they were.
+    expect(getClass('meet-6', '2')!.entries).toHaveLength(7)
   })
 })

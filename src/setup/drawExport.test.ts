@@ -79,9 +79,10 @@ describe('a class on the sheet and the class of the show it is', () => {
       { draw: 2, back_no: '20', rider: 'Bo', horse: '' },
       { draw: 3, back_no: '30', rider: 'Cy', horse: '' },
     ]
-    const got = takeSheetDraw(entries, { places: ['Ace', 'Bay', 'Ace'], backNos: ['30', '', '40', '30'] }, (b) => (b === '40' ? 'Di' : ''))
+    // The sheet names 40, and names 30 its own way. Where it has a name, that is the name.
+    const got = takeSheetDraw(entries, { places: ['Ace', 'Bay', 'Ace'], backNos: ['30', '', '40', '30'] }, (b) => (b === '40' ? 'Di' : b === '30' ? 'Cy Cole' : ''))
     expect(got.entries).toEqual([
-      { draw: 1, back_no: '30', rider: 'Cy', horse: 'Ace' },
+      { draw: 1, back_no: '30', rider: 'Cy Cole', horse: 'Ace' },
       { draw: 3, back_no: '40', rider: 'Di', horse: 'Ace' },
       // Bay has nobody yet, so the class is still being drawn: the two not typed yet wait, with no horse.
       { draw: 13, back_no: '10', rider: 'Ann', horse: '' },
@@ -90,8 +91,9 @@ describe('a class on the sheet and the class of the show it is', () => {
     expect([got.finished, got.out, got.waiting]).toEqual([false, [], ['10', '20']])
 
     // Every horse has a rider: the class is finished, and it is who the sheet has. The rest scratched or moved.
-    const done = takeSheetDraw(entries, { places: ['Ace', 'Bay'], backNos: ['30', '40'] }, () => 'Di')
+    const done = takeSheetDraw(entries, { places: ['Ace', 'Bay'], backNos: ['30', '40'] }, (b) => (b === '40' ? 'Di' : ''))
     expect(done.entries).toEqual([
+      // The sheet has no name for 30, so the one the class had stands.
       { draw: 1, back_no: '30', rider: 'Cy', horse: 'Ace' },
       { draw: 2, back_no: '40', rider: 'Di', horse: 'Bay' },
     ])

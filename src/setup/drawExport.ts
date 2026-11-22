@@ -95,7 +95,9 @@ export function classForSheet(meet: Meet, sheet: { classNo: number; name: string
  * - **Still being drawn**: some horse has nobody yet. A rider the class had
  *   who is not typed yet stays, after the places and with no horse (`waiting`),
  *   so a half-typed sheet drops nobody.
- * A back number the class did not have is added, named by `nameOf`.
+ * A back number the class did not have is added. Every rider on the sheet's
+ * draw is named by `nameOf`, which should ask the sheet first: the program a
+ * show was set up from goes out of date at the meeting (owner, 2026-11-22).
  */
 export function takeSheetDraw(
   entries: Entry[],
@@ -110,7 +112,8 @@ export function takeSheetDraw(
     seen.add(backNo)
     const had = entries.find((e) => e.back_no === backNo)
     if (!had) added.push(backNo)
-    drawn.push({ draw: i + 1, back_no: backNo, rider: had ? had.rider : nameOf(backNo), horse: sheet.places[i] ?? '' })
+    // The sheet names its own riders. The name the class had is used only where the sheet has none.
+    drawn.push({ draw: i + 1, back_no: backNo, rider: nameOf(backNo) || (had ? had.rider : ''), horse: sheet.places[i] ?? '' })
   })
   const finished = sheet.places.every((horse, i) => !horse || Boolean(sheet.backNos[i]))
   const rest = entries.filter((e) => !seen.has(e.back_no))
