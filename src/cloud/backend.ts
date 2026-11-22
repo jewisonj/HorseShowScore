@@ -109,11 +109,18 @@ export interface HorseLimits {
   maxGroup: 1 | 2 | 3
 }
 
-/** A team and the PIN its coach signs on with. Null when the team has no coach PIN. */
+/**
+ * A team and where its coach's sign-on stands: off, on the starting PIN that
+ * every coach begins with, or on a PIN the coach chose. The chosen PIN itself
+ * is never sent to anyone.
+ */
 export interface TeamPin {
   team: string
-  pin: string | null
+  coach: 'off' | 'start' | 'set'
 }
+
+/** Every coach begins on this PIN. It opens only the step where they choose their own. */
+export const STARTING_PIN = '0000'
 
 /** A steward's request to the judge for a re-ride. It names the class and the back number, never the rider. */
 export interface RerideAsk {
@@ -193,14 +200,18 @@ export interface CloudBackend {
   listHorses(): Promise<StableHorse[]>
   /** Show admins only: add horses, or replace the ones with the same name and provider. */
   putHorses(horses: StableHorse[]): Promise<void>
-  /** Show admins only: the teams and their coach PINs. */
+  /** Show admins only: the teams and where each coach's sign-on stands. */
   listTeams(): Promise<TeamPin[]>
-  /** Show admins only: add a team or change its coach PIN. */
-  putTeam(team: string, pin: string | null): Promise<void>
-  /** A coach PIN: the team it opens and that team's riders. Null for a wrong PIN. Throws when the server refuses or cannot be reached. */
-  coachRiders(pin: string): Promise<{ team: string; riders: RosterRider[] } | null>
-  /** A coach PIN: set the marks of one of that team's riders. */
-  coachSetMark(pin: string, backNo: string, height: boolean, group: 1 | 2 | 3): Promise<'ok' | 'wrong_pin' | 'not_yours'>
+  /** Show admins only: add a team, and turn its coach's sign-on off or on. Either way the team goes back to the starting PIN, whatever its coach had chosen. */
+  putTeam(team: string, coach: 'off' | 'start'): Promise<void>
+  /** Anyone: the names of the teams whose coach may sign on, for a coach to pick theirs. */
+  coachTeams(): Promise<string[]>
+  /** A coach's team and PIN: the team's riders, or 'change_pin' for the starting PIN, which shows nothing. Null for a wrong PIN. Throws when the server refuses or cannot be reached. */
+  coachRiders(team: string, pin: string): Promise<{ team: string; riders: RosterRider[] } | 'change_pin' | null>
+  /** A coach's team and PIN: set the marks of one of that team's riders. */
+  coachSetMark(team: string, pin: string, backNo: string, height: boolean, group: 1 | 2 | 3): Promise<'ok' | 'wrong_pin' | 'not_yours'>
+  /** A coach chooses their own PIN, with the one they have now. The first time that is the starting PIN. */
+  coachChangePin(team: string, pin: string, newPin: string): Promise<'ok' | 'wrong_pin' | 'bad_pin'>
   /** Anyone: the score cards released for a show. */
   listCards(showId: string): Promise<ReleasedCards[]>
   /** Anyone: the placings published for a show. */

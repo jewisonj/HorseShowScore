@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { RosterRider } from './backend'
+import { STARTING_PIN, type RosterRider } from './backend'
 import { explainServerError, getBackend } from './cloud'
 
 /**
@@ -7,7 +7,7 @@ import { explainServerError, getBackend } from './cloud'
  *
  * The list lives on the server (owner, 2026-11-22): back number, rider, team
  * and the two marks the horse draw works from. Show admins see all of it. A
- * coach signs on with their team's PIN and sees, and marks, their own riders.
+ * coach signs on with their team and its PIN and sees, and marks, their own riders.
  */
 
 const norm = (name: string) => name.replace(/\s+/g, ' ').trim().toLowerCase()
@@ -44,7 +44,11 @@ export function mergeRoster(have: RosterRider[], read: { backNo: string; rider: 
 }
 
 // ---------------------------------------------------------------------------
-// A coach, signed on with their team's PIN.
+// A coach, signed on with their team and its PIN.
+//
+// Every coach begins on the same starting PIN (owner, 2026-11-22), so a coach
+// says which team they are. The starting PIN opens one thing: choosing their
+// own PIN. Nothing of the team is shown until they have.
 // ---------------------------------------------------------------------------
 export interface CoachSeat {
   team: string
@@ -91,49 +95,91 @@ export function useCoach(): CoachSeat | null {
   )
 }
 
-export type CoachRiders = { ok: true; team: string; riders: RosterRider[] } | { ok: false; error: string; wrongPin?: boolean }
+export type CoachRiders =
+  | { ok: true; team: string; riders: RosterRider[] }
+  /** `choosePin`: the PIN was the starting one, and the coach has to choose their own before anything is shown. */
+  | { ok: false; error: string; wrongPin?: boolean; choosePin?: boolean }
 
-/** Ask the server for a coach PIN's team and riders. */
-async function fetchCoach(pin: string): Promise<CoachRiders> {
+const TOO_MANY = 'Too many wrong PINs. Wait ten minutes, then try again.'
+const tooMany = (said: string) => (/too_many_tries/.test(said) ? TOO_MANY : said)
+
+/** The teams whose coach may sign on, for a coach to pick theirs. */
+export async function coachTeams(): Promise<{ ok: true; teams: string[] } | { ok: false; error: string }> {
   const b = await getBackend()
   if (!b) return { ok: false, error: 'This copy of the app is not connected to a server.' }
   try {
-    const got = await b.coachRiders(pin)
-    if (!got) return { ok: false, error: 'That PIN is not a coach PIN.', wrongPin: true }
-    return { ok: true, team: got.team, riders: got.riders }
+    return { ok: true, teams: await b.coachTeams() }
   } catch (e) {
-    const said = explainServerError(e)
-    return { ok: false, error: /too_many_tries/.test(said) ? 'Too many wrong PINs. Wait ten minutes, then try again.' : said }
+    return { ok: false, error: explainServerError(e) }
   }
 }
 
-/** Sign on as a coach. The server says which team the PIN opens. */
-export async function coachSignOn(pin: string): Promise<CoachRiders> {
+/** Ask the server for a team's riders with its coach's PIN. */
+async function fetchCoach(team: string, pin: string): Promise<CoachRiders> {
+  const b = await getBackend()
+  if (!b) return { ok: false, error: 'This copy of the app is not connected to a server.' }
+  try {
+    const got = await b.coachRiders(team, pin)
+    if (got === 'change_pin') return { ok: false, error: 'Choose your own PIN first.', choosePin: true }
+    if (!got) return { ok: false, error: `That is not the coach PIN for ${team}.`, wrongPin: true }
+    return { ok: true, team: got.team, riders: got.riders }
+  } catch (e) {
+    return { ok: false, error: tooMany(explainServerError(e)) }
+  }
+}
+
+/** Sign on as the coach of a team. With the starting PIN the answer is `choosePin`, and the coach is not signed on yet. */
+export async function coachSignOn(team: string, pin: string): Promise<CoachRiders> {
+  if (team.trim() === '') return { ok: false, error: 'Pick your team.' }
   const digits = pin.trim()
-  if (!/^[0-9]{6,8}$/.test(digits)) return { ok: false, error: 'A coach PIN is 6 to 8 digits.' }
-  const got = await fetchCoach(digits)
+  if (!/^[0-9]{4,8}$/.test(digits)) return { ok: false, error: 'A coach PIN is 4 to 8 digits.' }
+  const got = await fetchCoach(team, digits)
   if (got.ok) set({ team: got.team, pin: digits })
   return got
 }
 
+/**
+ * A coach chooses their own PIN. `current` is the PIN they have now, which the
+ * first time is the starting PIN. On success the coach is signed on with the
+ * new one. Returns what went wrong, or null.
+ */
+export async function coachChoosePin(team: string, current: string, next: string): Promise<string | null> {
+  if (!/^[0-9]{4,8}$/.test(next)) return 'A PIN is 4 to 8 digits.'
+  if (next === STARTING_PIN) return 'Choose a PIN other than the one you started with.'
+  const b = await getBackend()
+  if (!b) return 'This copy of the app is not connected to a server.'
+  try {
+    const said = await b.coachChangePin(team, current, next)
+    if (said === 'ok') {
+      set({ team, pin: next })
+      return null
+    }
+    if (said === 'bad_pin') return 'That PIN cannot be used. Choose 4 to 8 digits, and not the one you started with.'
+    if (coach?.team === team) set(null)
+    return 'The PIN you signed on with is no longer accepted. Sign on again.'
+  } catch (e) {
+    return tooMany(explainServerError(e))
+  }
+}
+
 /** The signed-on coach's riders, fresh from the server. A PIN the server no longer takes signs the coach off. */
 export async function loadCoachRiders(): Promise<CoachRiders> {
-  if (!coach) return { ok: false, error: 'Sign on with your coach PIN.' }
-  const got = await fetchCoach(coach.pin)
-  if (!got.ok && got.wrongPin) set(null)
+  if (!coach) return { ok: false, error: 'Sign on as a coach.' }
+  const got = await fetchCoach(coach.team, coach.pin)
+  if (!got.ok && (got.wrongPin || got.choosePin)) set(null)
   return got
 }
 
 /** A coach marks one of their riders. Returns what went wrong, or null. */
 export async function coachMark(backNo: string, height: boolean, group: 1 | 2 | 3): Promise<string | null> {
   const b = await getBackend()
-  if (!b || !coach) return 'Sign on with your coach PIN.'
+  if (!b || !coach) return 'Sign on as a coach.'
   try {
-    const said = await b.coachSetMark(coach.pin, backNo, height, group)
+    const said = await b.coachSetMark(coach.team, coach.pin, backNo, height, group)
     if (said === 'ok') return null
     if (said === 'wrong_pin') {
       set(null)
-      return 'This coach PIN is no longer accepted. Ask the show admin for the new one.'
+      return 'Your coach PIN is no longer accepted. Sign on again. If it still fails, ask the show admin to put your team back on the starting PIN.'
     }
     return 'That rider is not on your team.'
   } catch (e) {

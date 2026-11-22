@@ -1,5 +1,5 @@
 import type { ShowFile } from '../data/fixture'
-import type { CloudBackend, CloudUser, PublishedClass, ReleasedCards, RerideAsk, RosterRider, SeatPin, SentScores, StableHorse, TeamPin } from './backend'
+import { STARTING_PIN, type CloudBackend, type CloudUser, type PublishedClass, type ReleasedCards, type RerideAsk, type RosterRider, type SeatPin, type SentScores, type StableHorse, type TeamPin } from './backend'
 
 /** A stand-in server for tests. Nothing here touches the network. */
 export interface FakeBackend extends CloudBackend {
@@ -18,8 +18,8 @@ export interface FakeBackend extends CloudBackend {
   office(showId: string, pin: string): Promise<boolean>
   /** The riders list. */
   riders: RosterRider[]
-  /** The teams and their coach PINs. */
-  teams: TeamPin[]
+  /** The teams, where each coach's sign-on stands, and the PIN a coach chose. */
+  teams: (TeamPin & { pin?: string })[]
   /** The horses list. */
   horses: StableHorse[]
   /** Re-rides asked for, by show id, oldest first. */
@@ -42,6 +42,14 @@ export interface FakeBackend extends CloudBackend {
 
 export function makeFakeBackend(): FakeBackend {
   const watchers = new Set<(user: CloudUser | null) => void>()
+
+  /** What a team and a PIN open, as the server decides it: 'ok', 'change_pin' for the starting PIN, or null. */
+  function coachSeat(team: string, pin: string): 'ok' | 'change_pin' | null {
+    const t = fake.teams.find((x) => x.team === team && x.coach !== 'off')
+    if (!t || pin === '') return null
+    if (t.coach === 'start') return pin === STARTING_PIN ? 'change_pin' : null
+    return t.pin === pin ? 'ok' : null
+  }
   const fake: FakeBackend = {
     shows: [],
     accounts: {},
@@ -182,26 +190,36 @@ export function makeFakeBackend(): FakeBackend {
     },
     async listTeams() {
       if (fake.down) throw new Error('Failed to fetch')
-      return (await fake.isShowAdmin()) ? fake.teams.map((t) => ({ ...t })) : []
+      return (await fake.isShowAdmin()) ? fake.teams.map((t) => ({ team: t.team, coach: t.coach })) : []
     },
-    async putTeam(team, pin) {
+    async putTeam(team, coach) {
       if (fake.down) throw new Error('Failed to fetch')
       if (!(await fake.isShowAdmin())) throw new Error('new row violates row-level security policy')
-      if (pin !== null && fake.teams.some((t) => t.team !== team && t.pin === pin)) throw new Error('duplicate key value violates unique constraint "teams_pin_once"')
-      fake.teams = [...fake.teams.filter((t) => t.team !== team), { team, pin }]
+      fake.teams = [...fake.teams.filter((t) => t.team !== team), { team, coach }]
     },
-    async coachRiders(pin) {
+    async coachTeams() {
       if (fake.down) throw new Error('Failed to fetch')
-      const team = pin === '' ? undefined : fake.teams.find((t) => t.pin === pin)
-      if (!team) return null
-      return { team: team.team, riders: fake.riders.filter((r) => r.team === team.team).map((r) => ({ ...r })) }
+      return fake.teams.filter((t) => t.coach !== 'off').map((t) => t.team).sort()
     },
-    async coachSetMark(pin, backNo, height, group) {
+    async coachRiders(team, pin) {
       if (fake.down) throw new Error('Failed to fetch')
-      const team = pin === '' ? undefined : fake.teams.find((t) => t.pin === pin)
-      if (!team) return 'wrong_pin'
-      if (!fake.riders.some((r) => r.backNo === backNo && r.team === team.team)) return 'not_yours'
+      const said = coachSeat(team, pin)
+      if (said === null) return null
+      if (said === 'change_pin') return 'change_pin'
+      return { team, riders: fake.riders.filter((r) => r.team === team).map((r) => ({ ...r })) }
+    },
+    async coachSetMark(team, pin, backNo, height, group) {
+      if (fake.down) throw new Error('Failed to fetch')
+      if (coachSeat(team, pin) !== 'ok') return 'wrong_pin'
+      if (!fake.riders.some((r) => r.backNo === backNo && r.team === team)) return 'not_yours'
       fake.riders = fake.riders.map((r) => (r.backNo === backNo ? { ...r, height, group } : r))
+      return 'ok'
+    },
+    async coachChangePin(team, pin, newPin) {
+      if (fake.down) throw new Error('Failed to fetch')
+      if (coachSeat(team, pin) === null) return 'wrong_pin'
+      if (!/^[0-9]{4,8}$/.test(newPin) || newPin === STARTING_PIN) return 'bad_pin'
+      fake.teams = fake.teams.map((t) => (t.team === team ? { team, coach: 'set', pin: newPin } : t))
       return 'ok'
     },
     async listClassScores(showId, pin) {

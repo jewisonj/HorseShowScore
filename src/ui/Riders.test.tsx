@@ -80,7 +80,7 @@ describe('the riders list', () => {
     expect([merged.added, merged.changed, merged.reset]).toEqual([1, 2, 1])
   })
 
-  it('is filled from the sheet by a show admin, who marks riders and gives each team a coach PIN', async () => {
+  it('is filled from the sheet by a show admin, who marks riders and lets each team’s coach sign on', async () => {
     await asAdmin()
     render(<RidersScreen />)
     expect(await screen.findByText('No riders yet. Read them from a show\'s sheet.')).toBeTruthy()
@@ -97,10 +97,33 @@ describe('the riders list', () => {
     fireEvent.click(within(within(team).getByLabelText('Weight group of 503').closest('li')!).getByLabelText('Height rider'))
     await waitFor(() => expect(server.riders.find((r) => r.backNo === '503')).toMatchObject({ height: true, group: 1 }))
 
-    expect(within(team).getByText('none yet')).toBeTruthy()
-    fireEvent.click(within(team).getByRole('button', { name: 'Make a new coach PIN for Sample University' }))
-    await waitFor(() => expect(server.teams.find((t) => t.team === 'Sample University')!.pin).toMatch(/^\d{6}$/))
-    expect(server.teams.find((t) => t.team === 'Example College')!.pin).toBeNull()
+    // A team read from a sheet has no coach sign-on until the admin turns it on. Then it starts on 0000.
+    const stands = (name: string) => server.teams.find((t) => t.team === name)!
+    expect(within(team).getByText('Coach sign-on:').parentElement!.textContent).toBe('Coach sign-on: off')
+    expect(await server.coachTeams()).toEqual([])
+    fireEvent.click(within(team).getByRole('button', { name: 'Let the coach of Sample University sign on' }))
+    await waitFor(() => expect(stands('Sample University').coach).toBe('start'))
+    expect(await within(team).findByText(/on\. The PIN is 0000 until the coach chooses their own\./)).toBeTruthy()
+    expect(stands('Example College').coach).toBe('off')
+    expect(await server.coachTeams()).toEqual(['Sample University'])
+
+    // The coach chooses a PIN. The admin never sees it, and can put the team back on 0000.
+    expect(await server.coachChangePin('Sample University', '0000', '2468')).toBe('ok')
+    expect(await server.listTeams()).toEqual([
+      { team: 'Example College', coach: 'off' },
+      { team: 'Sample University', coach: 'set' },
+    ])
+    cleanup()
+    render(<RidersScreen />)
+    const again = await screen.findByRole('region', { name: 'Sample University' })
+    expect(within(again).getByText(/on\. The coach has chosen their own PIN\./)).toBeTruthy()
+    expect(screen.queryByText(/2468/)).toBeNull()
+    fireEvent.click(within(again).getByRole('button', { name: 'Put the coach PIN of Sample University back to 0000' }))
+    await waitFor(() => expect(stands('Sample University')).toEqual({ team: 'Sample University', coach: 'start' }))
+    expect(await server.coachRiders('Sample University', '2468')).toBeNull()
+    fireEvent.click(await within(again).findByRole('button', { name: 'Turn off coach sign-on for Sample University' }))
+    await waitFor(() => expect(stands('Sample University').coach).toBe('off'))
+    expect(await server.coachRiders('Sample University', '0000')).toBeNull()
   })
 
   it('is closed to anyone who is not a show admin', async () => {
@@ -117,35 +140,76 @@ describe('a coach', () => {
   beforeEach(() => {
     server.riders = [rider('501', 'Ada Able', 'Example College'), rider('502', 'Ben Baker', 'Example College', true, 2), rider('503', 'Cy Cole', 'Sample University', false, 3)]
     server.teams = [
-      { team: 'Example College', pin: '700001' },
-      { team: 'Sample University', pin: '700002' },
+      // Example College's coach has chosen a PIN. Sample University's is still on the starting one.
+      { team: 'Example College', coach: 'set', pin: '2468' },
+      { team: 'Sample University', coach: 'start' },
+      { team: 'Quiet College', coach: 'off' },
     ]
   })
 
-  async function coachSignsOn(pin: string) {
+  async function coachSignsOn(team: string, pin: string) {
     window.location.hash = ''
     await startCloud()
     render(<App />)
     fireEvent.click(await screen.findByRole('button', { name: /^Coach/ }))
-    fireEvent.change(await screen.findByLabelText('Coach PIN'), { target: { value: pin } })
+    await screen.findByRole('option', { name: team })
+    fireEvent.change(screen.getByLabelText('Your team'), { target: { value: team } })
+    fireEvent.change(screen.getByLabelText('Coach PIN'), { target: { value: pin } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign on' }))
   }
 
-  it('signs on with the team’s PIN and sees only their own riders', async () => {
-    await coachSignsOn('700001')
+  it('picks their team, signs on with their PIN and sees only their own riders', async () => {
+    await coachSignsOn('Example College', '2468')
     expect(await screen.findByRole('heading', { name: 'Example College' })).toBeTruthy()
     expect(screen.getByText('Ada Able')).toBeTruthy()
     expect(screen.getByText('Ben Baker')).toBeTruthy()
     expect(screen.queryByText('Cy Cole')).toBeNull()
-    expect(currentCoach()).toEqual({ team: 'Example College', pin: '700001' })
+    expect(currentCoach()).toEqual({ team: 'Example College', pin: '2468' })
     // Ben is already marked as the admin left him.
     expect((screen.getByLabelText('Weight group of 502') as HTMLSelectElement).value).toBe('2')
     // Nothing else of the app is on this screen.
     expect(screen.queryByRole('button', { name: /Publish|Set up|Draw|Judges and PINs/ })).toBeNull()
   })
 
+  it('is offered only the teams whose coach may sign on', async () => {
+    window.location.hash = '#/coach'
+    await startCloud()
+    render(<App />)
+    await screen.findByRole('option', { name: 'Example College' })
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Pick your team', 'Example College', 'Sample University'])
+  })
+
+  it('starts on 0000 and has to choose a PIN before any rider shows. Then 0000 stops working', async () => {
+    await coachSignsOn('Sample University', '0000')
+    expect(await screen.findByRole('heading', { name: 'Sample University' })).toBeTruthy()
+    expect(screen.getByText('Choose your own PIN')).toBeTruthy()
+    expect(screen.queryByText('Cy Cole')).toBeNull()
+    expect(currentCoach()).toBeNull()
+    // The server gives the starting PIN nothing either.
+    expect(await server.coachRiders('Sample University', '0000')).toBe('change_pin')
+    expect(await server.coachSetMark('Sample University', '0000', '503', true, 1)).toBe('wrong_pin')
+
+    const type = (first: string, second: string) => {
+      fireEvent.change(screen.getByLabelText('New PIN'), { target: { value: first } })
+      fireEvent.change(screen.getByLabelText('New PIN again'), { target: { value: second } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save my PIN' }))
+    }
+    type('1357', '1358')
+    expect((await screen.findByRole('alert')).textContent).toBe('The two PINs are not the same. Type them again.')
+    type('0000', '0000')
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Choose a PIN other than the one you started with.'))
+    expect(server.teams.find((t) => t.team === 'Sample University')!.coach).toBe('start')
+
+    type('1357', '1357')
+    expect(await screen.findByText('Cy Cole')).toBeTruthy()
+    expect(currentCoach()).toEqual({ team: 'Sample University', pin: '1357' })
+    expect(server.teams.find((t) => t.team === 'Sample University')).toEqual({ team: 'Sample University', coach: 'set', pin: '1357' })
+    expect(await server.coachRiders('Sample University', '0000')).toBeNull()
+    expect(screen.queryByText('Ada Able')).toBeNull()
+  })
+
   it('marks a rider, and the riders list holds it', async () => {
-    await coachSignsOn('700001')
+    await coachSignsOn('Example College', '2468')
     fireEvent.change(await screen.findByLabelText('Weight group of 501'), { target: { value: '3' } })
     expect(await screen.findByText('Saved for 501.')).toBeTruthy()
     expect(server.riders.find((r) => r.backNo === '501')).toMatchObject({ group: 3, height: false })
@@ -153,23 +217,49 @@ describe('a coach', () => {
     await waitFor(() => expect(server.riders.find((r) => r.backNo === '501')).toMatchObject({ group: 3, height: true }))
   })
 
+  it('changes their PIN later, with the one they have', async () => {
+    await coachSignsOn('Example College', '2468')
+    fireEvent.click(await screen.findByRole('button', { name: 'Change my PIN' }))
+    fireEvent.change(screen.getByLabelText('New PIN'), { target: { value: '864200' } })
+    fireEvent.change(screen.getByLabelText('New PIN again'), { target: { value: '864200' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save my PIN' }))
+    expect(await screen.findByText('Your PIN is saved. Use it the next time you sign on.')).toBeTruthy()
+    expect(server.teams.find((t) => t.team === 'Example College')!.pin).toBe('864200')
+    expect(currentCoach()).toEqual({ team: 'Example College', pin: '864200' })
+    expect(await screen.findByText('Ada Able')).toBeTruthy()
+    expect(await server.coachRiders('Example College', '2468')).toBeNull()
+  })
+
   it('cannot mark another team’s rider, even by asking the server directly', async () => {
-    expect(await server.coachSetMark('700001', '503', true, 1)).toBe('not_yours')
-    expect(await server.coachSetMark('999999', '501', true, 1)).toBe('wrong_pin')
-    expect(await server.coachRiders('')).toBeNull()
+    expect(await server.coachSetMark('Example College', '2468', '503', true, 1)).toBe('not_yours')
+    expect(await server.coachSetMark('Example College', '9999', '501', true, 1)).toBe('wrong_pin')
+    // One team's PIN is not another's, and a team whose sign-on is off opens for nothing.
+    expect(await server.coachSetMark('Sample University', '2468', '503', true, 1)).toBe('wrong_pin')
+    expect(await server.coachRiders('Example College', '')).toBeNull()
+    expect(await server.coachRiders('Quiet College', '0000')).toBeNull()
+    expect(await server.coachChangePin('Quiet College', '0000', '1357')).toBe('wrong_pin')
     expect(server.riders.find((r) => r.backNo === '503')).toMatchObject({ height: false, group: 3 })
   })
 
   it('is told when the PIN is wrong, and can sign off', async () => {
-    await coachSignsOn('123456')
-    expect((await screen.findByRole('alert')).textContent).toBe('That PIN is not a coach PIN.')
+    await coachSignsOn('Example College', '1234')
+    expect((await screen.findByRole('alert')).textContent).toBe('That is not the coach PIN for Example College.')
     expect(currentCoach()).toBeNull()
-    fireEvent.change(screen.getByLabelText('Coach PIN'), { target: { value: '700002' } })
+    fireEvent.change(screen.getByLabelText('Coach PIN'), { target: { value: '2468' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign on' }))
-    expect(await screen.findByRole('heading', { name: 'Sample University' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Example College' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Sign off' }))
     expect(currentCoach()).toBeNull()
     expect(await screen.findByRole('button', { name: /^Coach/ })).toBeTruthy()
+  })
+
+  it('is signed off when the admin puts the team back on 0000', async () => {
+    await coachSignsOn('Example College', '2468')
+    expect(await screen.findByText('Ada Able')).toBeTruthy()
+    server.teams = server.teams.map((t) => (t.team === 'Example College' ? { team: t.team, coach: 'start' } : t))
+    fireEvent.change(screen.getByLabelText('Weight group of 501'), { target: { value: '2' } })
+    await waitFor(() => expect(currentCoach()).toBeNull())
+    expect(server.riders.find((r) => r.backNo === '501')).toMatchObject({ group: 1 })
   })
 })
 
@@ -177,7 +267,7 @@ describe('a coach looking over the draw', () => {
   beforeEach(() => {
     // 662 rides in Sunday's show. She is on the coach's team.
     server.riders = [rider('662', 'Korah Pinter', 'Example College'), rider('503', 'Cy Cole', 'Sample University')]
-    server.teams = [{ team: 'Example College', pin: '700001' }]
+    server.teams = [{ team: 'Example College', coach: 'set', pin: '2468' }]
   })
 
   it('sees each class as a table like the sheet’s, with their own riders marked and the alternates underneath', async () => {
@@ -189,7 +279,9 @@ describe('a coach looking over the draw', () => {
     await startCloud()
     render(<App />)
     fireEvent.click(await screen.findByRole('button', { name: /^Coach/ }))
-    fireEvent.change(await screen.findByLabelText('Coach PIN'), { target: { value: '700001' } })
+    await screen.findByRole('option', { name: 'Example College' })
+    fireEvent.change(screen.getByLabelText('Your team'), { target: { value: 'Example College' } })
+    fireEvent.change(screen.getByLabelText('Coach PIN'), { target: { value: '2468' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign on' }))
     fireEvent.click(await screen.findByRole('button', { name: 'See the draw' }))
 

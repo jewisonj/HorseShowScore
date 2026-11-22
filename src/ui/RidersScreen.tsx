@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { RosterRider, TeamPin } from '../cloud/backend'
+import { STARTING_PIN, type RosterRider, type TeamPin } from '../cloud/backend'
 import { explainServerError, fetchWorkbook, getBackend, startCloud, useCloud } from '../cloud/cloud'
 import { mergeRoster } from '../cloud/roster'
 import { getShow } from '../data/fixture'
@@ -10,16 +10,6 @@ import { BackNumber, Screen, go } from './bits'
 
 const GROUPS = [1, 2, 3] as const
 const NO_TEAM = 'No team given'
-
-/** A six-digit PIN that is not one of these. */
-function newPin(taken: (string | null)[]): string {
-  for (;;) {
-    const n = new Uint32Array(1)
-    globalThis.crypto.getRandomValues(n)
-    const pin = String(n[0] % 1_000_000).padStart(6, '0')
-    if (!taken.includes(pin)) return pin
-  }
-}
 
 /** One rider's marks: a tick for a height rider and a weight group of 1, 2 or 3. */
 export function RiderMarks(props: { rider: RosterRider; onChange: (height: boolean, group: 1 | 2 | 3) => void }) {
@@ -118,10 +108,10 @@ export function RidersScreen() {
       const merged = mergeRoster(riders, read)
       await b.putRiders(merged.rows)
       rememberLastSheetLink(link.trim())
-      // Every team named in the sheet gets a row, so it can be given a coach PIN.
+      // Every team named in the sheet gets a row, so its coach can be let in.
       const have = new Set(teams.map((t) => t.team))
       for (const team of new Set(read.map((r) => r.team.replace(/\s+/g, ' ').trim()).filter(Boolean))) {
-        if (!have.has(team)) await b.putTeam(team, null)
+        if (!have.has(team)) await b.putTeam(team, 'off')
       }
       await load()
       setMessage(
@@ -149,15 +139,15 @@ export function RidersScreen() {
     }
   }
 
-  async function givePin(team: string) {
-    const pin = newPin(teams.map((t) => t.pin))
+  /** Let a team's coach sign on, starting on the starting PIN, or turn their sign-on off. Either way a PIN the coach chose is gone. */
+  async function setCoach(team: string, coach: 'off' | 'start', said: string) {
     setProblem('')
     try {
       const b = await getBackend()
       if (!b) throw new Error('This copy of the app is not connected to a server.')
-      await b.putTeam(team, pin)
-      setTeams((list) => [...list.filter((t) => t.team !== team), { team, pin }])
-      setMessage(`${team} has a new coach PIN. A coach signed on with the old one has to sign on again.`)
+      await b.putTeam(team, coach)
+      setTeams((list) => [...list.filter((t) => t.team !== team), { team, coach }])
+      setMessage(said)
     } catch (e) {
       setProblem(explainServerError(e))
     }
@@ -208,7 +198,7 @@ export function RidersScreen() {
       {riders === null && !problem && <p className="empty">Looking for the riders.</p>}
       {riders !== null && riders.length === 0 && <p className="empty">No riders yet. Read them from a show's sheet.</p>}
       {names.map((team) => {
-        const pin = teams.find((t) => t.team === team)?.pin ?? null
+        const coach = teams.find((t) => t.team === team)?.coach ?? 'off'
         return (
           <section key={team} className="panel draw-class" aria-label={team}>
             <h3>
@@ -218,11 +208,32 @@ export function RidersScreen() {
             {team !== NO_TEAM && (
               <div className="row-actions">
                 <p className="coach-pin">
-                  <strong>Coach PIN:</strong> {pin ?? 'none yet'}
+                  <strong>Coach sign-on:</strong>{' '}
+                  {coach === 'off' ? 'off' : coach === 'start' ? `on. The PIN is ${STARTING_PIN} until the coach chooses their own.` : 'on. The coach has chosen their own PIN.'}
                 </p>
-                <button className="btn" aria-label={`Make a new coach PIN for ${team}`} onClick={() => void givePin(team)}>
-                  {pin ? 'New PIN' : 'Make a coach PIN'}
-                </button>
+                {coach === 'off' && (
+                  <button
+                    className="btn"
+                    aria-label={`Let the coach of ${team} sign on`}
+                    onClick={() => void setCoach(team, 'start', `The coach of ${team} signs on with ${STARTING_PIN}, then chooses their own PIN.`)}
+                  >
+                    Let the coach sign on
+                  </button>
+                )}
+                {coach === 'set' && (
+                  <button
+                    className="btn"
+                    aria-label={`Put the coach PIN of ${team} back to ${STARTING_PIN}`}
+                    onClick={() => void setCoach(team, 'start', `${team} is back on ${STARTING_PIN}. The PIN the coach chose no longer works.`)}
+                  >
+                    Put the PIN back to {STARTING_PIN}
+                  </button>
+                )}
+                {coach !== 'off' && (
+                  <button className="btn" aria-label={`Turn off coach sign-on for ${team}`} onClick={() => void setCoach(team, 'off', `Coach sign-on is off for ${team}.`)}>
+                    Turn off
+                  </button>
+                )}
               </div>
             )}
             <ul className="list draw-riders">

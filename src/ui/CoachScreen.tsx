@@ -1,19 +1,28 @@
 import { useEffect, useState } from 'react'
 import type { RosterRider } from '../cloud/backend'
 import { startCloud, useCloud } from '../cloud/cloud'
-import { coachMark, coachSignOff, coachSignOn, loadCoachRiders, useCoach } from '../cloud/roster'
+import { coachChoosePin, coachMark, coachSignOff, coachSignOn, coachTeams, loadCoachRiders, useCoach } from '../cloud/roster'
 import { BackNumber, Screen, go } from './bits'
 import { RiderMarks } from './RidersScreen'
 
 /**
- * A coach signs on with their team's PIN, sees their own riders and sets each
- * one's marks for the horse draw: height rider yes or no, and weight group.
- * No heights, no weights, no scores, and nobody else's riders.
+ * A coach picks their team and signs on with its PIN, sees their own riders
+ * and sets each one's marks for the horse draw: height rider yes or no, and
+ * weight group. No heights, no weights, no scores, and nobody else's riders.
+ *
+ * Every coach begins on the same starting PIN. It opens only the step where
+ * the coach chooses their own, and stops working for that team once they have.
  */
 export function CoachScreen() {
   const cloud = useCloud()
   const coach = useCoach()
+  const [teams, setTeams] = useState<string[] | null>(null)
+  const [team, setTeam] = useState('')
   const [pin, setPin] = useState('')
+  // Choosing a PIN: the team, and the PIN the coach has now.
+  const [choosing, setChoosing] = useState<{ team: string; pin: string } | null>(null)
+  const [next, setNext] = useState('')
+  const [again, setAgain] = useState('')
   const [busy, setBusy] = useState(false)
   const [riders, setRiders] = useState<RosterRider[] | null>(null)
   const [problem, setProblem] = useState('')
@@ -21,6 +30,18 @@ export function CoachScreen() {
   useEffect(() => {
     void startCloud()
   }, [])
+  useEffect(() => {
+    if (!cloud.configured || coach) return
+    let current = true
+    void coachTeams().then((got) => {
+      if (!current) return
+      if (got.ok) setTeams(got.teams)
+      else setProblem(got.error)
+    })
+    return () => {
+      current = false
+    }
+  }, [cloud.configured, coach === null])
   useEffect(() => {
     if (!coach) return
     let current = true
@@ -42,9 +63,74 @@ export function CoachScreen() {
     )
   }
 
+  if (choosing) {
+    const first = !coach
+    return (
+      <Screen title={choosing.team} sub="Choose your own PIN">
+        <form
+          className="stack"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            if (busy) return
+            if (next !== again) {
+              setProblem('The two PINs are not the same. Type them again.')
+              return
+            }
+            setBusy(true)
+            setProblem('')
+            const wrong = await coachChoosePin(choosing.team, choosing.pin, next)
+            setBusy(false)
+            if (wrong) {
+              setProblem(wrong)
+              return
+            }
+            setChoosing(null)
+            setNext('')
+            setAgain('')
+            setPin('')
+            setSaved('Your PIN is saved. Use it the next time you sign on.')
+          }}
+        >
+          <p className="hint">
+            {first ? 'Before your riders show, choose a PIN of your own. ' : ''}4 to 8 digits. You sign on with it from now on, at every show. If you forget it, the show
+            admin can start your team again.
+          </p>
+          <label className="field">
+            <span>New PIN</span>
+            <input type="password" inputMode="numeric" autoComplete="off" pattern="[0-9]*" maxLength={8} value={next} onChange={(e) => setNext(e.target.value.replace(/\D/g, ''))} required />
+          </label>
+          <label className="field">
+            <span>New PIN again</span>
+            <input type="password" inputMode="numeric" autoComplete="off" pattern="[0-9]*" maxLength={8} value={again} onChange={(e) => setAgain(e.target.value.replace(/\D/g, ''))} required />
+          </label>
+          <button className="btn btn-primary btn-wide" type="submit" disabled={busy || next.length < 4 || again.length < 4}>
+            {busy ? 'Saving the PIN' : 'Save my PIN'}
+          </button>
+          <button
+            className="btn"
+            type="button"
+            onClick={() => {
+              setChoosing(null)
+              setNext('')
+              setAgain('')
+              setProblem('')
+            }}
+          >
+            {first ? 'Back' : 'Keep the PIN I have'}
+          </button>
+        </form>
+        {problem && (
+          <p className="warning" role="alert">
+            {problem}
+          </p>
+        )}
+      </Screen>
+    )
+  }
+
   if (!coach) {
     return (
-      <Screen title="Coach" sub="Sign on with your team's PIN" backTo="/" backLabel="Back">
+      <Screen title="Coach" sub="Pick your team and sign on" backTo="/" backLabel="Back">
         <form
           className="stack"
           onSubmit={async (e) => {
@@ -52,8 +138,13 @@ export function CoachScreen() {
             if (busy) return
             setBusy(true)
             setProblem('')
-            const got = await coachSignOn(pin)
+            setSaved('')
+            const got = await coachSignOn(team, pin)
             setBusy(false)
+            if (!got.ok && got.choosePin) {
+              setChoosing({ team, pin })
+              return
+            }
             if (!got.ok) {
               setProblem(got.error)
               return
@@ -63,10 +154,21 @@ export function CoachScreen() {
           }}
         >
           <label className="field">
+            <span>Your team</span>
+            <select value={team} onChange={(e) => setTeam(e.target.value)} required>
+              <option value="">{teams === null ? 'Looking for the teams' : 'Pick your team'}</option>
+              {(teams ?? []).map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
             <span>Coach PIN</span>
             <input type="password" inputMode="numeric" autoComplete="off" pattern="[0-9]*" maxLength={8} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} required />
           </label>
-          <button className="btn btn-primary btn-wide" type="submit" disabled={busy || pin.length < 6}>
+          <button className="btn btn-primary btn-wide" type="submit" disabled={busy || team === '' || pin.length < 4}>
             {busy ? 'Checking the PIN' : 'Sign on'}
           </button>
         </form>
@@ -75,7 +177,11 @@ export function CoachScreen() {
             {problem}
           </p>
         )}
-        <p className="hint">The show admin gives each team's coach a PIN. It opens that team's riders and nothing else.</p>
+        {teams !== null && teams.length === 0 && <p className="empty">No team's coach can sign on yet. The show admin turns that on for each team.</p>}
+        <p className="hint">
+          The show admin tells you the PIN to start with. The first time you sign on you choose your own, and after that only yours opens your team's
+          riders.
+        </p>
       </Screen>
     )
   }
@@ -128,8 +234,19 @@ export function CoachScreen() {
         <button
           className="btn"
           onClick={() => {
+            setProblem('')
+            setSaved('')
+            setChoosing({ team: coach.team, pin: coach.pin })
+          }}
+        >
+          Change my PIN
+        </button>
+        <button
+          className="btn"
+          onClick={() => {
             coachSignOff()
             setRiders(null)
+            setTeams(null)
             go('/')
           }}
         >

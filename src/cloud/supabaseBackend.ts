@@ -177,26 +177,38 @@ export function createSupabaseBackend(url: string, key: string): CloudBackend {
       if (error) throw new Error(error.message)
     },
     async listTeams() {
-      const { data, error } = await sb.from('teams').select('team, pin').order('team')
+      // The chosen PIN is kept as a hash. Only whether one has been chosen is read here.
+      const { data, error } = await sb.from('teams').select('team, coach_on, pin_changed_at').order('team')
       if (error) throw new Error(error.message)
-      return (data ?? []).map((t: { team: string; pin: string | null }) => ({ team: t.team, pin: t.pin }))
+      return (data ?? []).map((t: { team: string; coach_on: boolean; pin_changed_at: string | null }) => ({ team: t.team, coach: !t.coach_on ? 'off' : t.pin_changed_at ? 'set' : 'start' }))
     },
-    async putTeam(team, pin) {
-      const { error } = await sb.from('teams').upsert({ team, pin }, { onConflict: 'team' })
+    async putTeam(team, coach) {
+      const { error } = await sb.from('teams').upsert({ team, coach_on: coach !== 'off', pin_salt: null, pin_hash: null, pin_changed_at: null }, { onConflict: 'team' })
       if (error) throw new Error(error.message)
     },
-    async coachRiders(pin) {
-      const { data, error } = await sb.rpc('coach_riders', { p_pin: pin })
+    async coachTeams() {
+      const { data, error } = await sb.rpc('coach_teams')
       if (error) throw new Error(error.message)
-      const got = data as { ok?: boolean; team?: string; riders?: unknown } | null
-      if (!got || got.ok !== true || typeof got.team !== 'string' || !Array.isArray(got.riders)) return null
-      const team = got.team
+      return Array.isArray(data) ? (data as unknown[]).filter((t): t is string => typeof t === 'string') : []
+    },
+    async coachRiders(team, pin) {
+      const { data, error } = await sb.rpc('coach_riders', { p_team: team, p_pin: pin })
+      if (error) throw new Error(error.message)
+      const got = data as { ok?: boolean; team?: string; change_pin?: boolean; riders?: unknown } | null
+      if (!got || got.ok !== true) return null
+      if (got.change_pin === true) return 'change_pin'
+      if (!Array.isArray(got.riders)) return null
       return { team, riders: (got.riders as RiderRow[]).map((r) => rosterRider({ ...r, team })) }
     },
-    async coachSetMark(pin, backNo, height, group) {
-      const { data, error } = await sb.rpc('coach_set_mark', { p_pin: pin, p_back_no: backNo, p_height: height, p_group: group })
+    async coachSetMark(team, pin, backNo, height, group) {
+      const { data, error } = await sb.rpc('coach_set_mark', { p_team: team, p_pin: pin, p_back_no: backNo, p_height: height, p_group: group })
       if (error) throw new Error(error.message)
       return data === 'ok' || data === 'not_yours' ? data : 'wrong_pin'
+    },
+    async coachChangePin(team, pin, newPin) {
+      const { data, error } = await sb.rpc('coach_change_pin', { p_team: team, p_pin: pin, p_new_pin: newPin })
+      if (error) throw new Error(error.message)
+      return data === 'ok' || data === 'bad_pin' ? data : 'wrong_pin'
     },
     async listClassScores(showId, pin) {
       const { data, error } = await sb.rpc('office_scores', { p_show: showId, p_pin: pin })
