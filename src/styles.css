@@ -1307,6 +1307,7 @@ h2 {
   font-size: 1.75rem;
 }
 
+
 .key {
   min-height: 56px;
   padding: 0 6px;
@@ -2130,4 +2131,29 @@ h2 {
 .sheet-draw .sheet-draw-alt td.sheet-draw-ourhorse {
   color: var(--minus);
   font-weight: 700;
+}
+
+
+/* A plain scale with half points, such as F&E from 0 to 5 by halves: whole numbers on top, each half below
+   and between its two neighbours. Two rows of ordinary keys, the same height as the one tall row they replace,
+   on every size of screen. */
+.pad-plain.pad-plain-halves .key {
+  min-height: 56px;
+  padding: 0 2px;
+  font-size: 1.45rem;
+}
+
+.pad-plain.pad-plain-halves .key-half {
+  font-size: 1.2rem;
+}
+
+@media (max-width: 359px) {
+  .pad-plain.pad-plain-halves .key {
+    min-height: 52px;
+    font-size: 1.25rem;
+  }
+
+  .pad-plain.pad-plain-halves .key-half {
+    font-size: 1.05rem;
+  }
 }

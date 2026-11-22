@@ -94,6 +94,17 @@ describe('IHSA sheets: rail work and F&E are added to the score', () => {
     expect(t.score).toBe(h(73.5))
   })
 
+  it('F&E in half points: maneuvers +1, F&E 3½, penalty 1 = 73½', () => {
+    const t = cardTotal({
+      base: h(70),
+      boxes: [h(0.5), h(0.5), h(0), h(0), h(0), h(0), h(0)],
+      extras: [h(3.5)],
+      penalties: [h(1)],
+    })
+    expect(t.extraSum).toBe(h(3.5))
+    expect(t.score).toBe(h(73.5))
+  })
+
   it('reining: maneuvers −1, F&E 1 = 70', () => {
     const t = cardTotal({
       base: h(70),

@@ -159,6 +159,25 @@ describe('F&E and rail work', () => {
     expect(savedRun().extras).toEqual({ fe: 6 })
   })
 
+  it('takes F&E in half points, as the judge gave them on 22 November', () => {
+    openCard()
+    for (let i = 0; i < 8; i++) tap('0', 'Maneuver score')
+    // Every step from 0 to 5: the whole numbers first, then the halves between them.
+    const keys = within(screen.getByRole('group', { name: 'Form and effectiveness' })).getAllByRole('button')
+    expect(keys.map((k) => k.textContent)).toEqual(['0', '1', '2', '3', '4', '5', '½', '1½', '2½', '3½', '4½'])
+    tap('3½', 'Form and effectiveness')
+    expect(total()).toBe('73½')
+    expect(savedRun().extras).toEqual({ fe: 7 })
+    // A half on its own, and the top of the scale.
+    fireEvent.click(screen.getByRole('button', { name: /^Form and effectiveness/ }))
+    tap('½', 'Form and effectiveness')
+    expect(total()).toBe('70½')
+    fireEvent.click(screen.getByRole('button', { name: /^Form and effectiveness/ }))
+    tap('5', 'Form and effectiveness')
+    expect(total()).toBe('75')
+    expect(savedRun().extras).toEqual({ fe: 10 })
+  })
+
   it('takes no penalty while F&E is selected', () => {
     openCard()
     fireEvent.click(screen.getByRole('button', { name: /^Form and effectiveness/ }))

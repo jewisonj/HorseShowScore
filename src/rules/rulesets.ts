@@ -65,13 +65,20 @@ export interface RuleSet {
 const SEVEN_STEP: Half[] = [-3, -2, -1, 0, 1, 2, 3] // −1½ to +1½
 const THIRTEEN_STEP: Half[] = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6] // −3 to +3
 
+/**
+ * F&E runs from 0 to 5 and takes half points (owner, 2026-11-22). The judge at
+ * the Black Hawk show that day gave halves. Checked the same day: the 2025-26
+ * IHSA rulebook does not mention F&E or score increments at all, and the IHSA
+ * sheets print only "Excellent (5) Very Good (4) Good (3) Average (0-2)".
+ * Nothing says whole points only. Not confirmed with IHSA.
+ */
 const FE: ExtraBox = {
   id: 'fe',
   abbr: 'F&E',
   label: 'Form and effectiveness',
-  scale: [0, 2, 4, 6, 8, 10], // 0 to 5
+  scale: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], // 0 to 5 by halves
   signed: false,
-  hint: '5 excellent, 4 very good, 3 good, 0 to 2 average. Added to the score.',
+  hint: '5 excellent, 4 very good, 3 good, 0 to 2 average. Half points may be given. Added to the score.',
 }
 
 const RAIL: ExtraBox = {
@@ -171,7 +178,7 @@ export const RULE_SETS: Record<string, RuleSet> = {
     extras: [FE],
     marks: ['DQ', 'ZERO'],
     verified: false,
-    note: 'The boxes and F&E follow the IHSA reining sheet. Off pattern is a DQ in this class. Penalty values follow NRHA (½, 1, 2, 5) because the IHSA sheet does not list them.',
+    note: 'The boxes and F&E follow the IHSA reining sheet. F&E takes half points. Off pattern is a DQ in this class. Penalty values follow NRHA (½, 1, 2, 5) because the IHSA sheet does not list them.',
   },
   'ihsa-ranch-riding': {
     id: 'ihsa-ranch-riding',
@@ -182,7 +189,7 @@ export const RULE_SETS: Record<string, RuleSet> = {
     extras: [FE],
     marks: ['OP', 'DQ'],
     verified: false,
-    note: 'The boxes and F&E follow the IHSA ranch riding sheet. An off pattern ride places below every correct one. Penalty values follow the AQHA sheet (1, 3, 5, 10).',
+    note: 'The boxes and F&E follow the IHSA ranch riding sheet. F&E takes half points. An off pattern ride places below every correct one. Penalty values follow the AQHA sheet (1, 3, 5, 10).',
   },
   'ihsa-horsemanship': {
     id: 'ihsa-horsemanship',
@@ -198,7 +205,7 @@ export const RULE_SETS: Record<string, RuleSet> = {
     extras: [RAIL, FE],
     marks: ['OP', 'DQ'],
     verified: false,
-    note: 'The boxes, rail work and F&E follow the IHSA horsemanship sheet. Penalties of 1 and 3 appear on real cards. The full list of values is not confirmed.',
+    note: 'The boxes, rail work and F&E follow the IHSA horsemanship sheet. F&E takes half points. Penalties of 1 and 3 appear on real cards. The full list of values is not confirmed.',
   },
 }
 
