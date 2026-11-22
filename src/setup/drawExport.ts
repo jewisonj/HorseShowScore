@@ -87,19 +87,22 @@ export function classForSheet(meet: Meet, sheet: { classNo: number; name: string
  * at the coaches' meeting: each back number on its draw place, with the horse
  * the sheet has in that place. Nothing is drawn here.
  *
- * Once a class has been drawn, the sheet is the class: a rider the class had
- * who is not on the sheet's draw has scratched or moved to another section,
- * and comes out. `missing` names them, so the page can say who. A back number
- * the class did not have is added, named by `nameOf`. Reading a half-typed
- * sheet leaves out whoever is not typed yet, and reading it again when it is
- * done puts them in.
+ * The secretary types the back numbers in while the meeting goes on, so a
+ * class is read in one of two states:
+ * - **Finished**: every place that has a horse has a back number. The sheet is
+ *   then the class. A rider the class had who is not on its draw has scratched
+ *   or moved to another section and comes out (`out`).
+ * - **Still being drawn**: some horse has nobody yet. A rider the class had
+ *   who is not typed yet stays, after the places and with no horse (`waiting`),
+ *   so a half-typed sheet drops nobody.
+ * A back number the class did not have is added, named by `nameOf`.
  */
 export function takeSheetDraw(
   entries: Entry[],
   sheet: { places: string[]; backNos: string[] },
   nameOf: (backNo: string) => string,
-): { entries: Entry[]; added: string[]; missing: string[] } {
-  const out: Entry[] = []
+): { entries: Entry[]; added: string[]; out: string[]; waiting: string[]; finished: boolean } {
+  const drawn: Entry[] = []
   const added: string[] = []
   const seen = new Set<string>()
   sheet.backNos.forEach((backNo, i) => {
@@ -107,7 +110,11 @@ export function takeSheetDraw(
     seen.add(backNo)
     const had = entries.find((e) => e.back_no === backNo)
     if (!had) added.push(backNo)
-    out.push({ draw: i + 1, back_no: backNo, rider: had ? had.rider : nameOf(backNo), horse: sheet.places[i] ?? '' })
+    drawn.push({ draw: i + 1, back_no: backNo, rider: had ? had.rider : nameOf(backNo), horse: sheet.places[i] ?? '' })
   })
-  return { entries: out, added, missing: entries.filter((e) => !seen.has(e.back_no)).map((e) => e.back_no) }
+  const finished = sheet.places.every((horse, i) => !horse || Boolean(sheet.backNos[i]))
+  const rest = entries.filter((e) => !seen.has(e.back_no))
+  if (finished) return { entries: drawn, added, out: rest.map((e) => e.back_no), waiting: [], finished }
+  const after = Math.max(SHEET_PLACES, sheet.backNos.length)
+  return { entries: [...drawn, ...rest.map((e, k) => ({ ...e, draw: after + 1 + k, horse: '' }))], added, out: [], waiting: rest.map((e) => e.back_no), finished }
 }

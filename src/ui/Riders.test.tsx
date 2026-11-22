@@ -590,17 +590,18 @@ describe('the sheet’s draw table, from before the riders draw to after', () =>
     const said = await readTheSheet()
     expect(said).toContain("The sheet has the riders' draw for 1 class. It was taken as it stands: each rider is on the horse of their draw place.")
     expect(said).toContain("Added from the sheet's draw, not in the class here before: 999.")
-    expect(said).toMatch(/Taken out of a class, because the sheet's draw for it does not have them: (1025, 553|553, 1025)\. If the sheet is still being typed, read it again when it is done\./)
+    expect(said).toContain('Still being drawn on the sheet, with horses that have nobody yet: Reining (4 of 5). Read it again when they are done.')
+    expect(said).toMatch(/Waiting in those classes with no horse: (1025, 553|553, 1025)\./)
     const name = (backNo: string) => had.find((e) => e.back_no === backNo)!.rider
     const now = Object.fromEntries(getClass('meet-6', '1')!.entries.map((e) => [e.back_no, e]))
     expect(now['576']).toEqual({ draw: 1, back_no: '576', rider: name('576'), horse: 'Bunny' })
     expect(now['1007']).toEqual({ draw: 2, back_no: '1007', rider: name('1007'), horse: 'George' })
     expect(now['102']).toEqual({ draw: 3, back_no: '102', rider: name('102'), horse: 'Cisco' })
     expect(now['999']).toEqual({ draw: 4, back_no: '999', rider: 'Nina New', horse: 'Rey' })
-    // The class is now who the sheet's draw has. The two it does not have are out, and the page said who.
-    expect(Object.keys(now).sort()).toEqual(['1007', '102', '576', '999'])
-    // They still ride their other classes.
-    expect(getClass('meet-6', '6')!.entries.some((e) => e.back_no === '1025')).toBe(true)
+    // One horse has nobody yet, so the class is still being drawn: the two not typed yet wait after the places, with no horse.
+    expect([now['1025'].horse, now['553'].horse]).toEqual(['', ''])
+    expect([now['1025'].draw, now['553'].draw].sort()).toEqual([13, 14])
+    expect(Object.keys(now)).toHaveLength(6)
     expect(getClass('meet-6', '1')!.alternates).toEqual(['Kash'])
     // The judge's class list follows: 576 goes first.
     expect(classState(getState(), classKey('meet-6', '1')).runs[0]).toMatchObject({ backNo: '576', horse: 'Bunny' })
@@ -624,5 +625,18 @@ describe('the sheet’s draw table, from before the riders draw to after', () =>
       [6, '1025', 'Bunny'],
     ])
     expect(getClass('meet-6', '1')!.entries.map((e) => e.rider)).toEqual(['576', '1007', '102', '999', '553', '1025'].map((b) => (b === '999' ? 'Nina New' : name(b))))
+
+    // 1025 scratches: the secretary takes the rider and the horse off the sheet. Every horse left has a rider,
+    // so the class is finished and is exactly who the sheet has.
+    server.workbook = makeXlsx({
+      Draw: { A4: 1, B4: 'REINING', B6: 576, D6: 'BUNNY', B7: 1007, D7: 'GEORGE', B8: 102, D8: 'CISCO', B9: 999, D9: 'REY', B10: 553, D10: 'GEORGE', D18: 'KASH' },
+      'Horse Points': HORSES,
+      Exhibitors: { B5: 999, C5: 'Nina New', D5: 'Example College' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Read the horses from the sheet' }))
+    expect(await screen.findByText(/Taken out of a class the sheet has finished drawing, because its draw does not have them: 1025\./, {}, { timeout: 5000 })).toBeTruthy()
+    expect(getClass('meet-6', '1')!.entries.map((e) => e.back_no)).toEqual(['576', '1007', '102', '999', '553'])
+    // 1025 still rides Open Horsemanship.
+    expect(getClass('meet-6', '6')!.entries.some((e) => e.back_no === '1025')).toBe(true)
   })
 })

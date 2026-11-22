@@ -73,7 +73,7 @@ describe('a class on the sheet and the class of the show it is', () => {
     expect(classForSheet(meet, { classNo: 3, name: '' })).toBeUndefined()
   })
 
-  it('puts each rider on the horse of the place the sheet has them in, and the class is then who the sheet has', () => {
+  it('puts each rider on the horse of the place the sheet has them in', () => {
     const entries = [
       { draw: 1, back_no: '10', rider: 'Ann', horse: 'Old' },
       { draw: 2, back_no: '20', rider: 'Bo', horse: '' },
@@ -83,9 +83,19 @@ describe('a class on the sheet and the class of the show it is', () => {
     expect(got.entries).toEqual([
       { draw: 1, back_no: '30', rider: 'Cy', horse: 'Ace' },
       { draw: 3, back_no: '40', rider: 'Di', horse: 'Ace' },
+      // Bay has nobody yet, so the class is still being drawn: the two not typed yet wait, with no horse.
+      { draw: 13, back_no: '10', rider: 'Ann', horse: '' },
+      { draw: 14, back_no: '20', rider: 'Bo', horse: '' },
     ])
-    // Not on the sheet's draw: out of the class, and named so the page can say so.
+    expect([got.finished, got.out, got.waiting]).toEqual([false, [], ['10', '20']])
+
+    // Every horse has a rider: the class is finished, and it is who the sheet has. The rest scratched or moved.
+    const done = takeSheetDraw(entries, { places: ['Ace', 'Bay'], backNos: ['30', '40'] }, () => 'Di')
+    expect(done.entries).toEqual([
+      { draw: 1, back_no: '30', rider: 'Cy', horse: 'Ace' },
+      { draw: 2, back_no: '40', rider: 'Di', horse: 'Bay' },
+    ])
+    expect([done.finished, done.out, done.waiting]).toEqual([true, ['10', '20'], []])
     expect(got.added).toEqual(['40'])
-    expect(got.missing).toEqual(['10', '20'])
   })
 })

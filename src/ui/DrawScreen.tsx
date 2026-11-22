@@ -456,7 +456,9 @@ export function DrawScreen({ showId }: { showId: string }) {
       const matched = new Set<string>()
       const unmatched: string[] = []
       const newRiders: string[] = []
-      const notOnSheet: string[] = []
+      const takenOut: string[] = []
+      const waiting: string[] = []
+      const unfinished: string[] = []
       let drawn = 0
       for (const from of perClass) {
         const meet = (current?.meets ?? []).find((m) => {
@@ -478,7 +480,9 @@ export function DrawScreen({ showId }: { showId: string }) {
           const taken = takeSheetDraw(cls.entries, from, nameOf)
           drawn++
           newRiders.push(...taken.added)
-          notOnSheet.push(...taken.missing)
+          takenOut.push(...taken.out)
+          waiting.push(...taken.waiting)
+          if (!taken.finished) unfinished.push(`${cls.name} (${from.backNos.filter(Boolean).length} of ${from.places.filter(Boolean).length})`)
           changeClass(key, (c) => ({ ...c, entries: taken.entries, alternates: from.alternates }))
         } else {
           // The judge's class list shows the sheet's alternates straight away.
@@ -506,7 +510,9 @@ export function DrawScreen({ showId }: { showId: string }) {
               ? ' No back numbers are typed on the sheet yet, so no rider has a horse. Read it again after the riders draw.'
               : '') +
           (newRiders.length > 0 ? ` Added from the sheet's draw, not in the class here before: ${some(newRiders)}.` : '') +
-          (notOnSheet.length > 0 ? ` Taken out of a class, because the sheet's draw for it does not have them: ${some(notOnSheet)}. If the sheet is still being typed, read it again when it is done.` : '') +
+          (unfinished.length > 0 ? ` Still being drawn on the sheet, with horses that have nobody yet: ${some(unfinished)}. Read it again when they are done.` : '') +
+          (waiting.length > 0 ? ` Waiting in those classes with no horse: ${some(waiting)}.` : '') +
+          (takenOut.length > 0 ? ` Taken out of a class the sheet has finished drawing, because its draw does not have them: ${some(takenOut)}.` : '') +
           (unmatched.length > 0 ? ` No class of this show is named as the sheet names ${some(unmatched)}, so those horses were not set.` : '') +
           ' The sheet was only read. Nothing in it was changed.',
       )
