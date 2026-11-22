@@ -2102,3 +2102,23 @@ h2 {
 .public-draw li.public-draw-mine {
   background: #fff3c4;
 }
+
+/* The coach's two buttons after the draws sit side by side and share the width. */
+.coach-actions {
+  margin: 16px 0 10px;
+}
+
+.coach-actions .btn {
+  flex: 1 1 9em;
+}
+
+/* A class whose placings are in: the band turns ribbon blue. */
+.sheet-draw-placed caption {
+  background: var(--ribbon-1);
+  color: #ffffff;
+}
+
+.sheet-draw-placed th:first-child,
+.sheet-draw-placed td:first-child {
+  width: 4.2rem;
+}

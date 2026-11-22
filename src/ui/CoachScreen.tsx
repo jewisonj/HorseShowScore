@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { RosterRider } from '../cloud/backend'
 import { startCloud, useCloud } from '../cloud/cloud'
 import { coachChoosePin, coachMark, coachSignOff, coachSignOn, coachTeams, loadCoachRiders, useCoach } from '../cloud/roster'
 import { BackNumber, Screen, go } from './bits'
-import { showForToday } from './DrawSheet'
+import { ShowDraw, showForToday } from './DrawSheet'
 import { showDates } from './Home'
 import { usePublishedShows } from './PublicScreens'
 import { RiderMarks } from './RidersScreen'
@@ -12,15 +12,16 @@ import { RiderMarks } from './RidersScreen'
  * A coach picks their team and signs on with its PIN, sees their own riders
  * and sets each one's marks for the horse draw: height rider yes or no, and
  * weight group. No heights, no weights, no scores, and nobody else's riders.
- * The marks are set on a screen of their own, behind a "Height and weight"
- * button (owner, 2026-11-22: they take a lot of room). This screen is the
- * coach's riders and where each one goes today: class, draw place and horse,
- * from the published show.
+ * Signed on, this screen is what a coach wants first (owner, 2026-11-22): the
+ * show's draw, class by class, turning into placings as they are posted, with
+ * the coach's own riders marked. After the draws come two buttons: "See
+ * entries", the coach's riders and where each one goes, and "Height and
+ * weight", where the marks are set. Each is a screen of its own.
  *
  * Every coach begins on the same starting PIN. It opens only the step where
  * the coach chooses their own, and stops working for that team once they have.
  */
-export function CoachScreen() {
+export function CoachScreen(props: { showId?: string } = {}) {
   const cloud = useCloud()
   const coach = useCoach()
   const [teams, setTeams] = useState<string[] | null>(null)
@@ -34,7 +35,7 @@ export function CoachScreen() {
   const [riders, setRiders] = useState<RosterRider[] | null>(null)
   const [problem, setProblem] = useState('')
   const [saved, setSaved] = useState('')
-  const { shows } = usePublishedShows()
+  const mine = useMemo(() => new Set((riders ?? []).map((r) => r.backNo)), [riders])
   useEffect(() => {
     void startCloud()
   }, [])
@@ -194,14 +195,85 @@ export function CoachScreen() {
     )
   }
 
-  // Where each rider goes today, from the published show. Public already, shown here beside the coach's own riders.
+  return (
+    <Screen title={coach.team} sub="Coach" wide>
+      <ShowDraw showId={props.showId} mine={mine} />
+      {problem && (
+        <p className="warning" role="alert">
+          {problem}
+        </p>
+      )}
+      {saved && (
+        <p className="hint" role="status">
+          {saved}
+        </p>
+      )}
+      <div className="row-actions coach-actions">
+        <button className="btn" onClick={() => go('/coach/entries')}>
+          See entries
+        </button>
+        <button className="btn" onClick={() => go('/coach/marks')}>
+          Height and weight
+        </button>
+      </div>
+      <div className="stack">
+        <button
+          className="btn"
+          onClick={() => {
+            setProblem('')
+            setSaved('')
+            setChoosing({ team: coach.team, pin: coach.pin })
+          }}
+        >
+          Change my PIN
+        </button>
+        <button
+          className="btn"
+          onClick={() => {
+            coachSignOff()
+            setRiders(null)
+            setTeams(null)
+            go('/')
+          }}
+        >
+          Sign off
+        </button>
+      </div>
+    </Screen>
+  )
+}
+
+/**
+ * The coach's entries: their riders by name, each with the marks in a few
+ * words and where they go today (class, draw place and horse, from the
+ * published show).
+ */
+export function CoachEntriesScreen() {
+  const coach = useCoach()
+  const { shows } = usePublishedShows()
+  const [riders, setRiders] = useState<RosterRider[] | null>(null)
+  const [problem, setProblem] = useState('')
+  useEffect(() => {
+    if (!coach) return
+    let current = true
+    void startCloud()
+      .then(loadCoachRiders)
+      .then((got) => {
+        if (!current) return
+        if (got.ok) setRiders(got.riders)
+        else setProblem(got.error)
+      })
+    return () => {
+      current = false
+    }
+  }, [coach?.team, coach?.pin])
+  if (!coach) return null
   const today = showForToday(shows)
   const ridesOf = (backNo: string) =>
     today ? today.meets.flatMap((m) => m.classes.flatMap((c) => c.entries.filter((e) => e.back_no === backNo).map((e) => ({ key: `${m.id}:${c.id}`, cls: c.name, draw: e.draw, horse: e.horse })))) : []
   const anyRides = (riders ?? []).some((r) => ridesOf(r.backNo).length > 0)
-
   return (
-    <Screen title={coach.team} sub="Coach">
+    <Screen title="Entries" sub={coach.team} backTo="/coach" backLabel="Back">
       {riders === null && !problem && <p className="empty">Looking for your riders.</p>}
       {riders !== null && riders.length === 0 && <p className="empty">No riders are listed for your team yet. The show admin adds them from the show's sheet.</p>}
       {riders !== null && riders.length > 0 && (
@@ -243,47 +315,13 @@ export function CoachScreen() {
           {problem}
         </p>
       )}
-      {saved && (
-        <p className="hint" role="status">
-          {saved}
-        </p>
-      )}
-      <div className="stack">
-        <button className="btn btn-primary btn-wide" onClick={() => go('/coach/draw')}>
-          See the draw
-        </button>
-        <button className="btn" onClick={() => go('/coach/marks')}>
-          Height and weight
-        </button>
-        <button
-          className="btn"
-          onClick={() => {
-            setProblem('')
-            setSaved('')
-            setChoosing({ team: coach.team, pin: coach.pin })
-          }}
-        >
-          Change my PIN
-        </button>
-        <button
-          className="btn"
-          onClick={() => {
-            coachSignOff()
-            setRiders(null)
-            setTeams(null)
-            go('/')
-          }}
-        >
-          Sign off
-        </button>
-      </div>
     </Screen>
   )
 }
 
 /**
- * The coach's second screen: each of their riders with the two marks the horse
- * draw works from. Reached from the coach's own screen, and back to it.
+ * Each of the coach's riders with the two marks the horse draw works from.
+ * Reached from the coach's own screen, and back to it.
  */
 export function CoachMarksScreen() {
   const coach = useCoach()
@@ -319,7 +357,7 @@ export function CoachMarksScreen() {
   }
 
   return (
-    <Screen title="Height and weight" sub={coach.team} backTo="/coach" backLabel="My riders">
+    <Screen title="Height and weight" sub={coach.team} backTo="/coach" backLabel="Back">
       <p className="hint">
         Mark your height riders and each rider's weight group. The horse draw uses these to give each rider a horse they
         fit. Only you and the show admins see them. They are never published.

@@ -8,8 +8,7 @@ import { useSaveFailed } from './store'
 import { go } from './ui/bits'
 import { AccountScreen } from './ui/AccountScreen'
 import { ClassScreen } from './ui/ClassScreen'
-import { CoachMarksScreen, CoachScreen } from './ui/CoachScreen'
-import { CoachDrawScreen } from './ui/DrawSheet'
+import { CoachEntriesScreen, CoachMarksScreen, CoachScreen } from './ui/CoachScreen'
 import { DrawScreen } from './ui/DrawScreen'
 import { Home } from './ui/Home'
 import { HorsesScreen } from './ui/HorsesScreen'
@@ -86,9 +85,10 @@ function Route() {
   if (p[0] === 'riders') return <RidersScreen />
   if (p[0] === 'horses') return <HorsesScreen />
   if (p[0] === 'coach') {
-    if (p[1] === 'draw' && coach) return <CoachDrawScreen key={`coachdraw:${p[2] ?? ''}`} showId={p[2]} />
     if (p[1] === 'marks' && coach) return <CoachMarksScreen />
-    return <CoachScreen />
+    if (p[1] === 'entries' && coach) return <CoachEntriesScreen />
+    // The coach's own screen is the draw. "draw/<show id>" is the same screen on another show.
+    return <CoachScreen showId={p[1] === 'draw' ? p[2] : undefined} />
   }
   if (p[0] === 'm' && p[1]) {
     const meetId = p[1]

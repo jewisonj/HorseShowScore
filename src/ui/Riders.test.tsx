@@ -164,20 +164,25 @@ describe('a coach', () => {
   it('picks their team, signs on with their PIN and sees only their own riders', async () => {
     await coachSignsOn('Example College', '2468')
     expect(await screen.findByRole('heading', { name: 'Example College' })).toBeTruthy()
-    expect(screen.getByText('Ada Able')).toBeTruthy()
+    expect(currentCoach()).toEqual({ team: 'Example College', pin: '2468' })
+    // The first screen is the draw. The riders by name are on "See entries", with the marks in a few words.
+    expect(screen.queryByText('Ada Able')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'See entries' }))
+    expect(await screen.findByRole('heading', { name: 'Entries' })).toBeTruthy()
+    expect(await screen.findByText('Ada Able')).toBeTruthy()
     expect(screen.getByText('Ben Baker')).toBeTruthy()
     expect(screen.queryByText('Cy Cole')).toBeNull()
-    expect(currentCoach()).toEqual({ team: 'Example College', pin: '2468' })
-    // The height and weight controls are not on this screen: each rider shows the marks in a few words.
     expect(screen.queryByLabelText('Weight group of 502')).toBeNull()
     expect(screen.getByText('Ben Baker').closest('li')!.textContent).toContain('Height rider, group 2')
     expect(screen.getByText('Ada Able').closest('li')!.textContent).toContain('Group 1')
-    // They are on a screen of their own, where Ben is marked as the admin left him. And back again.
+    fireEvent.click(screen.getByRole('button', { name: /Back/ }))
+    expect(await screen.findByRole('heading', { name: 'Example College' })).toBeTruthy()
+    // The controls are on a screen of their own, where Ben is marked as the admin left him. And back again.
     fireEvent.click(screen.getByRole('button', { name: 'Height and weight' }))
     expect(await screen.findByRole('heading', { name: 'Height and weight' })).toBeTruthy()
     expect(((await screen.findByLabelText('Weight group of 502')) as HTMLSelectElement).value).toBe('2')
     expect(screen.queryByText('Cy Cole')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /My riders/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Back/ }))
     expect(await screen.findByRole('heading', { name: 'Example College' })).toBeTruthy()
     expect(screen.queryByLabelText('Weight group of 502')).toBeNull()
     // Nothing else of the app is on this screen.
@@ -214,10 +219,12 @@ describe('a coach', () => {
     expect(server.teams.find((t) => t.team === 'Sample University')!.coach).toBe('start')
 
     type('1357', '1357')
-    expect(await screen.findByText('Cy Cole')).toBeTruthy()
+    expect(await screen.findByText('Your PIN is saved. Use it the next time you sign on.')).toBeTruthy()
     expect(currentCoach()).toEqual({ team: 'Sample University', pin: '1357' })
     expect(server.teams.find((t) => t.team === 'Sample University')).toEqual({ team: 'Sample University', coach: 'set', pin: '1357' })
     expect(await server.coachRiders('Sample University', '0000')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'See entries' }))
+    expect(await screen.findByText('Cy Cole')).toBeTruthy()
     expect(screen.queryByText('Ada Able')).toBeNull()
   })
 
@@ -229,8 +236,9 @@ describe('a coach', () => {
     expect(server.riders.find((r) => r.backNo === '501')).toMatchObject({ group: 3, height: false })
     fireEvent.click(within(screen.getByLabelText('Weight group of 501').closest('li')!).getByLabelText('Height rider'))
     await waitFor(() => expect(server.riders.find((r) => r.backNo === '501')).toMatchObject({ group: 3, height: true }))
-    // Back on the coach's own screen the new marks show in words.
-    fireEvent.click(screen.getByRole('button', { name: /My riders/ }))
+    // The entries show the new marks in words.
+    fireEvent.click(screen.getByRole('button', { name: /Back/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'See entries' }))
     await waitFor(() => expect(screen.getByText('Ada Able').closest('li')!.textContent).toContain('Height rider, group 3'))
   })
 
@@ -243,7 +251,7 @@ describe('a coach', () => {
     expect(await screen.findByText('Your PIN is saved. Use it the next time you sign on.')).toBeTruthy()
     expect(server.teams.find((t) => t.team === 'Example College')!.pin).toBe('864200')
     expect(currentCoach()).toEqual({ team: 'Example College', pin: '864200' })
-    expect(await screen.findByText('Ada Able')).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Example College' })).toBeTruthy()
     expect(await server.coachRiders('Example College', '2468')).toBeNull()
   })
 
@@ -272,8 +280,7 @@ describe('a coach', () => {
 
   it('is signed off when the admin puts the team back on 0000', async () => {
     await coachSignsOn('Example College', '2468')
-    expect(await screen.findByText('Ada Able')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Height and weight' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Height and weight' }))
     const select = await screen.findByLabelText('Weight group of 501')
     server.teams = server.teams.map((t) => (t.team === 'Example College' ? { team: t.team, coach: 'start' } : t))
     fireEvent.change(select, { target: { value: '2' } })
@@ -289,7 +296,7 @@ describe('a coach looking over the draw', () => {
     server.teams = [{ team: 'Example College', coach: 'set', pin: '2468' }]
   })
 
-  it('sees each class as a table like the sheet’s, with their own riders marked and the alternates underneath', async () => {
+  it('sees the draw first: each class as a table like the sheet’s, their own riders marked, the alternates underneath', async () => {
     const sunday = JSON.parse(JSON.stringify(getShow(SUNDAY)!)) as ShowFile
     const level1 = sunday.meets[0].classes.find((c) => c.entries.some((e) => e.back_no === '662'))!
     level1.entries = level1.entries.map((e, i) => ({ ...e, horse: `Horse ${i + 1}` }))
@@ -302,18 +309,11 @@ describe('a coach looking over the draw', () => {
     fireEvent.change(screen.getByLabelText('Your team'), { target: { value: 'Example College' } })
     fireEvent.change(screen.getByLabelText('Coach PIN'), { target: { value: '2468' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign on' }))
-    // Her own screen says where she goes today: the class, her draw place and her horse.
-    const hers662 = sunday.meets[0].classes.find((c) => c.id === level1.id)!.entries.find((e) => e.back_no === '662')!
-    const rides = await screen.findByRole('list', { name: 'Rides of 662' })
-    expect(within(rides).getAllByRole('listitem').map((li) => li.textContent)).toEqual([`${level1.name}Draw ${hers662.draw}, ${hers662.horse}`])
-    // Nobody else's rides are on it, and the marks are behind their button.
-    expect(screen.queryByRole('list', { name: 'Rides of 503' })).toBeNull()
-    expect(screen.queryByLabelText('Weight group of 662')).toBeNull()
-    fireEvent.click(await screen.findByRole('button', { name: 'See the draw' }))
 
-    expect(await screen.findByRole('heading', { name: 'The draw' })).toBeTruthy()
+    // The coach's own screen is the draw, with nothing to press first.
+    expect(await screen.findByRole('heading', { name: 'Example College' })).toBeTruthy()
     // One table for each class of the show.
-    expect(screen.getAllByRole('table')).toHaveLength(sunday.meets[0].classes.length)
+    await waitFor(() => expect(screen.getAllByRole('table')).toHaveLength(sunday.meets[0].classes.length))
     const table = screen.getByRole('table', { name: new RegExp(`^${level1.id}\\. ${level1.name.replace(/[.]/g, '\\.')}`) })
     expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Draw', 'Back #', 'Rider', 'Horse'])
     // Riders in draw order, each with a horse.
@@ -330,12 +330,68 @@ describe('a coach looking over the draw', () => {
     })
     expect(hers.textContent).toContain('662')
     expect(rows.filter((r) => r.className === 'sheet-draw-mine')).toHaveLength(1)
-    expect(screen.getByText(/Your riders are marked/)).toBeTruthy()
+    expect(screen.getByText(/Your riders are marked: 1 ride in this show\./)).toBeTruthy()
     // Nothing of the marks or the limits is on this page.
-    expect(screen.queryByText(/weight group|height/i)).toBeNull()
-    // And back to the riders.
-    fireEvent.click(screen.getByRole('button', { name: /My riders/ }))
+    expect(screen.queryByLabelText(/Weight group|Height rider/)).toBeNull()
+    expect(screen.queryByText(/group \d/i)).toBeNull()
+
+    // After the draws: her entries, which say where each of her riders goes, and the height and weight screen.
+    const after = screen.getAllByRole('table').pop()!
+    const entries = screen.getByRole('button', { name: 'See entries' })
+    expect(after.compareDocumentPosition(entries) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Height and weight' })).toBeTruthy()
+    fireEvent.click(entries)
+    const hers662 = level1.entries.find((e) => e.back_no === '662')!
+    const rides = await screen.findByRole('list', { name: 'Rides of 662' })
+    expect(within(rides).getAllByRole('listitem').map((li) => li.textContent)).toEqual([`${level1.name}Draw ${hers662.draw}, ${hers662.horse}`])
+    expect(screen.queryByRole('list', { name: 'Rides of 503' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Back/ }))
     expect(await screen.findByRole('heading', { name: 'Example College' })).toBeTruthy()
+  })
+
+  it('sees a class turn into its placings once the show office posts them, first place first', async () => {
+    const sunday = JSON.parse(JSON.stringify(getShow(SUNDAY)!)) as ShowFile
+    const level1 = sunday.meets[0].classes.find((c) => c.entries.some((e) => e.back_no === '662'))!
+    server.shows = [sunday]
+    await startCloud()
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: /^Coach/ }))
+    await screen.findByRole('option', { name: 'Example College' })
+    fireEvent.change(screen.getByLabelText('Your team'), { target: { value: 'Example College' } })
+    fireEvent.change(screen.getByLabelText('Coach PIN'), { target: { value: '2468' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign on' }))
+    const name = new RegExp(`^${level1.id}\\. ${level1.name.replace(/[.]/g, '\\.')}`)
+    const before = await screen.findByRole('table', { name })
+    expect(within(before).getAllByRole('columnheader')[0].textContent).toBe('Draw')
+    expect(screen.queryByText(/Placings are in/)).toBeNull()
+
+    // The office posts the class. 662 was second. Placings carry place, back number, rider and horse, and no score.
+    const others = level1.entries.filter((e) => e.back_no !== '662')
+    server.placings[SUNDAY] = [
+      {
+        classKey: classKey('meet-6', level1.id),
+        publishedAt: '2026-11-22T16:00:00Z',
+        placings: [
+          { place: 1, tied: false, back_no: others[0].back_no, rider: others[0].rider, horse: 'Horse A' },
+          { place: 2, tied: false, back_no: '662', rider: 'Korah Pinter', horse: 'Horse B' },
+          { place: 3, tied: false, back_no: others[1].back_no, rider: others[1].rider, horse: 'Horse C' },
+        ],
+      },
+    ]
+    fireEvent.click(screen.getByRole('button', { name: 'Check for changes' }))
+    expect(await screen.findByText(/Placings are in for 1 class\./)).toBeTruthy()
+    const table = screen.getByRole('table', { name })
+    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Place', 'Back #', 'Rider', 'Horse'])
+    const rows = within(table).getAllByRole('row').slice(1)
+    expect(rows.map((r) => within(r).getAllByRole('cell').map((c) => c.textContent!.replace(' (your rider)', '')))).toEqual([
+      ['1', others[0].back_no, others[0].rider, 'Horse A'],
+      ['2', '662', 'Korah Pinter', 'Horse B'],
+      ['3', others[1].back_no, others[1].rider, 'Horse C'],
+    ])
+    // Her rider is still marked, and the other classes still show their draw.
+    expect(rows.filter((r) => r.className === 'sheet-draw-mine').map((r) => r.textContent)).toHaveLength(1)
+    expect(rows[1].className).toBe('sheet-draw-mine')
+    expect(screen.getAllByRole('table').filter((t) => within(t).getAllByRole('columnheader')[0].textContent === 'Draw')).toHaveLength(sunday.meets[0].classes.length - 1)
   })
 
   it('opens today’s show, else the next one coming, else the newest', () => {
