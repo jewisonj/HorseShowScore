@@ -9,7 +9,7 @@ import { resetScoreSendingForTests } from '../cloud/scores'
 import { clearSeatForTests } from '../cloud/seat'
 import { clearCloudCache } from '../data/cloudShows'
 import { classKey, getClass, getShow, type ShowFile } from '../data/fixture'
-import { clearShows } from '../data/shows'
+import { clearShows, saveShow } from '../data/shows'
 import { clearDrawBooks, drawBook, saveDrawBook } from '../setup/drawBook'
 import { drawCsv } from '../setup/drawExport'
 import { makeXlsx, sampleShowWorkbook } from '../setup/testWorkbook'
@@ -505,5 +505,123 @@ describe('the sheet a show was read from', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Read the horses from the sheet' }))
     await waitFor(() => expect(sheetLinkFor('evt-bhc-2026-11-21')).toBe(OTHER), { timeout: 5000 })
     expect(sheetLinkFor(SUNDAY)).toBe(LINK)
+  })
+})
+
+describe('the sheet’s draw table, from before the riders draw to after', () => {
+  const LINK = 'https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdefgh/edit?usp=sharing'
+  const HORSES = { C3: 'Bunny', C4: 'George', C5: 'Cisco', C6: 'Rey', C7: 'Kash', C8: 'Hank' }
+
+  afterEach(() => vi.restoreAllMocks())
+
+  async function readTheSheet() {
+    fireEvent.change(await screen.findByLabelText(/Or read the horse list/), { target: { value: LINK } })
+    fireEvent.click(screen.getByRole('button', { name: 'Read the horses from the sheet' }))
+    return (await screen.findByText(/The sheet lists \d+ horses\./, {}, { timeout: 5000 })).textContent!
+  }
+
+  it('matches a class the sheet names by its name, never by its number', async () => {
+    // The sheet's class 1 here is Open Horsemanship, which is class 6 of this show. Its class 2 is nothing this show has.
+    server.workbook = makeXlsx({
+      Draw: { A4: 1, B4: 'OPEN HORSEMANSHIP', D6: 'BUNNY', D7: 'CISCO', D18: 'KASH', G4: 2, H4: 'NO SUCH CLASS', J6: 'REY' },
+      'Horse Points': HORSES,
+    })
+    await asAdmin()
+    render(<DrawScreen showId={SUNDAY} />)
+    const said = await readTheSheet()
+    expect(said).toContain("It sets the horses for 1 class, which now use the sheet's list.")
+    expect(said).toContain('No class of this show is named as the sheet names NO SUCH CLASS, so those horses were not set.')
+    expect(drawBook(SUNDAY).places).toEqual({ [classKey('meet-6', '6')]: ['Bunny', 'Cisco'] })
+    expect(getClass('meet-6', '6')!.alternates).toEqual(['Kash'])
+    expect(getClass('meet-6', '1')!.alternates ?? []).toEqual([])
+    expect(getClass('meet-6', '2')!.alternates ?? []).toEqual([])
+  })
+
+  it('brings in the program’s classes first when the show has one class per division and nobody in them', async () => {
+    // The show as it was published on the morning of 22 November, after the sheet had been read onto it by number.
+    const own = getShow(SUNDAY)!
+    const divisions = [...new Map(own.meets[0].classes.map((c) => [c.class_no, c])).values()]
+    const mine: ShowFile = {
+      ...own,
+      meets: [{ ...own.meets[0], start_time: '09:00', classes: divisions.map((c) => ({ ...c, id: c.class_no, section: '', name: `Division ${c.class_no}`, entries: [], alternates: c.class_no === '12A' ? ['Wrong Horse'] : [] })) }],
+    }
+    saveShow(mine)
+    saveDrawBook(SUNDAY, { horses: [], riders: {}, sets: { 'meet-6:12A': ['Wrong Horse'] }, places: { 'meet-6:12A': ['Wrong Horse'] }, alts: { 'meet-6:12A': ['Wrong Horse'] } })
+    server.workbook = makeXlsx({
+      Draw: {
+        A4: 1, B4: 'REINING', D6: 'BUNNY', D7: 'GEORGE', D8: 'BUNNY', D18: 'KASH',
+        G4: 2, H4: 'ROOKIE B HORSEMANSHIP, SEC. A', J6: 'CISCO',
+        M64: 12, N64: 'ROOKIE A HORSEMANSHIP', P66: 'HANK', P78: 'REY',
+      },
+      'Horse Points': HORSES,
+    })
+    await asAdmin()
+    render(<DrawScreen showId={SUNDAY} />)
+    const said = await readTheSheet()
+    expect(said).toMatch(/^This show had no riders, so the program's 12 classes and 74 rides were brought in first\. The sheet lists 6 horses\./)
+    expect(said).toContain("It sets the horses for 3 classes, which now use the sheet's list.")
+    expect(said).toContain('No back numbers are typed on the sheet yet, so no rider has a horse. Read it again after the riders draw.')
+    const now = getShow(SUNDAY)!
+    expect(now.meets[0].classes.map((c) => c.id)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
+    expect(now.meets[0].classes.reduce((n, c) => n + c.entries.length, 0)).toBe(74)
+    expect(now.meets[0].start_time).toBe('09:00')
+    // Each class has the horses the sheet has for the class of that name, and the wrong ones are gone.
+    expect(drawBook(SUNDAY).places).toEqual({ 'meet-6:1': ['Bunny', 'George', 'Bunny'], 'meet-6:2': ['Cisco'], 'meet-6:12': ['Hank'] })
+    expect(drawBook(SUNDAY).alts).toEqual({ 'meet-6:1': ['Kash'], 'meet-6:2': [], 'meet-6:12': ['Rey'] })
+    expect(getClass('meet-6', '12')!.alternates).toEqual(['Rey'])
+    expect(JSON.stringify(now)).not.toContain('Wrong Horse')
+    expect(JSON.stringify(drawBook(SUNDAY))).not.toContain('Wrong Horse')
+    // Nobody has a horse: the riders have not drawn.
+    expect(now.meets[0].classes.every((c) => c.entries.every((e) => e.horse === ''))).toBe(true)
+  })
+
+  it('takes the riders’ draw from the sheet as it stands once the back numbers are typed in', async () => {
+    const had = getClass('meet-6', '1')!.entries
+    expect(had.map((e) => e.back_no).sort()).toEqual(['1007', '102', '1025', '553', '576'])
+    // Drawn at the meeting: 576 first on Bunny, 1007 on George, 102 on Cisco, and 999, who was not in the program, on Rey.
+    // The fifth place has a horse and nobody yet. 1025 and 553 are not on the sheet.
+    server.workbook = makeXlsx({
+      Draw: { A4: 1, B4: 'REINING', B6: 576, D6: 'BUNNY', B7: 1007, D7: 'GEORGE', B8: '102', D8: 'CISCO', B9: 999, D9: 'REY', D10: 'GEORGE', D18: 'KASH' },
+      'Horse Points': HORSES,
+      Exhibitors: { B5: 999, C5: 'Nina New', D5: 'Example College' },
+    })
+    await asAdmin()
+    render(<DrawScreen showId={SUNDAY} />)
+    const said = await readTheSheet()
+    expect(said).toContain("The sheet has the riders' draw for 1 class. It was taken as it stands: each rider is on the horse of their draw place.")
+    expect(said).toContain("Added from the sheet's draw, not in the class here before: 999.")
+    expect(said).toMatch(/In a class here and not on the sheet's draw for it, so left with no horse: (1025, 553|553, 1025)\./)
+    const name = (backNo: string) => had.find((e) => e.back_no === backNo)!.rider
+    const now = Object.fromEntries(getClass('meet-6', '1')!.entries.map((e) => [e.back_no, e]))
+    expect(now['576']).toEqual({ draw: 1, back_no: '576', rider: name('576'), horse: 'Bunny' })
+    expect(now['1007']).toEqual({ draw: 2, back_no: '1007', rider: name('1007'), horse: 'George' })
+    expect(now['102']).toEqual({ draw: 3, back_no: '102', rider: name('102'), horse: 'Cisco' })
+    expect(now['999']).toEqual({ draw: 4, back_no: '999', rider: 'Nina New', horse: 'Rey' })
+    // The two the sheet does not have yet stay in the class, after the twelve places, with no horse.
+    expect([now['1025'].horse, now['553'].horse]).toEqual(['', ''])
+    expect([now['1025'].draw, now['553'].draw].sort()).toEqual([13, 14])
+    expect(Object.keys(now)).toHaveLength(6)
+    expect(getClass('meet-6', '1')!.alternates).toEqual(['Kash'])
+    // The judge's class list follows: 576 goes first.
+    expect(classState(getState(), classKey('meet-6', '1')).runs[0]).toMatchObject({ backNo: '576', horse: 'Bunny' })
+    // Nothing of the school went into the show.
+    expect(JSON.stringify(getShow(SUNDAY))).not.toContain('Example College')
+
+    // Read again when the last two are typed in: they take their places, and nobody is listed twice.
+    server.workbook = makeXlsx({
+      Draw: { A4: 1, B4: 'REINING', B6: 576, D6: 'BUNNY', B7: 1007, D7: 'GEORGE', B8: 102, D8: 'CISCO', B9: 999, D9: 'REY', B10: 553, D10: 'GEORGE', B11: 1025, D11: 'BUNNY', D18: 'KASH' },
+      'Horse Points': HORSES,
+      Exhibitors: { B5: 999, C5: 'Nina New', D5: 'Example College' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Read the horses from the sheet' }))
+    await waitFor(() => expect(getClass('meet-6', '1')!.entries.find((e) => e.back_no === '1025')!.horse).toBe('Bunny'), { timeout: 5000 })
+    expect(getClass('meet-6', '1')!.entries.map((e) => [e.draw, e.back_no, e.horse])).toEqual([
+      [1, '576', 'Bunny'],
+      [2, '1007', 'George'],
+      [3, '102', 'Cisco'],
+      [4, '999', 'Rey'],
+      [5, '553', 'George'],
+      [6, '1025', 'Bunny'],
+    ])
   })
 })

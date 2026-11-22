@@ -54,10 +54,10 @@ describe('reading a sheet again into a show that is already set up', () => {
   it('reads the horses the draw tab sets for each class, place by place, and the alternates', () => {
     expect(readDrawTab(readXlsx(sampleShowWorkbook()))).toEqual([
       // A horse listed in two places goes twice.
-      { classNo: 1, places: ['Rocket', 'Archie (Roan)', 'Rocket'], alternates: ['Spare'] },
-      { classNo: 3, places: ['Duke & Daisy'], alternates: ['Spare', "O'Malley"] },
+      { classNo: 1, name: '', places: ['Rocket', 'Archie (Roan)', 'Rocket'], backNos: [], alternates: ['Spare'] },
+      { classNo: 3, name: '', places: ['Duke & Daisy'], backNos: [], alternates: ['Spare', "O'Malley"] },
       // A place left empty between two horses keeps its position.
-      { classNo: 4, places: ['Super Pete', '', 'Rocket'], alternates: [] },
+      { classNo: 4, name: '', places: ['Super Pete', '', 'Rocket'], backNos: [], alternates: [] },
     ])
   })
 

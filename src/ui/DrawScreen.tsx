@@ -8,11 +8,11 @@ import { ruleSetFor } from '../rules/rulesets'
 import { loadDraw } from '../seed'
 import { finishShow, mergeSheetRead } from '../setup/draft'
 import { addHorses, limitsIn, markOf, saveDrawBook, useDrawBook, type BookHorse, type DrawBook, type RiderMark } from '../setup/drawBook'
-import { drawCsv, runningNumber, sheetDraw } from '../setup/drawExport'
+import { classForSheet, drawCsv, sheetDraw, takeSheetDraw } from '../setup/drawExport'
 import { drawClass, drawPlaces, fits, redrawOne, suggestSet, rideCounts, type DrawRider, type WeightGroup } from '../setup/horseDraw'
 import { rememberSheetLink, sheetLinkFor } from '../setup/sheetLink'
 import { findStable, stableRow, withListLimits } from '../setup/stable'
-import { readDrawTab, readHorses } from '../setup/workbook'
+import { readDrawTab, readHorses, readRoster } from '../setup/workbook'
 import { readXlsx } from '../setup/xlsx'
 import { BackNumber, Screen, go } from './bits'
 import { download, slug } from './files'
@@ -431,6 +431,17 @@ export function DrawScreen({ showId }: { showId: string }) {
         return
       }
       rememberSheetLink(showId, link.trim())
+      // A show with nobody in its classes takes the program's classes and riders first, when the app has them:
+      // the sheet's draw table is laid out by those classes, sections and all.
+      const ridesIn = (list: ShowFile) => list.meets.reduce((n, m) => n + m.classes.reduce((k, c) => k + c.entries.length, 0), 0)
+      const own = builtInShows.find((x) => x.id === showId)
+      const before = getShow(showId)
+      let broughtIn = ''
+      if (own && before && ridesIn(before) === 0 && ridesIn(own) > 0) {
+        useAppRiders()
+        setRidersNote('')
+        broughtIn = `This show had no riders, so the program's ${own.meets.reduce((n, m) => n + m.classes.length, 0)} classes and ${ridesIn(own)} rides were brought in first. `
+      }
       const listed = [...found.map((h) => h.name), ...perClass.flatMap((c) => [...c.places, ...c.alternates]).filter(Boolean)]
       // The sheet's own list says who provides each horse. A horse only named on the draw tab has no provider.
       const { book: withHorses, added } = addHorses(book, [...found, ...perClass.flatMap((c) => [...c.places, ...c.alternates]).filter(Boolean)])
@@ -439,24 +450,64 @@ export function DrawScreen({ showId }: { showId: string }) {
       const alts = { ...(withHorses.alts ?? {}) }
       const sets = { ...withHorses.sets }
       const current = getShow(showId)
-      let matched = 0
-      for (const meet of current?.meets ?? []) {
-        for (const cls of meet.classes) {
-          const from = perClass.find((c) => c.classNo === runningNumber(meet, cls))
-          if (!from) continue
-          const key = classKey(meet.id, cls.id)
-          places[key] = from.places
-          alts[key] = from.alternates
-          sets[key] = [...new Set(from.places.filter(Boolean))]
-          matched++
+      // The sheet's own list of riders names anyone its draw has whom the class here did not.
+      const names = new Map(readRoster(wb).map((r) => [r.backNo, r.rider]))
+      const nameOf = (backNo: string) => current?.meets.flatMap((m) => m.classes.flatMap((c) => c.entries)).find((e) => e.back_no === backNo && e.rider)?.rider ?? names.get(backNo) ?? ''
+      const matched = new Set<string>()
+      const unmatched: string[] = []
+      const newRiders: string[] = []
+      const notOnSheet: string[] = []
+      let drawn = 0
+      for (const from of perClass) {
+        const meet = (current?.meets ?? []).find((m) => {
+          const c = classForSheet(m, from)
+          return c !== undefined && !matched.has(classKey(m.id, c.id))
+        })
+        const cls = meet ? classForSheet(meet, from) : undefined
+        if (!meet || !cls) {
+          unmatched.push(from.name || `class ${from.classNo}`)
+          continue
+        }
+        const key = classKey(meet.id, cls.id)
+        matched.add(key)
+        places[key] = from.places
+        alts[key] = from.alternates
+        sets[key] = [...new Set(from.places.filter(Boolean))]
+        if (from.backNos.some(Boolean)) {
+          // The riders have drawn and the sheet has it: take that draw as it stands.
+          const taken = takeSheetDraw(cls.entries, from, nameOf)
+          drawn++
+          newRiders.push(...taken.added)
+          notOnSheet.push(...taken.missing)
+          changeClass(key, (c) => ({ ...c, entries: taken.entries, alternates: from.alternates }))
+        } else {
           // The judge's class list shows the sheet's alternates straight away.
           changeClass(key, (c) => ({ ...c, alternates: from.alternates }))
         }
       }
+      // A class that took its horses from a sheet before, and is not on this one, goes back to none:
+      // an earlier read may have put another class's horses on it.
+      for (const key of Object.keys(places)) {
+        if (matched.has(key)) continue
+        delete places[key]
+        delete alts[key]
+        delete sets[key]
+        changeClass(key, (c) => ({ ...c, alternates: [] }))
+      }
       setBook({ ...withHorses, places, alts, sets })
+      const some = (list: string[]) => `${list.slice(0, 8).join(', ')}${list.length > 8 ? ` and ${list.length - 8} more` : ''}`
       setHorseNote(
-        `The sheet lists ${new Set(listed.map((h) => h.toLowerCase())).size} horses. ${added} were added.` +
-          (matched > 0 ? ` It sets the horses for ${matched} ${matched === 1 ? 'class' : 'classes'}, which now use the sheet's list.` : ' It has no horses set for a class yet.') +
+        broughtIn +
+          `The sheet lists ${new Set(listed.map((h) => h.toLowerCase())).size} horses. ${added} were added.` +
+          (matched.size > 0 ? ` It sets the horses for ${matched.size} ${matched.size === 1 ? 'class' : 'classes'}, which now use the sheet's list.` : ' It has no horses set for a class yet.') +
+          (drawn > 0
+            ? ` The sheet has the riders' draw for ${drawn} ${drawn === 1 ? 'class' : 'classes'}. It was taken as it stands: each rider is on the horse of their draw place. Publish the changes from the show page to send it to the phones.`
+            : matched.size > 0
+              ? ' No back numbers are typed on the sheet yet, so no rider has a horse. Read it again after the riders draw.'
+              : '') +
+          (newRiders.length > 0 ? ` Added from the sheet's draw, not in the class here before: ${some(newRiders)}.` : '') +
+          (notOnSheet.length > 0 ? ` In a class here and not on the sheet's draw for it, so left with no horse: ${some(notOnSheet)}.` : '') +
+          (unmatched.length > 0 ? ` No class of this show is named as the sheet names ${some(unmatched)}, so those horses were not set.` : '') +
           ' The sheet was only read. Nothing in it was changed.',
       )
     } catch {

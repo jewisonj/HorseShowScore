@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Meet, ShowClass, ShowFile } from '../data/fixture'
-import { drawCsv, sheetDraw } from './drawExport'
+import { classForSheet, drawCsv, sheetDraw, takeSheetDraw } from './drawExport'
 
 const cls = (id: string, name: string, entries: [number, string, string][], alternates?: string[]): ShowClass => ({
   id,
@@ -48,5 +48,46 @@ describe('the draw in the shape the show sheet takes it', () => {
     expect(lines).toHaveLength(2 + 12 + 5)
     expect(lines[14]).toBe('Alternate 1,,SPARE,,')
     expect(lines[15]).toBe("Alternate 2,,O'MALLEY,,")
+  })
+})
+
+describe('a class on the sheet and the class of the show it is', () => {
+  const cls = (id: string, name: string): ShowClass => ({ id, class_no: '13', name, section: '', card_family: 'placings', rule_set: 'ihsa-horsemanship', pattern_id: 'p', notes: '', entries: [] })
+  const day = (classes: ShowClass[]): Meet => ({ id: 'm', label: 'Sunday', date: '2026-11-22', coach_meeting: '', start_time: '', judges: [], classes })
+
+  it('goes by the name when the sheet gives one, whatever the numbers say', () => {
+    // A show with one class per division, numbered by IHSA class number.
+    const meet = day([cls('17', 'Open Reining'), cls('12B', 'Rookie B Western Horsemanship'), cls('12A', 'Rookie A Western Horsemanship'), cls('11', 'Beginner Horsemanship')])
+    expect(classForSheet(meet, { classNo: 11, name: 'BEGINNER HORSEMANSHIP' })!.id).toBe('11')
+    // Class 2 of the sheet is not the second class here, and class 11 is not the class numbered 11 unless the name agrees.
+    expect(classForSheet(meet, { classNo: 2, name: 'OPEN HORSEMANSHIP' })).toBeUndefined()
+    expect(classForSheet(meet, { classNo: 11, name: 'LEVEL II HORSEMANSHIP, SEC. B' })).toBeUndefined()
+    // Capitals, spacing and punctuation do not matter.
+    const sections = day([cls('4', 'Level I Horsemanship, Sec. A'), cls('7', 'Level I Horsemanship, Sec. B')])
+    expect(classForSheet(sections, { classNo: 1, name: 'LEVEL I  HORSEMANSHIP SEC B' })!.id).toBe('7')
+  })
+
+  it('goes by the running number when the sheet gives no name', () => {
+    const meet = day([cls('1', 'Reining'), cls('2', 'Ranch Riding')])
+    expect(classForSheet(meet, { classNo: 2, name: '' })!.name).toBe('Ranch Riding')
+    expect(classForSheet(meet, { classNo: 3, name: '' })).toBeUndefined()
+  })
+
+  it('puts each rider on the horse of the place the sheet has them in, and drops nobody', () => {
+    const entries = [
+      { draw: 1, back_no: '10', rider: 'Ann', horse: 'Old' },
+      { draw: 2, back_no: '20', rider: 'Bo', horse: '' },
+      { draw: 3, back_no: '30', rider: 'Cy', horse: '' },
+    ]
+    const got = takeSheetDraw(entries, { places: ['Ace', 'Bay', 'Ace'], backNos: ['30', '', '40', '30'] }, (b) => (b === '40' ? 'Di' : ''))
+    expect(got.entries).toEqual([
+      { draw: 1, back_no: '30', rider: 'Cy', horse: 'Ace' },
+      { draw: 3, back_no: '40', rider: 'Di', horse: 'Ace' },
+      // Not on the sheet: kept after the twelve places, and the horse they had is gone.
+      { draw: 13, back_no: '10', rider: 'Ann', horse: '' },
+      { draw: 14, back_no: '20', rider: 'Bo', horse: '' },
+    ])
+    expect(got.added).toEqual(['40'])
+    expect(got.missing).toEqual(['10', '20'])
   })
 })

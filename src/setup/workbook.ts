@@ -16,8 +16,9 @@ import type { CellValue, Workbook } from './xlsx'
  * - "Exhibitors": back number in B, rider in C, school in D, from row 5.
  * - The draw tab, whose name ends in "Draw": three classes side by side, twenty
  *   rows to a band. A class's number is in A, G or M of the band's heading row
- *   (row 4, 24, 44 ...). Its twelve draw places follow two rows down: back
- *   number in B, H or N and horse in D, J or P. Five alternates come after.
+ *   (row 4, 24, 44 ...), with its name beside it in B, H or N. Its twelve draw
+ *   places follow two rows down: back number in B, H or N, typed in once the
+ *   riders have drawn, and horse in D, J or P. Five alternates come after.
  */
 export const FIRST_ROW = 6
 export const LAST_ROW = 17
@@ -74,6 +75,10 @@ export function readHorses(wb: Workbook): { name: string; provider: string }[] {
 export interface WorkbookClassHorses {
   /** The show's running class number, from the block's heading. */
   classNo: number
+  /** The class's name as the block's heading has it, such as "REINING". Empty when the sheet gives none. */
+  name: string
+  /** The back number typed beside each draw place once the riders have drawn, first place first. Empty where none is typed, and left off after the last one. */
+  backNos: string[]
   /** The horse in each draw place, first place first. Empty where a place has no horse. Places after the last horse are left off. */
   places: string[]
   alternates: string[]
@@ -122,6 +127,14 @@ export function readDrawTab(wb: Workbook): WorkbookClassHorses[] {
         const places: string[] = []
         for (let i = 0; i < DRAW_PLACES; i++) places.push(name(heading + 2 + i))
         while (places.length > 0 && places[places.length - 1] === '') places.pop()
+        const backNos: string[] = []
+        for (let i = 0; i < DRAW_PLACES; i++) {
+          const back = wb.cell(tab, `${block.back}${heading + 2 + i}`)
+          const backNo = typeof back === 'number' ? String(back) : text(back)
+          backNos.push(/^[A-Za-z0-9]{1,8}$/.test(backNo) && backNo !== '0' ? backNo : '')
+        }
+        while (backNos.length > 0 && backNos[backNos.length - 1] === '') backNos.pop()
+        const heading_ = text(wb.cell(tab, `${block.back}${heading}`))
         const alternates: string[] = []
         for (let i = 0; i < DRAW_ALTERNATES; i++) {
           const horse = name(heading + 2 + DRAW_PLACES + i)
@@ -129,7 +142,7 @@ export function readDrawTab(wb: Workbook): WorkbookClassHorses[] {
         }
         if (places.every((p) => p === '') && alternates.length === 0) continue
         seen.add(n)
-        out.push({ classNo: n, places, alternates })
+        out.push({ classNo: n, name: heading_.startsWith('#') ? '' : heading_, places, backNos, alternates })
       }
     }
   }
