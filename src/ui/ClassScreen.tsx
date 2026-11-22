@@ -4,8 +4,9 @@ import { classKey, getClass, getMeet, getPattern } from '../data/fixture'
 import { classResults, placingWarnings, sheetPlacings, totalFor } from '../results'
 import { PLACINGS_FIRST_CELL } from '../setup/workbook'
 import { ruleSetFor } from '../rules/rulesets'
-import { addRiders, classState, parseBackNumbers, setClassFinished, useAppState } from '../store'
+import { addRiders, classState, isReride, parseBackNumbers, setClassFinished, useAppState } from '../store'
 import { BackNumber, Code, Ribbon, Screen, go, pts } from './bits'
+import { CallReride } from './CallReride'
 import { PatternPagePicture } from './PatternPagePicture'
 
 export function ClassScreen({ meetId, classId }: { meetId: string; classId: string }) {
@@ -148,7 +149,7 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
               <li key={run.id}>
                 <button
                   className="row"
-                  aria-label={`Back number ${run.backNo}${run.rider ? `, ${run.rider}` : ''}${run.horse ? `, on ${run.horse}` : ''}. ${status === '' ? 'Not scored' : status}`}
+                  aria-label={`Back number ${run.backNo}${run.rider ? `, ${run.rider}` : ''}${run.horse ? `, on ${run.horse}` : ''}${isReride(run) ? ', re-ride' : ''}. ${status === '' ? 'Not scored' : status}`}
                   onClick={() => go(`${base}/r/${run.id}`)}
                 >
                   {run.draw !== undefined && <span className="draw" aria-label={`Draw ${run.draw}`}>{run.draw}</span>}
@@ -158,6 +159,7 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
                     {run.horse && <span className="horse">{run.horse}</span>}
                   </span>
                   <span className="row-side row-status">
+                    {isReride(run) && <span className="tag">Re-ride</span>}
                     <span className={run.scored ? 'score' : undefined}>{status}</span>
                     {run.mark !== 'none' && run.mark !== 'DQ' && <span className="tag">{run.mark}</span>}
                   </span>
@@ -173,6 +175,8 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
           <strong>Alternate horses:</strong> {(cls.alternates ?? []).join(', ')}
         </p>
       )}
+
+      <CallReride meetId={meetId} classKeyOf={key} cls={cls} cs={cs} />
 
       {hasRail && cs.runs.length > 0 && (
         <button className="btn btn-wide" onClick={() => go(`${base}/rail`)}>

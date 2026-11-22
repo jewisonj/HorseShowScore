@@ -23,6 +23,8 @@ export interface SentRow {
   note?: string
   /** The card itself, for riders who rode: what the office releases as a score card. */
   card?: SentCard
+  /** How many re-rides this rider has had in the class. The row is the latest ride. */
+  reride?: number
 }
 
 /** A rider's card as scored: each maneuver box, the boxes outside the maneuvers, and the penalties. Half points. */

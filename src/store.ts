@@ -21,6 +21,19 @@ export interface Penalty {
   circled?: boolean
 }
 
+/** A ride that a re-ride replaced. Kept as it was scored. It is never totalled, placed or sent as a result. */
+export interface PastRide {
+  horse?: string
+  boxes: (Half | null)[]
+  extras: Record<string, Half | null>
+  penalties: Penalty[]
+  note?: string
+  mark: Mark
+  scored: boolean
+  /** When the re-ride was called */
+  at: number
+}
+
 export interface Run {
   id: string
   backNo: string
@@ -39,6 +52,8 @@ export interface Run {
   mark: Mark
   /** True once the operator has saved a score for this rider */
   scored: boolean
+  /** Earlier rides of this rider in this class, oldest first, each replaced by a re-ride. */
+  previous?: PastRide[]
   updatedAt: number
 }
 
@@ -204,14 +219,16 @@ export function updateDetails(key: string, riders: NewRider[]): number {
   const runs = current.runs.map((run) => {
     const d = byBack.get(run.backNo)
     if (!d) return run
-    if (run.draw === d.draw && (run.rider ?? '') === (d.rider ?? '') && (run.horse ?? '') === (d.horse ?? '')) return run
+    // A rider on a re-ride keeps the horse the re-ride was given. The draw still names the first one.
+    const horse = isReride(run) ? run.horse ?? '' : d.horse ?? ''
+    if (run.draw === d.draw && (run.rider ?? '') === (d.rider ?? '') && (run.horse ?? '') === horse) return run
     changed += 1
     const { draw: _draw, rider: _rider, horse: _horse, ...rest } = run
     return {
       ...rest,
       ...(d.draw !== undefined ? { draw: d.draw } : {}),
       ...(d.rider ? { rider: d.rider } : {}),
-      ...(d.horse ? { horse: d.horse } : {}),
+      ...(horse ? { horse } : {}),
     }
   })
   if (changed > 0) commit({ ...state, classes: { ...state.classes, [key]: { ...current, runs } } })
@@ -248,7 +265,7 @@ export function syncDraw(key: string, riders: NewRider[], boxCount: number): num
   const inDraw = new Set(riders.map((r) => r.backNo))
   const removed = new Set(current.removed ?? [])
   const placed = new Set(current.placings)
-  const kept = current.runs.filter((r) => inDraw.has(r.backNo) || r.draw === undefined || hasWork(r) || placed.has(r.id))
+  const kept = current.runs.filter((r) => inDraw.has(r.backNo) || r.draw === undefined || hasWork(r) || isReride(r) || placed.has(r.id))
   const have = new Set(kept.map((r) => r.backNo))
   const fresh: Run[] = []
   for (const rider of riders) {
@@ -281,6 +298,52 @@ export function removeRun(key: string, runId: string) {
       ...(gone ? { removed: [...new Set([...(c.removed ?? []), gone.backNo])] } : {}),
     }
   })
+}
+
+/** True for a rider whose ride in this class is a re-ride. */
+export function isReride(run: Run): boolean {
+  return (run.previous?.length ?? 0) > 0
+}
+
+/**
+ * Call a re-ride. The ride so far is kept in the run's history and no longer
+ * counts. The rider gets a clear card, the horse named here, and goes to the
+ * end of the class. They are taken out of the placings, and a class marked
+ * finished is open again. Returns false when the rider is not in the class.
+ */
+export function startReride(key: string, runId: string, horse: string): boolean {
+  const current = classState(state, key)
+  const run = current.runs.find((r) => r.id === runId)
+  if (!run) return false
+  const past: PastRide = {
+    ...(run.horse ? { horse: run.horse } : {}),
+    boxes: run.boxes,
+    extras: run.extras ?? {},
+    penalties: run.penalties,
+    ...((run.note ?? '').trim() ? { note: run.note } : {}),
+    mark: run.mark,
+    scored: run.scored,
+    at: Date.now(),
+  }
+  const { horse: _horse, note: _note, ...rest } = run
+  const again: Run = {
+    ...rest,
+    ...(horse.trim() ? { horse: horse.trim() } : {}),
+    boxes: run.boxes.map(() => null),
+    extras: {},
+    penalties: [],
+    mark: 'none',
+    scored: false,
+    previous: [...(run.previous ?? []), past],
+    updatedAt: Date.now(),
+  }
+  updateClass(key, (c) => ({
+    ...c,
+    runs: [...c.runs.filter((r) => r.id !== runId), again],
+    placings: c.placings.filter((id) => id !== runId),
+    finished: false,
+  }))
+  return true
 }
 
 /** True when a run holds anything the operator entered. */

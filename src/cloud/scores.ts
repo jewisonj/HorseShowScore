@@ -1,7 +1,7 @@
 import { cloudCache } from '../data/cloudShows'
 import { classKey, type ShowClass, type ShowFile } from '../data/fixture'
 import { classResults } from '../results'
-import { classState, getState, hasWork, judgeName, watchState, type ClassState } from '../store'
+import { classState, getState, hasWork, isReride, judgeName, watchState, type ClassState } from '../store'
 import type { PublicCard, PublicPlacing, PublishedClass, ReleasedCards, SentRow, SentScores } from './backend'
 import { cloudState, explainServerError, getBackend } from './cloud'
 import { currentSeat, markSeatRejected } from './seat'
@@ -47,6 +47,8 @@ export function rowsFor(cs: ClassState, cls: ShowClass): SentRow[] {
     ...((row.run.note ?? '').trim() ? { note: (row.run.note ?? '').trim() } : {}),
     // The card itself goes along for riders who rode, so the office can release it later.
     ...(hasWork(row.run) ? { card: { boxes: row.run.boxes, extras: row.run.extras ?? {}, penalties: row.run.penalties } } : {}),
+    // A re-ride: the office sees that this is the rider's second ride, and on which horse.
+    ...(isReride(row.run) ? { reride: row.run.previous!.length } : {}),
   }))
 }
 

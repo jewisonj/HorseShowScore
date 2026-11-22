@@ -1920,3 +1920,32 @@ h2 {
   font-size: 0.8rem;
   text-align: center;
 }
+
+/* ---------- Re-rides ---------- */
+
+.reride {
+  margin: 10px 0;
+}
+
+.reride-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.reride-ask {
+  margin: 10px 0;
+  padding: 12px;
+  background: var(--hi);
+  border: 2px solid var(--hi-ink);
+  border-radius: 10px;
+  color: var(--hi-ink);
+}
+
+.reride-ask .field > span {
+  color: var(--hi-ink);
+}
