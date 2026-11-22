@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import type { RosterRider, StableHorse } from '../cloud/backend'
 import { explainServerError, fetchWorkbook, getBackend, startCloud, useCloud } from '../cloud/cloud'
 import { useCloudCache } from '../data/cloudShows'
-import { allShows, classKey, getShow, type ShowClass, type ShowFile } from '../data/fixture'
+import { allShows, builtInShows, classKey, getShow, type ShowClass, type ShowFile } from '../data/fixture'
 import { saveShow, useUserShows } from '../data/shows'
 import { ruleSetFor } from '../rules/rulesets'
 import { loadDraw } from '../seed'
-import { finishShow } from '../setup/draft'
+import { finishShow, mergeSheetRead } from '../setup/draft'
 import { addHorses, limitsIn, markOf, saveDrawBook, useDrawBook, type BookHorse, type DrawBook, type RiderMark } from '../setup/drawBook'
 import { drawCsv, runningNumber, sheetDraw } from '../setup/drawExport'
 import { drawClass, drawPlaces, fits, redrawOne, suggestSet, rideCounts, type DrawRider, type WeightGroup } from '../setup/horseDraw'
@@ -54,6 +54,7 @@ export function DrawScreen({ showId }: { showId: string }) {
   const remembered = sheetLinkFor(showId) !== ''
   const [busy, setBusy] = useState(false)
   const [horseNote, setHorseNote] = useState('')
+  const [ridersNote, setRidersNote] = useState('')
   const [classNote, setClassNote] = useState<Record<string, string>>({})
   // Lines copied for the sheet that the device would not copy by itself, shown to be copied by hand.
   const [toCopy, setToCopy] = useState<Record<string, string>>({})
@@ -241,6 +242,34 @@ export function DrawScreen({ showId }: { showId: string }) {
       setStable(before)
       setHorseNote(`${name} was not saved to the horses list. ${explainServerError(e)}`)
     }
+  }
+
+  /**
+   * A show set up from its patterns alone has classes and nobody in them, so
+   * there is nobody to draw for. When the app ships its own copy of this show
+   * with the riders of the IHSA program, take that copy's classes and riders.
+   * The days keep their details, and each class keeps the pattern chosen here
+   * for its division.
+   */
+  function useAppRiders() {
+    const current = getShow(showId)
+    const own = builtInShows.find((s) => s.id === showId)
+    if (!current || !own) return
+    const read = mergeSheetRead(current.meets, own.meets).meets
+    const meets = read.map((m) => {
+      const mine = current.meets.find((b) => b.id === m.id)
+      return mine ? { ...mine, classes: m.classes } : m
+    })
+    const used = new Set(meets.flatMap((m) => m.classes.map((c) => c.pattern_id)))
+    const patterns = [...current.patterns, ...own.patterns.filter((p) => used.has(p.id) && !current.patterns.some((q) => q.id === p.id))]
+    if (!saveShow(finishShow({ ...current, meets, patterns }))) {
+      setRidersNote('This computer could not store the show. Its storage may be full.')
+      return
+    }
+    loadDraw()
+    const rides = meets.reduce((n, m) => n + m.classes.reduce((k, c) => k + c.entries.length, 0), 0)
+    const count = meets.reduce((n, m) => n + m.classes.length, 0)
+    setRidersNote(`${count} classes and ${rides} rides are in. If you read the horses from the sheet before, read them again so they land on the right classes. Then draw, and publish the changes from the show page.`)
   }
 
   /** Change one class of the show. Saved on this computer before the screen shows it. */
@@ -442,6 +471,31 @@ export function DrawScreen({ showId }: { showId: string }) {
         be drawn again alone, or given a horse by hand.
       </p>
 
+      {(() => {
+        const own = builtInShows.find((s) => s.id === showId)
+        const rides = (list: ShowFile) => list.meets.reduce((n, m) => n + m.classes.reduce((k, c) => k + c.entries.length, 0), 0)
+        const count = (list: ShowFile) => list.meets.reduce((n, m) => n + m.classes.length, 0)
+        if (!own || rides(own) === 0 || rides(show) > 0) return null
+        return (
+          <section className="panel" aria-label="No riders in this show">
+            <p className="warning" role="alert">
+              This show has {count(show) === 1 ? '1 class' : `${count(show)} classes`} and no riders, so there is nobody to draw for.
+            </p>
+            <p className="hint">
+              The app has this show from the IHSA program: {count(own)} classes in running order, with sections, and {rides(own)} rides. Using it replaces the
+              classes here. Each class keeps the pattern you chose for its division, and the day keeps its times.
+            </p>
+            <button className="btn btn-primary" onClick={useAppRiders}>
+              Use the classes and riders from the program
+            </button>
+          </section>
+        )
+      })()}
+      {ridersNote && (
+        <p className="hint" role="status">
+          {ridersNote}
+        </p>
+      )}
       <h2>Horses</h2>
       <p className="hint">
         These are each horse's usual limits. A height rider cannot draw a horse marked height restricted. A rider cannot

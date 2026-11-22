@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { classKey, getClass } from '../data/fixture'
-import { clearShows, userShows } from '../data/shows'
+import { builtInShows, classKey, getClass, getShow, type ShowFile } from '../data/fixture'
+import { clearShows, saveShow, userShows } from '../data/shows'
 import { loadDraw } from '../seed'
 import { clearDrawBooks, drawBook } from '../setup/drawBook'
 import { classState, clearAll, getState } from '../store'
@@ -147,6 +147,43 @@ describe('the horse draw in setup', () => {
     fireEvent.click(within(panel).getByRole('button', { name: 'Pick the least used' }))
     // Eight riders on the rail: eight horses and two alternates.
     expect(drawBook(SUNDAY).sets[classKey('meet-6', '11')]).toHaveLength(10)
+  })
+})
+
+describe('a show set up from its patterns, with nobody in its classes', () => {
+  it('takes the classes and riders the app has from the program, and keeps its own patterns and times', () => {
+    // The show as it was published on the morning of the show: one class per division, no sections, no riders.
+    const own = builtInShows.find((s) => s.id === SUNDAY)!
+    const divisions = [...new Map(own.meets[0].classes.map((c) => [c.class_no, c])).values()]
+    const mine: ShowFile = {
+      ...own,
+      patterns: divisions.map((c) => ({ ...own.patterns.find((p) => p.id === c.pattern_id)!, id: `mine-${c.class_no}`, name: `My pattern for ${c.class_no}` })),
+      meets: [{ ...own.meets[0], coach_meeting: '08:00', start_time: '09:00', classes: divisions.map((c) => ({ ...c, id: c.class_no, section: '', name: `Division ${c.class_no}`, pattern_id: `mine-${c.class_no}`, entries: [], alternates: [] })) }],
+    }
+    expect(mine.meets[0].classes).toHaveLength(8)
+    saveShow(mine)
+    render(<DrawScreen showId={SUNDAY} />)
+    expect(screen.getByRole('alert').textContent).toBe('This show has 8 classes and no riders, so there is nobody to draw for.')
+    fireEvent.click(screen.getByRole('button', { name: 'Use the classes and riders from the program' }))
+
+    const now = getShow(SUNDAY)!
+    expect(now.meets).toHaveLength(1)
+    expect(now.meets[0].classes.map((c) => c.id)).toEqual(own.meets[0].classes.map((c) => c.id))
+    expect(now.meets[0].classes).toHaveLength(12)
+    expect(now.meets[0].classes.reduce((n, c) => n + c.entries.length, 0)).toBe(74)
+    // The day keeps what was set up, and each class the pattern chosen for its division, both sections alike.
+    expect(now.meets[0]).toMatchObject({ id: 'meet-6', coach_meeting: '08:00', start_time: '09:00' })
+    for (const c of now.meets[0].classes) expect(c.pattern_id).toBe(`mine-${c.class_no}`)
+    expect(now.patterns.map((p) => p.id).sort()).toEqual(divisions.map((c) => `mine-${c.class_no}`).sort())
+    expect(screen.getByText(/^12 classes and 74 rides are in\./)).toBeTruthy()
+    // The offer is gone, and the classes can be drawn.
+    expect(screen.queryByRole('button', { name: 'Use the classes and riders from the program' })).toBeNull()
+    expect(screen.getByRole('region', { name: /Level I Horsemanship, Sec\. B/ })).toBeTruthy()
+  })
+
+  it('is not offered for a show that has riders', () => {
+    render(<DrawScreen showId={SUNDAY} />)
+    expect(screen.queryByRole('button', { name: 'Use the classes and riders from the program' })).toBeNull()
   })
 })
 
