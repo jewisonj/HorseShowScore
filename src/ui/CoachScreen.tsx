@@ -8,23 +8,14 @@ import { showDates } from './Home'
 import { usePublishedShows } from './PublicScreens'
 import { RiderMarks } from './RidersScreen'
 
-/** Whether this device last had the height and weight controls open. They take room, so they start closed. */
-const MARKS_OPEN_KEY = 'hss.coach.marks.v1'
-function marksWereOpen(): boolean {
-  try {
-    return localStorage.getItem(MARKS_OPEN_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
 /**
  * A coach picks their team and signs on with its PIN, sees their own riders
  * and sets each one's marks for the horse draw: height rider yes or no, and
  * weight group. No heights, no weights, no scores, and nobody else's riders.
- * The marks sit behind a button (owner, 2026-11-22: they take a lot of room).
- * Closed, the screen is the coach's riders and where each one goes today:
- * class, draw place and horse, from the published show.
+ * The marks are set on a screen of their own, behind a "Height and weight"
+ * button (owner, 2026-11-22: they take a lot of room). This screen is the
+ * coach's riders and where each one goes today: class, draw place and horse,
+ * from the published show.
  *
  * Every coach begins on the same starting PIN. It opens only the step where
  * the coach chooses their own, and stops working for that team once they have.
@@ -43,7 +34,6 @@ export function CoachScreen() {
   const [riders, setRiders] = useState<RosterRider[] | null>(null)
   const [problem, setProblem] = useState('')
   const [saved, setSaved] = useState('')
-  const [marksOpen, setMarksOpen] = useState(marksWereOpen)
   const { shows } = usePublishedShows()
   useEffect(() => {
     void startCloud()
@@ -204,18 +194,6 @@ export function CoachScreen() {
     )
   }
 
-  async function mark(rider: RosterRider, height: boolean, group: 1 | 2 | 3) {
-    const before = riders
-    setRiders((list) => (list ?? []).map((r) => (r.backNo === rider.backNo ? { ...r, height, group } : r)))
-    setProblem('')
-    setSaved('')
-    const wrong = await coachMark(rider.backNo, height, group)
-    if (wrong) {
-      setProblem(`${rider.backNo} was not saved. ${wrong}`)
-      setRiders(before)
-    } else setSaved(`Saved for ${rider.backNo}.`)
-  }
-
   // Where each rider goes today, from the published show. Public already, shown here beside the coach's own riders.
   const today = showForToday(shows)
   const ridesOf = (backNo: string) =>
@@ -233,27 +211,6 @@ export function CoachScreen() {
               Your riders in {today.name}, {showDates(today)}: each class with its draw place and horse, as the show has published it.
             </p>
           )}
-          <button
-            className="btn coach-marks-button"
-            aria-expanded={marksOpen}
-            onClick={() => {
-              const next = !marksOpen
-              setMarksOpen(next)
-              try {
-                localStorage.setItem(MARKS_OPEN_KEY, next ? '1' : '0')
-              } catch {
-                // It still opens and closes for this visit.
-              }
-            }}
-          >
-            {marksOpen ? 'Hide height and weight' : 'Set height and weight'}
-          </button>
-          {marksOpen && (
-            <p className="hint">
-              Mark your height riders and each rider's weight group. The horse draw uses these to give each rider a horse
-              they fit. Only you and the show admins see them. They are never published.
-            </p>
-          )}
           <ul className="list draw-riders">
             {riders.map((r) => {
               const rides = ridesOf(r.backNo)
@@ -261,14 +218,10 @@ export function CoachScreen() {
                 <li key={r.backNo} className="draw-rider">
                   <BackNumber value={r.backNo} size="sm" />
                   <strong className="rider-name">{r.rider || 'Rider not named'}</strong>
-                  {marksOpen ? (
-                    <RiderMarks rider={r} onChange={(height, group) => void mark(r, height, group)} />
-                  ) : (
-                    <span className="muted coach-marks">
-                      {r.height ? 'Height rider, group ' : 'Group '}
-                      {r.group}
-                    </span>
-                  )}
+                  <span className="muted coach-marks">
+                    {r.height ? 'Height rider, group ' : 'Group '}
+                    {r.group}
+                  </span>
                   {rides.length > 0 && (
                     <ul className="coach-rides" aria-label={`Rides of ${r.backNo}`}>
                       {rides.map((x) => (
@@ -299,6 +252,9 @@ export function CoachScreen() {
         <button className="btn btn-primary btn-wide" onClick={() => go('/coach/draw')}>
           See the draw
         </button>
+        <button className="btn" onClick={() => go('/coach/marks')}>
+          Height and weight
+        </button>
         <button
           className="btn"
           onClick={() => {
@@ -321,6 +277,76 @@ export function CoachScreen() {
           Sign off
         </button>
       </div>
+    </Screen>
+  )
+}
+
+/**
+ * The coach's second screen: each of their riders with the two marks the horse
+ * draw works from. Reached from the coach's own screen, and back to it.
+ */
+export function CoachMarksScreen() {
+  const coach = useCoach()
+  const [riders, setRiders] = useState<RosterRider[] | null>(null)
+  const [problem, setProblem] = useState('')
+  const [saved, setSaved] = useState('')
+  useEffect(() => {
+    if (!coach) return
+    let current = true
+    void startCloud()
+      .then(loadCoachRiders)
+      .then((got) => {
+        if (!current) return
+        if (got.ok) setRiders(got.riders)
+        else setProblem(got.error)
+      })
+    return () => {
+      current = false
+    }
+  }, [coach?.team, coach?.pin])
+  if (!coach) return null
+
+  async function mark(rider: RosterRider, height: boolean, group: 1 | 2 | 3) {
+    const before = riders
+    setRiders((list) => (list ?? []).map((r) => (r.backNo === rider.backNo ? { ...r, height, group } : r)))
+    setProblem('')
+    setSaved('')
+    const wrong = await coachMark(rider.backNo, height, group)
+    if (wrong) {
+      setProblem(`${rider.backNo} was not saved. ${wrong}`)
+      setRiders(before)
+    } else setSaved(`Saved for ${rider.backNo}.`)
+  }
+
+  return (
+    <Screen title="Height and weight" sub={coach.team} backTo="/coach" backLabel="My riders">
+      <p className="hint">
+        Mark your height riders and each rider's weight group. The horse draw uses these to give each rider a horse they
+        fit. Only you and the show admins see them. They are never published.
+      </p>
+      {riders === null && !problem && <p className="empty">Looking for your riders.</p>}
+      {riders !== null && riders.length === 0 && <p className="empty">No riders are listed for your team yet. The show admin adds them from the show's sheet.</p>}
+      {riders !== null && riders.length > 0 && (
+        <ul className="list draw-riders">
+          {riders.map((r) => (
+            <li key={r.backNo} className="draw-rider">
+              <BackNumber value={r.backNo} size="sm" />
+              <strong className="rider-name">{r.rider || 'Rider not named'}</strong>
+              <RiderMarks rider={r} onChange={(height, group) => void mark(r, height, group)} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {problem && (
+        <p className="warning" role="alert">
+          {problem}
+        </p>
+      )}
+      {saved && (
+        <p className="hint" role="status">
+          {saved}
+        </p>
+      )}
     </Screen>
   )
 }

@@ -33,8 +33,6 @@ beforeEach(() => {
   clearCloudCache()
   clearSeatForTests()
   clearCoachForTests()
-  // A coach's screen remembers whether the height and weight controls were open.
-  localStorage.removeItem('hss.coach.marks.v1')
   clearDrawBooks()
   resetScoreSendingForTests()
   server = makeFakeBackend()
@@ -93,6 +91,9 @@ describe('the riders list', () => {
     expect(server.teams.map((t) => t.team).sort()).toEqual(['Example College', 'Sample University'])
 
     const team = screen.getByRole('region', { name: 'Sample University' })
+    // A team's riders are behind a button: height and weight for everyone takes a lot of room.
+    expect(within(team).queryAllByRole('listitem')).toHaveLength(0)
+    fireEvent.click(within(team).getByRole('button', { name: 'Height and weight for the 3 riders (0 marked)' }))
     expect(within(team).getAllByRole('listitem')).toHaveLength(3)
     fireEvent.change(within(team).getByLabelText('Weight group of 504'), { target: { value: '3' } })
     await waitFor(() => expect(server.riders.find((r) => r.backNo === '504')).toMatchObject({ height: false, group: 3 }))
@@ -167,14 +168,17 @@ describe('a coach', () => {
     expect(screen.getByText('Ben Baker')).toBeTruthy()
     expect(screen.queryByText('Cy Cole')).toBeNull()
     expect(currentCoach()).toEqual({ team: 'Example College', pin: '2468' })
-    // The height and weight controls start closed: each rider shows the marks in a few words.
+    // The height and weight controls are not on this screen: each rider shows the marks in a few words.
     expect(screen.queryByLabelText('Weight group of 502')).toBeNull()
     expect(screen.getByText('Ben Baker').closest('li')!.textContent).toContain('Height rider, group 2')
     expect(screen.getByText('Ada Able').closest('li')!.textContent).toContain('Group 1')
-    // Opened, Ben is marked as the admin left him. Closed again, the controls are gone.
-    fireEvent.click(screen.getByRole('button', { name: 'Set height and weight' }))
-    expect((screen.getByLabelText('Weight group of 502') as HTMLSelectElement).value).toBe('2')
-    fireEvent.click(screen.getByRole('button', { name: 'Hide height and weight' }))
+    // They are on a screen of their own, where Ben is marked as the admin left him. And back again.
+    fireEvent.click(screen.getByRole('button', { name: 'Height and weight' }))
+    expect(await screen.findByRole('heading', { name: 'Height and weight' })).toBeTruthy()
+    expect(((await screen.findByLabelText('Weight group of 502')) as HTMLSelectElement).value).toBe('2')
+    expect(screen.queryByText('Cy Cole')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /My riders/ }))
+    expect(await screen.findByRole('heading', { name: 'Example College' })).toBeTruthy()
     expect(screen.queryByLabelText('Weight group of 502')).toBeNull()
     // Nothing else of the app is on this screen.
     expect(screen.queryByRole('button', { name: /Publish|Set up|Draw|Judges and PINs/ })).toBeNull()
@@ -219,12 +223,15 @@ describe('a coach', () => {
 
   it('marks a rider, and the riders list holds it', async () => {
     await coachSignsOn('Example College', '2468')
-    fireEvent.click(await screen.findByRole('button', { name: 'Set height and weight' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Height and weight' }))
     fireEvent.change(await screen.findByLabelText('Weight group of 501'), { target: { value: '3' } })
     expect(await screen.findByText('Saved for 501.')).toBeTruthy()
     expect(server.riders.find((r) => r.backNo === '501')).toMatchObject({ group: 3, height: false })
     fireEvent.click(within(screen.getByLabelText('Weight group of 501').closest('li')!).getByLabelText('Height rider'))
     await waitFor(() => expect(server.riders.find((r) => r.backNo === '501')).toMatchObject({ group: 3, height: true }))
+    // Back on the coach's own screen the new marks show in words.
+    fireEvent.click(screen.getByRole('button', { name: /My riders/ }))
+    await waitFor(() => expect(screen.getByText('Ada Able').closest('li')!.textContent).toContain('Height rider, group 3'))
   })
 
   it('changes their PIN later, with the one they have', async () => {
@@ -266,9 +273,10 @@ describe('a coach', () => {
   it('is signed off when the admin puts the team back on 0000', async () => {
     await coachSignsOn('Example College', '2468')
     expect(await screen.findByText('Ada Able')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Height and weight' }))
+    const select = await screen.findByLabelText('Weight group of 501')
     server.teams = server.teams.map((t) => (t.team === 'Example College' ? { team: t.team, coach: 'start' } : t))
-    fireEvent.click(screen.getByRole('button', { name: 'Set height and weight' }))
-    fireEvent.change(screen.getByLabelText('Weight group of 501'), { target: { value: '2' } })
+    fireEvent.change(select, { target: { value: '2' } })
     await waitFor(() => expect(currentCoach()).toBeNull())
     expect(server.riders.find((r) => r.backNo === '501')).toMatchObject({ group: 1 })
   })

@@ -43,6 +43,8 @@ export function RidersScreen() {
   const cloud = useCloud()
   const [riders, setRiders] = useState<RosterRider[] | null>(null)
   const [teams, setTeams] = useState<TeamPin[]>([])
+  // The teams whose riders are showing. Height and weight for every rider takes a lot of room, so a team starts closed.
+  const [open, setOpen] = useState<Record<string, boolean>>({})
   // The sheet a show was read from is remembered on this computer, so it need not be pasted again.
   const [link, setLink] = useState(() => lastSheetLink())
   const sheets = rememberedSheetLinks()
@@ -236,15 +238,22 @@ export function RidersScreen() {
                 )}
               </div>
             )}
-            <ul className="list draw-riders">
-              {groups.get(team)!.map((r) => (
-                <li key={r.backNo} className="draw-rider">
-                  <BackNumber value={r.backNo} size="sm" />
-                  <strong className="rider-name">{r.rider || 'Rider not named'}</strong>
-                  <RiderMarks rider={r} onChange={(height, group) => void mark(r, height, group)} />
-                </li>
-              ))}
-            </ul>
+            <button className="btn" aria-expanded={open[team] === true} onClick={() => setOpen({ ...open, [team]: !open[team] })}>
+              {open[team]
+                ? 'Hide height and weight'
+                : `Height and weight for the ${groups.get(team)!.length} riders (${groups.get(team)!.filter((r) => r.height || r.group !== 1).length} marked)`}
+            </button>
+            {open[team] && (
+              <ul className="list draw-riders">
+                {groups.get(team)!.map((r) => (
+                  <li key={r.backNo} className="draw-rider">
+                    <BackNumber value={r.backNo} size="sm" />
+                    <strong className="rider-name">{r.rider || 'Rider not named'}</strong>
+                    <RiderMarks rider={r} onChange={(height, group) => void mark(r, height, group)} />
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         )
       })}
