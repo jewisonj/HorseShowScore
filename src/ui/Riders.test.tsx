@@ -9,6 +9,7 @@ import { resetScoreSendingForTests } from '../cloud/scores'
 import { clearSeatForTests } from '../cloud/seat'
 import { clearCloudCache } from '../data/cloudShows'
 import { classKey, getClass, getShow, type ShowFile } from '../data/fixture'
+import { formatHalf } from '../engine/half'
 import { clearShows, saveShow } from '../data/shows'
 import { clearDrawBooks, drawBook, saveDrawBook } from '../setup/drawBook'
 import { drawCsv } from '../setup/drawExport'
@@ -408,6 +409,89 @@ describe('a coach looking over the draw', () => {
     expect(rows.filter((r) => r.className === 'sheet-draw-mine').map((r) => r.textContent)).toHaveLength(1)
     expect(rows[1].className).toBe('sheet-draw-mine')
     expect(screen.getAllByRole('table').filter((t) => within(t).getAllByRole('columnheader')[0].textContent === 'Draw')).toHaveLength(sunday.meets[0].classes.length - 1)
+  })
+
+  it('opens a class’s released score cards as one sheet, from the coach’s screen and from the public page', async () => {
+    const sunday = JSON.parse(JSON.stringify(getShow(SUNDAY)!)) as ShowFile
+    server.shows = [sunday]
+    const reining = sunday.meets[0].classes.find((c) => c.id === '1')!
+    const n = sunday.patterns.find((p) => p.id === reining.pattern_id)!.boxes.length
+    // Made-up riders, numbers and scores: nothing here is from a real card. 9001 is the coach's rider.
+    // The office has released Reining and nothing else.
+    server.riders = [rider('9001', 'Robin Sample', 'Example College')]
+    const boxes = (value: number) => Array.from({ length: n }, () => value)
+    server.cards[SUNDAY] = [
+      {
+        classKey: classKey('meet-6', '1'),
+        publishedAt: '2026-11-22T18:30:00Z',
+        cards: [
+          // Released out of order on purpose: the sheet puts first place first and a rider with no place last.
+          { place: null, tied: false, back_no: '9003', rider: 'Jordan Sample', horse: 'Charlie', score: null, mark: 'DQ', note: '', boxes: boxes(0), extras: { fe: 4 }, penalties: [{ half: 10, box: 4 }] },
+          { place: 2, tied: false, back_no: '9002', rider: 'Casey Sample', horse: 'Bravo', score: 142, mark: 'OP', note: 'Good hands.', boxes: boxes(0), extras: { fe: 4 }, penalties: [{ half: 2, box: 1 }, { half: 1, box: 2, circled: true }] },
+          { place: 1, tied: false, back_no: '9001', rider: 'Robin Sample', horse: 'Alpha', score: 140 + 2 * n + 7, mark: 'none', note: '', boxes: boxes(2), extras: { fe: 7 }, penalties: [] },
+        ],
+      },
+    ]
+    await startCloud()
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: /^Coach/ }))
+    await screen.findByRole('option', { name: 'Example College' })
+    fireEvent.change(screen.getByLabelText('Your team'), { target: { value: 'Example College' } })
+    fireEvent.change(screen.getByLabelText('Coach PIN'), { target: { value: '2468' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign on' }))
+
+    // On the coach's screen only the released class has a score sheet.
+    const open = await screen.findByRole('button', { name: 'Score sheet for Reining' })
+    expect(screen.getAllByRole('button', { name: /^Score sheet for / })).toHaveLength(1)
+    fireEvent.click(open)
+    expect(await screen.findByRole('heading', { name: 'Score sheet' })).toBeTruthy()
+    const table = await screen.findByRole('table', { name: /^1\. Reining/ })
+    const heads = within(table).getAllByRole('columnheader').map((h) => h.getAttribute('aria-label') ?? h.textContent)
+    expect(heads.slice(0, 3)).toEqual(['Place', 'Back #', 'Rider and horse'])
+    expect(heads.slice(3, 3 + n).every((h, i) => h!.startsWith(`Maneuver ${i + 1}`))).toBe(true)
+    expect(heads.slice(3 + n)).toEqual(['Form and effectiveness', 'Pen.', 'Score'])
+
+    const cells = (row: HTMLElement) => within(row).getAllByRole('cell').map((c) => c.textContent!.replace(' (your rider)', ''))
+    const rows = within(table).getAllByRole('row').slice(1)
+    // First place first: every maneuver +1, F&E 3½, no penalty.
+    expect(cells(rows[0])).toEqual(['1', '9001', 'Robin SampleAlpha', ...boxes(0).map(() => '+1'), '3½', '0', formatHalf(140 + 2 * n + 7)])
+    expect(rows[0].className).toBe('class-sheet-mine')
+    // Second: a penalty of 1 over maneuver 2, a circled ½ over maneuver 3 that is not counted, and off pattern.
+    const second = cells(rows[1])
+    expect(second.slice(0, 3)).toEqual(['2', '9002', 'Casey SampleBravo'])
+    expect(second.slice(3, 6)).toEqual(['0', '10', '(½)0'])
+    expect(second.slice(3 + n)).toEqual(['2', '1', '71 OP'])
+    expect(rows[1].className).toBe('')
+    expect(rows[2].textContent).toBe('9002: Off pattern. Maneuver 3: ½ (circled, not counted). Judge’s note: Good hands.')
+    // Last: the disqualified rider, with no place and no score, and the penalty still on the sheet.
+    const last = cells(rows[3])
+    expect([last[0], last[1], last[last.length - 2], last[last.length - 1]]).toEqual(['', '9003', '5', 'DQ'])
+    expect(last[3 + 4]).toBe('50')
+    expect(rows[4].textContent).toBe('9003: Disqualified.')
+    expect(rows).toHaveLength(5)
+    // Nothing of a school or a judge is on it.
+    expect(document.body.textContent).not.toMatch(/Sample University|Judge:/)
+
+    // It prints, and goes back to the coach's draw.
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {})
+    fireEvent.click(screen.getByRole('button', { name: 'Print this sheet' }))
+    expect(print).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: /Back/ }))
+    expect(await screen.findByRole('heading', { name: 'Example College' })).toBeTruthy()
+    cleanup()
+
+    // The public page has the same sheet for a released class, and says so for one that is not released.
+    window.location.hash = `#/public/${SUNDAY}`
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Score sheet for Reining' }))
+    expect(await screen.findByRole('table', { name: /^1\. Reining/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Show/ })).toBeTruthy()
+    cleanup()
+    window.location.hash = `#/public/${SUNDAY}/sheet/meet-6/2`
+    render(<App />)
+    expect(await screen.findByText("The show office has not released this class's score cards.")).toBeTruthy()
+    expect(screen.queryByRole('table')).toBeNull()
+    vi.restoreAllMocks()
   })
 
   it('opens today’s show, else the next one coming, else the newest', () => {

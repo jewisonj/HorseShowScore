@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { PublicPlacing } from '../cloud/backend'
 import { refreshShows, refreshShowsIfStale, useCloud } from '../cloud/cloud'
-import { loadPlacings } from '../cloud/scores'
+import { loadCards, loadPlacings } from '../cloud/scores'
 import { classKey, formatDate, type ShowClass, type ShowFile } from '../data/fixture'
 import { go } from './bits'
 import { showDates, whenChecked } from './Home'
@@ -128,17 +128,24 @@ export function ShowDraw({ showId, mine, horses }: { showId?: string; mine: Set<
   const [checking, setChecking] = useState(false)
   // Published placings, by class key. They arrive class by class through the day.
   const [placings, setPlacings] = useState<Record<string, PublicPlacing[]>>({})
+  // The classes whose score cards the show office has released, by class key.
+  const [carded, setCarded] = useState<Set<string>>(new Set())
   const listed = [...shows].sort((a, b) => lastDate(b).localeCompare(lastDate(a)))
   const show = listed.find((s) => s.id === showId) ?? showForToday(listed)
   const id = show?.id
   useEffect(() => {
     if (!id) return
     let current = true
-    const look = () =>
+    const look = () => {
       void loadPlacings(id).then((got) => {
         if (current && got) setPlacings(Object.fromEntries(got.map((c) => [c.classKey, c.placings])))
       })
+      void loadCards(id).then((got) => {
+        if (current && got) setCarded(new Set(got.filter((c) => c.cards.length > 0).map((c) => c.classKey)))
+      })
+    }
     setPlacings({})
+    setCarded(new Set())
     look()
     const timer = window.setInterval(() => {
       look()
@@ -182,7 +189,7 @@ export function ShowDraw({ showId, mine, horses }: { showId?: string; mine: Set<
       <p className="hint">
         {yours > 0 ? `Your riders are marked: ${yours === 1 ? '1 ride' : `${yours} rides`} in this show. ` : ''}
         {theirHorses.size > 0 ? `The horses your school brings are in red: ${horseRides === 1 ? '1 ride' : `${horseRides} rides`} to have them ready for. ` : ''}
-        Each class shows its draw, then its placings once the show office posts them.
+        Each class shows its draw, then its placings once the show office posts them, and a Score sheet button once its score cards are released.
         {placedCount > 0 ? ` Placings are in for ${placedCount === 1 ? '1 class' : `${placedCount} classes`}.` : ''}
         {checkedAt ? ` Checked ${whenChecked(checkedAt)}.` : ''}
       </p>
@@ -191,8 +198,9 @@ export function ShowDraw({ showId, mine, horses }: { showId?: string; mine: Set<
         disabled={checking}
         onClick={async () => {
           setChecking(true)
-          const [, got] = await Promise.all([refreshShows(), loadPlacings(show.id)])
+          const [, got, cards] = await Promise.all([refreshShows(), loadPlacings(show.id), loadCards(show.id)])
           if (got) setPlacings(Object.fromEntries(got.map((c) => [c.classKey, c.placings])))
+          if (cards) setCarded(new Set(cards.filter((c) => c.cards.length > 0).map((c) => c.classKey)))
           setChecking(false)
         }}
       >
@@ -209,7 +217,18 @@ export function ShowDraw({ showId, mine, horses }: { showId?: string; mine: Set<
           {meet.classes.length === 0 && <p className="empty">No classes yet.</p>}
           <div className="sheet-draws">
             {meet.classes.map((cls) => (
-              <DrawTable key={cls.id} cls={cls} mine={mine} horses={theirHorses} placings={placings[classKey(meet.id, cls.id)]} />
+              <div key={cls.id} className="sheet-draw-block">
+                <DrawTable cls={cls} mine={mine} horses={theirHorses} placings={placings[classKey(meet.id, cls.id)]} />
+                {carded.has(classKey(meet.id, cls.id)) && (
+                  <button
+                    className="btn sheet-draw-button"
+                    aria-label={`Score sheet for ${cls.name}`}
+                    onClick={() => go(`/coach/sheet/${encodeURIComponent(show.id)}/${encodeURIComponent(meet.id)}/${encodeURIComponent(cls.id)}`)}
+                  >
+                    Score sheet
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </section>

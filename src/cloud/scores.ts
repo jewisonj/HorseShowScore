@@ -1,6 +1,6 @@
 import { cloudCache } from '../data/cloudShows'
 import { classKey, type ShowClass, type ShowFile } from '../data/fixture'
-import { classResults } from '../results'
+import { classResults, totalFor } from '../results'
 import { classState, getState, hasWork, isReride, judgeName, watchState, type ClassState } from '../store'
 import type { PublicCard, PublicPlacing, PublishedClass, ReleasedCards, SentRow, SentScores } from './backend'
 import { cloudState, explainServerError, getBackend } from './cloud'
@@ -32,10 +32,23 @@ export function deviceId(): string {
   }
 }
 
-/** A class as this device has it, ready to send: everyone placed first, in order, then the rest in draw order. */
+/**
+ * A class as this device has it, ready to send: everyone placed first, in order, then the rest in draw order.
+ *
+ * A placings class (horsemanship) lists only the riders the judge placed. A
+ * rider who rode and was not placed, a disqualified one for instance, goes
+ * along after them with no place, so the office can still release their card.
+ * On 2026-11-22 a disqualified rider was missing from a released class for
+ * want of this.
+ */
 export function rowsFor(cs: ClassState, cls: ShowClass): SentRow[] {
   const placed = new Set(cs.placings)
-  return classResults(cs, cls).map((row) => ({
+  const results = classResults(cs, cls)
+  const listed = new Set(results.map((row) => row.run.id))
+  const unplaced = cs.runs
+    .filter((run) => !listed.has(run.id) && hasWork(run))
+    .map((run) => ({ run, place: null, tied: false, score: run.scored ? totalFor(run, cls).score : null }))
+  return [...results, ...unplaced].map((row) => ({
     place: row.place,
     tied: row.tied,
     back_no: row.run.backNo,

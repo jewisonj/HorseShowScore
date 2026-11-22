@@ -4,7 +4,7 @@ import { formatHalf } from '../engine/half'
 import { reasonById, ruleSetFor } from '../rules/rulesets'
 import { BackNumber, Code } from './bits'
 
-const MARK_WORDS: Record<string, string> = { OP: 'Off pattern', ZERO: 'Score 0', DQ: 'Disqualified' }
+export const MARK_WORDS: Record<string, string> = { OP: 'Off pattern', ZERO: 'Score 0', DQ: 'Disqualified' }
 
 /**
  * One rider's score card, as the show office released it: each maneuver's

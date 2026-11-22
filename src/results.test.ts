@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { cardsFrom, placingsFrom, rowsFor } from './cloud/scores'
 import { classKey, getClass, getPattern, meets, patterns } from './data/fixture'
 import raw from './data/ihsa-black-hawk-2026-11.json'
 import { CSV_HEADER, classResults, placingWarnings, resultsCsv, totalFor } from './results'
@@ -306,6 +307,37 @@ describe('a placings class (horsemanship)', () => {
     scoreRun(key, '1', [-1, -2, -1, 0, -2, -2, 0], [{ half: 6, box: 1 }], 'none', { rail: 2, fe: 2 })
     const [run] = classState(getState(), key).runs
     expect(totalFor(run, cls).score).toBe(130) // 70 − 4 + 1 + 1 − 3 = 65
+  })
+
+  it('sends a rider who rode and was not placed, such as a disqualified one, so their card can be released', () => {
+    // What went wrong on 22 November: four riders placed, the fifth disqualified and left off the released class.
+    addRiders(key, ['1', '2', '3'], 7)
+    scoreRun(key, '1', [2, 2, 2, 2, 2, 2, 2], [], 'none', { rail: 2, fe: 6 })
+    scoreRun(key, '2', [0, 0, 0, 0, 0, 0, 0], [], 'none', { rail: 0, fe: 4 })
+    scoreRun(key, '3', [1, 1, 0, 0, -6, -6, 0], [{ half: 10, box: 4 }], 'DQ', { rail: 2, fe: 4 })
+    const ids = classState(getState(), key).runs.map((r) => r.id)
+    setPlacings(key, [ids[0], ids[1]])
+    const rows = rowsFor(classState(getState(), key), cls)
+    expect(rows.map((r) => [r.back_no, r.place, r.mark, r.rode])).toEqual([
+      ['1', 1, 'none', true],
+      ['2', 2, 'none', true],
+      ['3', null, 'DQ', true],
+    ])
+    // The card goes along, and the released class lists them last, with no place.
+    expect(rows[2].card).toEqual({ boxes: [1, 1, 0, 0, -6, -6, 0], extras: { rail: 2, fe: 4 }, penalties: [{ half: 10, box: 4 }] })
+    expect(cardsFrom(rows).map((c) => [c.back_no, c.place, c.mark])).toEqual([
+      ['1', 1, 'none'],
+      ['2', 2, 'none'],
+      ['3', null, 'DQ'],
+    ])
+    expect(placingsFrom(rows).map((r) => [r.back_no, r.place])).toEqual([
+      ['1', 1],
+      ['2', 2],
+      ['3', null],
+    ])
+    // A rider with nothing entered is still left out.
+    addRiders(key, ['4'], 7)
+    expect(rowsFor(classState(getState(), key), cls).map((r) => r.back_no)).toEqual(['1', '2', '3'])
   })
 
   it('uses the judge’s order and gives 7, 5, 4, 3, 2, 1', () => {

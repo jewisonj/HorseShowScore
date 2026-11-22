@@ -84,8 +84,10 @@ describe('a re-ride on the judge’s device', () => {
     const again = runs()[6]
     saveRun(KEY, { ...again, boxes: again.boxes.map(() => 0), scored: true })
     const cls = getClass(MEET, CLASS)!
-    // A horsemanship class sends the riders the judge has placed. Until they are placed again, there is no row.
-    expect(rowsFor(classState(getState(), KEY), cls).find((r) => r.back_no === first.backNo)).toBeUndefined()
+    // A horsemanship class sends the riders the judge has placed, then anyone who rode and is not placed.
+    // Until they are placed again, the re-ride goes along with no place.
+    const unplaced = rowsFor(classState(getState(), KEY), cls).find((r) => r.back_no === first.backNo)!
+    expect(unplaced).toMatchObject({ place: null, reride: 1, horse: 'Hank', rode: true })
     setPlacings(KEY, [first.id])
     const row = rowsFor(classState(getState(), KEY), cls).find((r) => r.back_no === first.backNo)!
     expect(row.reride).toBe(1)

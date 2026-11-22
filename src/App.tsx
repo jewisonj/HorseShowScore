@@ -8,6 +8,7 @@ import { useSaveFailed } from './store'
 import { go } from './ui/bits'
 import { AccountScreen } from './ui/AccountScreen'
 import { ClassScreen } from './ui/ClassScreen'
+import { ClassSheetScreen } from './ui/ClassSheet'
 import { CoachEntriesScreen, CoachMarksScreen, CoachScreen } from './ui/CoachScreen'
 import { DrawScreen } from './ui/DrawScreen'
 import { Home } from './ui/Home'
@@ -80,13 +81,19 @@ function Route() {
   const officeOf = (showId: string | undefined) => everything || (seat?.role === 'office' && seat.showId === showId)
   const stewardOf = (showId: string | undefined) => everything || (seat?.role === 'steward' && seat.showId === showId)
 
-  if (p[0] === 'public') return p[1] ? <PublicShow key={p[1]} showId={p[1]} /> : <PublicHome />
+  if (p[0] === 'public') {
+    // A class's released score cards on one sheet: #/public/<show id>/sheet/<day id>/<class id>
+    if (p[1] && p[2] === 'sheet' && p[3] && p[4]) return <ClassSheetScreen key={`${p[1]}:${p[3]}:${p[4]}`} showId={p[1]} meetId={p[3]} classId={p[4]} backTo={`/public/${encodeURIComponent(p[1])}`} backLabel="Show" />
+    return p[1] ? <PublicShow key={p[1]} showId={p[1]} /> : <PublicHome />
+  }
   if (p[0] === 'account') return <AccountScreen />
   if (p[0] === 'riders') return <RidersScreen />
   if (p[0] === 'horses') return <HorsesScreen />
   if (p[0] === 'coach') {
     if (p[1] === 'marks' && coach) return <CoachMarksScreen />
     if (p[1] === 'entries' && coach) return <CoachEntriesScreen />
+    // The same sheet from a coach's own screen, and back to it: #/coach/sheet/<show id>/<day id>/<class id>
+    if (p[1] === 'sheet' && p[2] && p[3] && p[4]) return <ClassSheetScreen key={`${p[2]}:${p[3]}:${p[4]}`} showId={p[2]} meetId={p[3]} classId={p[4]} backTo={`/coach/draw/${encodeURIComponent(p[2])}`} backLabel="Back" />
     // The coach's own screen is the draw. "draw/<show id>" is the same screen on another show.
     return <CoachScreen showId={p[1] === 'draw' ? p[2] : undefined} />
   }

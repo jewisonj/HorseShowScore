@@ -2157,3 +2157,193 @@ h2 {
     font-size: 1.05rem;
   }
 }
+
+/* ---------- A class's released score cards on one sheet ---------- */
+
+/* Under a class's table on the coach's screen. */
+.sheet-draw-block {
+  min-width: 0;
+}
+
+.sheet-draw-button {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.class-sheet-show {
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+
+/* A sheet has more columns than a phone has room for: it slides sideways inside its own frame. */
+.class-sheet-scroll {
+  margin: 12px 0;
+  overflow-x: auto;
+  background: var(--paper);
+  border: 1px solid var(--ink-2);
+}
+
+.class-sheet {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.class-sheet caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 700;
+  padding: 9px 10px 7px;
+  background: #a4c2f4;
+  color: var(--ink);
+}
+
+.class-sheet-pattern {
+  font-weight: 400;
+}
+
+.class-sheet th,
+.class-sheet td {
+  padding: 4px 6px;
+  border: 1px solid var(--rule);
+  text-align: center;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+.class-sheet th {
+  font-size: 0.78rem;
+  background: var(--ground);
+}
+
+.class-sheet-no,
+.class-sheet-code {
+  display: block;
+}
+
+.class-sheet-code {
+  font-weight: 400;
+}
+
+.class-sheet .class-sheet-who {
+  text-align: left;
+  white-space: normal;
+  min-width: 8.5em;
+}
+
+.class-sheet-horse {
+  display: block;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.class-sheet-back {
+  font-weight: 700;
+}
+
+/* The penalty sits over the score in a box, as on the paper sheet. */
+.class-sheet-pen {
+  display: block;
+  min-height: 1.1em;
+  color: var(--minus);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.class-sheet-score {
+  display: block;
+  font-weight: 700;
+}
+
+.class-sheet-pentotal {
+  color: var(--minus);
+  font-weight: 700;
+}
+
+.class-sheet-total {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.class-sheet-mark {
+  font-size: 0.78rem;
+  color: var(--minus);
+}
+
+.class-sheet-mine td {
+  background: #fff3c4;
+}
+
+.class-sheet .class-sheet-notes td {
+  text-align: left;
+  white-space: normal;
+  font-size: 0.85rem;
+  color: var(--ink-2);
+}
+
+.class-sheet-key {
+  margin: 8px 10px 0;
+  padding-left: 1.6em;
+  columns: 16em;
+  font-size: 0.85rem;
+}
+
+.class-sheet-foot {
+  margin: 6px 10px 10px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* On paper: a landscape page, the sheet at full width, and none of the buttons. */
+@media print {
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .no-print,
+  .topbar .back {
+    display: none !important;
+  }
+
+  .screen {
+    min-height: 0;
+  }
+
+  .topbar {
+    background: none;
+    color: #000;
+    padding: 0 0 4px;
+  }
+
+  .topbar-row,
+  .content {
+    max-width: none !important;
+  }
+
+  .class-sheet-scroll {
+    overflow: visible;
+    border: 0;
+    margin: 6px 0 0;
+  }
+
+  .class-sheet {
+    font-size: 9pt;
+  }
+
+  .class-sheet tr {
+    break-inside: avoid;
+  }
+
+  .class-sheet caption,
+  .class-sheet th,
+  .class-sheet-mine td,
+  .shadow-note {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

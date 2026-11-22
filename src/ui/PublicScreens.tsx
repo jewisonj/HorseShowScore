@@ -175,6 +175,9 @@ export function PublicShow({ showId }: { showId: string }) {
                 {cards.length > 0 && (
                   <>
                     <h3>Score cards</h3>
+                    <button className="btn" aria-label={`Score sheet for ${cls.name}`} onClick={() => go(`/public/${encodeURIComponent(show.id)}/sheet/${encodeURIComponent(meet.id)}/${encodeURIComponent(cls.id)}`)}>
+                      See the whole class on one score sheet
+                    </button>
                     {cards.map((card) => (
                       <PublicCardView key={card.back_no} card={card} cls={cls} pattern={pattern} />
                     ))}
