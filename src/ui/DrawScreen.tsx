@@ -43,7 +43,9 @@ export function DrawScreen({ showId }: { showId: string }) {
   const cloud = useCloud()
   const book = useDrawBook(showId)
   const [names, setNames] = useState('')
+  // The sheet this show was read from in setup is remembered on this computer, so it need not be pasted again.
   const [link, setLink] = useState(() => sheetLinkFor(showId))
+  const remembered = sheetLinkFor(showId) !== ''
   const [busy, setBusy] = useState(false)
   const [horseNote, setHorseNote] = useState('')
   const [classNote, setClassNote] = useState<Record<string, string>>({})
@@ -438,7 +440,10 @@ export function DrawScreen({ showId }: { showId: string }) {
       {cloud.configured && cloud.admin && (
         <div className="row-actions">
           <label className="field draw-link">
-            <span>Or read the horse list, and the horses set for each class, from the show's Google Sheet</span>
+            <span>
+              Or read the horse list, and the horses set for each class, from the show's Google Sheet
+              {remembered ? '. This is the link the show was read from.' : ''}
+            </span>
             <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Paste the sheet's link" autoComplete="off" />
           </label>
           <button className="btn" disabled={busy || link.trim() === ''} onClick={() => void readSheetHorses()}>

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { RosterRider, TeamPin } from '../cloud/backend'
 import { explainServerError, fetchWorkbook, getBackend, startCloud, useCloud } from '../cloud/cloud'
 import { mergeRoster } from '../cloud/roster'
+import { getShow } from '../data/fixture'
+import { lastSheetLink, rememberLastSheetLink, rememberedSheetLinks } from '../setup/sheetLink'
 import { readRoster } from '../setup/workbook'
 import { readXlsx } from '../setup/xlsx'
 import { BackNumber, Screen, go } from './bits'
@@ -51,7 +53,11 @@ export function RidersScreen() {
   const cloud = useCloud()
   const [riders, setRiders] = useState<RosterRider[] | null>(null)
   const [teams, setTeams] = useState<TeamPin[]>([])
-  const [link, setLink] = useState('')
+  // The sheet a show was read from is remembered on this computer, so it need not be pasted again.
+  const [link, setLink] = useState(() => lastSheetLink())
+  const sheets = rememberedSheetLinks()
+    .map((s) => ({ ...s, name: getShow(s.showId)?.name ?? '' }))
+    .filter((s) => s.name !== '')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [problem, setProblem] = useState('')
@@ -111,6 +117,7 @@ export function RidersScreen() {
       if (!b) throw new Error('This copy of the app is not connected to a server.')
       const merged = mergeRoster(riders, read)
       await b.putRiders(merged.rows)
+      rememberLastSheetLink(link.trim())
       // Every team named in the sheet gets a row, so it can be given a coach PIN.
       const have = new Set(teams.map((t) => t.team))
       for (const team of new Set(read.map((r) => r.team.replace(/\s+/g, ' ').trim()).filter(Boolean))) {
@@ -178,6 +185,15 @@ export function RidersScreen() {
           {busy ? 'Reading' : 'Read the riders from the sheet'}
         </button>
       </div>
+      {sheets.length > 0 && (
+        <div className="row-actions">
+          {sheets.map((sheet) => (
+            <button key={sheet.showId} className={sheet.link === link.trim() ? 'btn draw-pick-on' : 'btn'} aria-pressed={sheet.link === link.trim()} onClick={() => setLink(sheet.link)}>
+              Use the sheet of {sheet.name}
+            </button>
+          ))}
+        </div>
+      )}
       {problem && (
         <p className="warning" role="alert">
           {problem}

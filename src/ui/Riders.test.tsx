@@ -13,6 +13,7 @@ import { clearShows } from '../data/shows'
 import { clearDrawBooks, drawBook, saveDrawBook } from '../setup/drawBook'
 import { drawCsv } from '../setup/drawExport'
 import { makeXlsx, sampleShowWorkbook } from '../setup/testWorkbook'
+import { lastSheetLink, rememberSheetLink, sheetLinkFor } from '../setup/sheetLink'
 import { readRoster } from '../setup/workbook'
 import { readXlsx } from '../setup/xlsx'
 import { loadDraw } from '../seed'
@@ -300,5 +301,51 @@ describe('the draw page with a sheet that already has the horses for a class', (
     expect(within(panel).getByRole('button', { name: 'Pick the least used' })).toBeTruthy()
     // The horses the sheet had for it are still picked.
     expect(drawBook(SUNDAY).sets[classKey('meet-6', '1')]).toEqual(['Bunny', 'George', 'Cisco', 'Rey'])
+  })
+})
+
+describe('the sheet a show was read from', () => {
+  const LINK = 'https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdefgh/edit?usp=sharing'
+  const OTHER = 'https://docs.google.com/spreadsheets/d/1ZyXwVuTsRqPoNmLkJiHgFeDcBa9876543210zyxwvuts/edit'
+
+  beforeEach(() => {
+    localStorage.removeItem('hss.sheetlinks.v1')
+  })
+
+  it('is remembered for the riders page, so the link is not pasted again', async () => {
+    // Show setup read Saturday's sheet, then Sunday's.
+    rememberSheetLink('evt-bhc-2026-11-21', OTHER)
+    rememberSheetLink(SUNDAY, LINK)
+    expect(lastSheetLink()).toBe(LINK)
+    await asAdmin()
+    render(<RidersScreen />)
+    await screen.findByText(/No riders yet/)
+    // The link used last is already in the box, and each show's sheet is one press away.
+    const box = screen.getByLabelText("Read the riders from a show's Google Sheet") as HTMLInputElement
+    expect(box.value).toBe(LINK)
+    fireEvent.click(screen.getByRole('button', { name: 'Use the sheet of IHSA Western Show, November 21' }))
+    expect(box.value).toBe(OTHER)
+    fireEvent.click(screen.getByRole('button', { name: 'Use the sheet of IHSA Western Show, November 22' }))
+    expect(box.value).toBe(LINK)
+    fireEvent.click(screen.getByRole('button', { name: 'Read the riders from the sheet' }))
+    expect((await screen.findByRole('status', {}, { timeout: 5000 })).textContent).toContain('The sheet lists 5 riders.')
+    expect(server.workbookLinks).toEqual([LINK])
+  })
+
+  it('is already filled in on that show’s draw page, and a read there is remembered too', async () => {
+    rememberSheetLink(SUNDAY, LINK)
+    await asAdmin()
+    render(<DrawScreen showId={SUNDAY} />)
+    const box = (await screen.findByLabelText(/Or read the horse list.*This is the link the show was read from\./)) as HTMLInputElement
+    expect(box.value).toBe(LINK)
+    cleanup()
+    // Saturday's show was never read from a sheet on this computer: its box is empty until a link is used there.
+    render(<DrawScreen showId="evt-bhc-2026-11-21" />)
+    const empty = (await screen.findByLabelText(/Or read the horse list/)) as HTMLInputElement
+    expect(empty.value).toBe('')
+    fireEvent.change(empty, { target: { value: OTHER } })
+    fireEvent.click(screen.getByRole('button', { name: 'Read the horses from the sheet' }))
+    await waitFor(() => expect(sheetLinkFor('evt-bhc-2026-11-21')).toBe(OTHER), { timeout: 5000 })
+    expect(sheetLinkFor(SUNDAY)).toBe(LINK)
   })
 })
