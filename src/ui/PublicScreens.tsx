@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { PublishedClass, ReleasedCards } from '../cloud/backend'
 import { refreshShows, refreshShowsIfStale, startCloud, useCloud } from '../cloud/cloud'
+import { loadCoachRiders, useCoach } from '../cloud/roster'
 import { loadCards, loadPlacings } from '../cloud/scores'
 import { useCloudCache } from '../data/cloudShows'
 import { classKey, formatDate, type ShowFile } from '../data/fixture'
@@ -87,6 +88,22 @@ export function PublicShow({ showId }: { showId: string }) {
   const [results, setResults] = useState<PublishedClass[]>([])
   // Score cards the show office has released, class by class.
   const [released, setReleased] = useState<ReleasedCards[]>([])
+  // A coach signed on to this device has their own riders marked in the draw. Nobody else sees that.
+  const coach = useCoach()
+  const [mine, setMine] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    if (!coach) {
+      setMine(new Set())
+      return
+    }
+    let current = true
+    void loadCoachRiders().then((got) => {
+      if (current && got.ok) setMine(new Set(got.riders.map((r) => r.backNo)))
+    })
+    return () => {
+      current = false
+    }
+  }, [coach?.team, coach?.pin])
   useEffect(() => {
     let current = true
     void startCloud()
@@ -168,7 +185,7 @@ export function PublicShow({ showId }: { showId: string }) {
                     <h3>Draw</h3>
                     <ol className="public-draw">
                       {riders.map((r) => (
-                        <li key={`${r.draw}:${r.back_no}`}>
+                        <li key={`${r.draw}:${r.back_no}`} className={mine.has(r.back_no) ? 'public-draw-mine' : undefined}>
                           <span className="public-draw-order">{r.draw}</span>
                           <BackNumber value={r.back_no} size="sm" />
                           <span className="row-main">

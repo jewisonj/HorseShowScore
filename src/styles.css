@@ -2072,3 +2072,37 @@ h2 {
   text-align: left;
   color: var(--muted);
 }
+
+/* ---------- The coach's riders: marks closed, and where each rider goes today ---------- */
+
+.coach-marks {
+  flex: none;
+  font-size: 0.9rem;
+}
+
+/* Each ride on its own line under the rider: class on the left, draw place and horse on the right. */
+.coach-rides {
+  flex: 1 1 100%;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 4px;
+}
+
+.coach-rides li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  padding: 5px 0;
+  border-top: 1px dashed var(--rule);
+  font-size: 0.95rem;
+}
+
+/* A signed-on coach's own riders in the public draw, the same mark as in the draw tables. */
+.public-draw li.public-draw-mine {
+  background: #fff3c4;
+}
+
+.coach-marks-button {
+  margin: 4px 0 12px;
+}

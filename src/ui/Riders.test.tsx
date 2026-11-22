@@ -33,6 +33,8 @@ beforeEach(() => {
   clearCloudCache()
   clearSeatForTests()
   clearCoachForTests()
+  // A coach's screen remembers whether the height and weight controls were open.
+  localStorage.removeItem('hss.coach.marks.v1')
   clearDrawBooks()
   resetScoreSendingForTests()
   server = makeFakeBackend()
@@ -165,8 +167,15 @@ describe('a coach', () => {
     expect(screen.getByText('Ben Baker')).toBeTruthy()
     expect(screen.queryByText('Cy Cole')).toBeNull()
     expect(currentCoach()).toEqual({ team: 'Example College', pin: '2468' })
-    // Ben is already marked as the admin left him.
+    // The height and weight controls start closed: each rider shows the marks in a few words.
+    expect(screen.queryByLabelText('Weight group of 502')).toBeNull()
+    expect(screen.getByText('Ben Baker').closest('li')!.textContent).toContain('Height rider, group 2')
+    expect(screen.getByText('Ada Able').closest('li')!.textContent).toContain('Group 1')
+    // Opened, Ben is marked as the admin left him. Closed again, the controls are gone.
+    fireEvent.click(screen.getByRole('button', { name: 'Set height and weight' }))
     expect((screen.getByLabelText('Weight group of 502') as HTMLSelectElement).value).toBe('2')
+    fireEvent.click(screen.getByRole('button', { name: 'Hide height and weight' }))
+    expect(screen.queryByLabelText('Weight group of 502')).toBeNull()
     // Nothing else of the app is on this screen.
     expect(screen.queryByRole('button', { name: /Publish|Set up|Draw|Judges and PINs/ })).toBeNull()
   })
@@ -210,6 +219,7 @@ describe('a coach', () => {
 
   it('marks a rider, and the riders list holds it', async () => {
     await coachSignsOn('Example College', '2468')
+    fireEvent.click(await screen.findByRole('button', { name: 'Set height and weight' }))
     fireEvent.change(await screen.findByLabelText('Weight group of 501'), { target: { value: '3' } })
     expect(await screen.findByText('Saved for 501.')).toBeTruthy()
     expect(server.riders.find((r) => r.backNo === '501')).toMatchObject({ group: 3, height: false })
@@ -257,6 +267,7 @@ describe('a coach', () => {
     await coachSignsOn('Example College', '2468')
     expect(await screen.findByText('Ada Able')).toBeTruthy()
     server.teams = server.teams.map((t) => (t.team === 'Example College' ? { team: t.team, coach: 'start' } : t))
+    fireEvent.click(screen.getByRole('button', { name: 'Set height and weight' }))
     fireEvent.change(screen.getByLabelText('Weight group of 501'), { target: { value: '2' } })
     await waitFor(() => expect(currentCoach()).toBeNull())
     expect(server.riders.find((r) => r.backNo === '501')).toMatchObject({ group: 1 })
@@ -283,6 +294,13 @@ describe('a coach looking over the draw', () => {
     fireEvent.change(screen.getByLabelText('Your team'), { target: { value: 'Example College' } })
     fireEvent.change(screen.getByLabelText('Coach PIN'), { target: { value: '2468' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign on' }))
+    // Her own screen says where she goes today: the class, her draw place and her horse.
+    const hers662 = sunday.meets[0].classes.find((c) => c.id === level1.id)!.entries.find((e) => e.back_no === '662')!
+    const rides = await screen.findByRole('list', { name: 'Rides of 662' })
+    expect(within(rides).getAllByRole('listitem').map((li) => li.textContent)).toEqual([`${level1.name}Draw ${hers662.draw}, ${hers662.horse}`])
+    // Nobody else's rides are on it, and the marks are behind their button.
+    expect(screen.queryByRole('list', { name: 'Rides of 503' })).toBeNull()
+    expect(screen.queryByLabelText('Weight group of 662')).toBeNull()
     fireEvent.click(await screen.findByRole('button', { name: 'See the draw' }))
 
     expect(await screen.findByRole('heading', { name: 'The draw' })).toBeTruthy()
@@ -319,6 +337,37 @@ describe('a coach looking over the draw', () => {
     expect(showForToday(list, '2026-12-01')!.id).toBe('c')
     expect(showForToday(list, '2027-03-01')!.id).toBe('c')
     expect(showForToday([], '2026-11-22')).toBeUndefined()
+  })
+
+  it('has their riders marked on the public show page too, on their own device only', async () => {
+    const sunday = JSON.parse(JSON.stringify(getShow(SUNDAY)!)) as ShowFile
+    server.shows = [sunday]
+    const cls = sunday.meets[0].classes.find((c) => c.entries.some((e) => e.back_no === '662'))!
+    // Nobody signed on: no rider is marked.
+    window.location.hash = `#/public/${SUNDAY}`
+    await startCloud()
+    render(<App />)
+    await screen.findByRole('heading', { name: sunday.name })
+    expect(document.querySelectorAll('.public-draw-mine')).toHaveLength(0)
+    cleanup()
+    // Signed on as the coach: 662 is marked wherever she rides.
+    window.location.hash = ''
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: /^Coach/ }))
+    await screen.findByRole('option', { name: 'Example College' })
+    fireEvent.change(screen.getByLabelText('Your team'), { target: { value: 'Example College' } })
+    fireEvent.change(screen.getByLabelText('Coach PIN'), { target: { value: '2468' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign on' }))
+    await screen.findByRole('heading', { name: 'Example College' })
+    cleanup()
+    window.location.hash = `#/public/${SUNDAY}`
+    render(<App />)
+    await screen.findByRole('heading', { name: sunday.name })
+    await waitFor(() => expect(document.querySelectorAll('.public-draw-mine').length).toBeGreaterThan(0))
+    const marked = [...document.querySelectorAll('.public-draw-mine')].map((li) => li.textContent ?? '')
+    expect(marked.every((t) => t.includes('662'))).toBe(true)
+    expect(marked).toHaveLength(sunday.meets[0].classes.filter((c) => c.entries.some((e) => e.back_no === '662')).length)
+    expect(cls.entries.some((e) => e.back_no === '662')).toBe(true)
   })
 
   it('is sent to the sign-on when not signed on as a coach', async () => {
