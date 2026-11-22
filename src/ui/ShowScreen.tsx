@@ -6,6 +6,7 @@ import { removeShow, useUserShows } from '../data/shows'
 import { resultsCsv } from '../results'
 import { loadDraw } from '../seed'
 import { problemsIn } from '../setup/draft'
+import { forgetDrawBook } from '../setup/drawBook'
 import { classState, judgeName, removeClassStates, useAppState } from '../store'
 import { Screen, go } from './bits'
 import { download, slug } from './files'
@@ -201,9 +202,14 @@ export function ShowScreen({ showId }: { showId: string }) {
               Download the show file
             </button>
             {(isSample ? cloud.configured && cloud.admin : cloud.configured ? cloud.admin : local !== undefined) && (
-              <button className="btn" onClick={() => go(`/s/${show.id}/setup`)}>
-                Change the setup
-              </button>
+              <>
+                <button className="btn" onClick={() => go(`/s/${show.id}/setup`)}>
+                  Change the setup
+                </button>
+                <button className="btn" onClick={() => go(`/s/${show.id}/draw`)}>
+                  Draw the horses
+                </button>
+              </>
             )}
             {!isBuiltIn(show.id) && local !== undefined && !published && (
               <button
@@ -212,6 +218,7 @@ export function ShowScreen({ showId }: { showId: string }) {
                   if (!window.confirm(`Remove "${show.name}" and every score entered for it from this device? This cannot be undone.`)) return
                   removeClassStates(show.meets.flatMap((m) => m.classes.map((c) => classKey(m.id, c.id))))
                   removeShow(show.id)
+                  forgetDrawBook(show.id)
                   go('/')
                 }}
               >

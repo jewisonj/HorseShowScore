@@ -168,6 +168,12 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
         </ul>
       )}
 
+      {(cls.alternates ?? []).length > 0 && (
+        <p className="alternates">
+          <strong>Alternate horses:</strong> {(cls.alternates ?? []).join(', ')}
+        </p>
+      )}
+
       {hasRail && cs.runs.length > 0 && (
         <button className="btn btn-wide" onClick={() => go(`${base}/rail`)}>
           {railLeft === 0 ? 'Open the rail work scores' : 'Score the rail work'}

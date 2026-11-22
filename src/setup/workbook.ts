@@ -12,6 +12,7 @@ import type { CellValue, Workbook } from './xlsx'
  *   draw places: draw in D, back number in E, rider in F, horse in H.
  * - Placings are typed into J6 to J17 of each class tab. Nothing else on the
  *   tab is typed in for results.
+ * - "Horse Points": the show's horses, one name per row from C3.
  */
 export const FIRST_ROW = 6
 export const LAST_ROW = 17
@@ -38,6 +39,24 @@ function text(v: CellValue): string {
 function findTab(wb: Workbook, name: string): string | undefined {
   const want = name.trim().toLowerCase()
   return wb.sheetNames.find((s) => s.trim().toLowerCase() === want)
+}
+
+/**
+ * The horses a show has to draw from: the names typed into the "Horse Points"
+ * tab, C3 downward. Empty when the workbook has no such tab.
+ */
+export function readHorseList(wb: Workbook): string[] {
+  const tab = findTab(wb, 'Horse Points')
+  if (!tab) return []
+  const names: string[] = []
+  const seen = new Set<string>()
+  for (let row = 3; row <= 200; row++) {
+    const name = titleCase(text(wb.cell(tab, `C${row}`)))
+    if (!name || name.startsWith('#') || seen.has(name.toLowerCase())) continue
+    seen.add(name.toLowerCase())
+    names.push(name)
+  }
+  return names
 }
 
 function entriesOf(wb: Workbook, tab: string): Entry[] {

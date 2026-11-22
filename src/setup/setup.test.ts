@@ -7,7 +7,7 @@ import { classState, clearAll, getState, resizeRuns, saveRun, setPlacings } from
 import { dateIn, inferDivision, nextDay, sectionOf, tagsFor, titleCase } from './build'
 import { blankShow, boxesFromLines, copyPattern, finishShow, keepMeetIds, mergeSheetRead, patternLibrary, problemsIn } from './draft'
 import { sampleShowWorkbook } from './testWorkbook'
-import { readShowWorkbook } from './workbook'
+import { readHorseList, readShowWorkbook } from './workbook'
 import { readXlsx } from './xlsx'
 
 beforeEach(() => {
@@ -45,6 +45,10 @@ describe('reading a sheet again into a show that is already set up', () => {
     // A day the show never had gets the id it was read with, and no id is used twice.
     expect(keepMeetIds([day('a', 'Saturday')], [day('x1', 'Saturday'), day('x2', 'Sunday')]).map((m) => m.id)).toEqual(['a', 'x2'])
     expect(keepMeetIds([day('a', 'Saturday'), day('b', 'Saturday')], [day('x1', 'Saturday'), day('x2', 'Saturday')]).map((m) => m.id)).toEqual(['a', 'b'])
+  })
+
+  it('reads the show\'s horses from the workbook, each once', () => {
+    expect(readHorseList(readXlsx(sampleShowWorkbook()))).toEqual(['Rocket', 'Archie (Roan)', 'Super Pete', "O'Malley", 'Duke & Daisy', 'Spare'])
   })
 
   it('keeps the riders a show already has when the sheet has none for that class yet', () => {

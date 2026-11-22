@@ -178,6 +178,11 @@ export function PublicShow({ showId }: { showId: string }) {
                         </li>
                       ))}
                     </ol>
+                    {(cls.alternates ?? []).length > 0 && (
+                      <p className="alternates">
+                        <strong>Alternate horses:</strong> {(cls.alternates ?? []).join(', ')}
+                      </p>
+                    )}
                   </>
                 )}
                 {pattern && (

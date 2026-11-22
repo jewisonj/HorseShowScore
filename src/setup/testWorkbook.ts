@@ -54,6 +54,7 @@ export function sampleShowWorkbook(): Uint8Array {
   }
   return makeXlsx({
     ABOUT: { A1: 'Quick Start User Instructions' },
+    'Horse Points': { C2: 'Input Horse Name', C3: 'ROCKET', C4: 'ARCHIE (ROAN)', C5: 'SUPER PETE', C6: "O'MALLEY", C7: 'DUKE & DAISY', C8: 'rocket', C9: 'SPARE' },
     'Class List': {
       B1: 'Class Source List Populates All Pages',
       A2: 'T', B2: 'March 6, 2027 Spring Western Show',

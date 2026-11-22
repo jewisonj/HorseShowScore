@@ -7,6 +7,7 @@ import { useSaveFailed } from './store'
 import { go } from './ui/bits'
 import { AccountScreen } from './ui/AccountScreen'
 import { ClassScreen } from './ui/ClassScreen'
+import { DrawScreen } from './ui/DrawScreen'
 import { Home } from './ui/Home'
 import { MeetScreen } from './ui/MeetScreen'
 import { PlacingsScreen } from './ui/PlacingsScreen'
@@ -89,6 +90,7 @@ function Route() {
   if (p[0] === 's' && p[1]) {
     if (p[2] === 'setup') return <SetupScreen key={`setup:${p[1]}`} showId={p[1]} />
     if (p[2] === 'seats') return <SeatsScreen key={`seats:${p[1]}`} showId={p[1]} />
+    if (p[2] === 'draw') return <DrawScreen key={`draw:${p[1]}`} showId={p[1]} />
     if (p[2] === 'results') return officeOf(p[1]) ? <ResultsAdminScreen key={`results:${p[1]}`} showId={p[1]} /> : <SignOnScreen />
     if (judgeOf(p[1])) return <ShowScreen showId={p[1]} />
     if (officeOf(p[1])) return <ResultsAdminScreen key={`results:${p[1]}`} showId={p[1]} />

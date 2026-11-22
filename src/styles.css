@@ -1798,3 +1798,125 @@ h2 {
   margin: 0 0 12px;
   font-style: italic;
 }
+
+/* ---------- The horse draw, in setup ---------- */
+
+.alternates {
+  margin: 10px 0;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--ink);
+  border-radius: 6px;
+}
+
+.draw-horse,
+.draw-rider,
+.draw-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  min-height: 56px;
+  padding: 8px 12px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+}
+
+.draw-horse-name {
+  display: grid;
+  flex: 1 1 9em;
+  min-width: 0;
+}
+
+.draw-rider .rider-name,
+.draw-row .rider-name {
+  flex: 1 1 8em;
+  min-width: 0;
+}
+
+.draw-check,
+.draw-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  font-weight: 700;
+}
+
+.draw-check input {
+  width: 26px;
+  height: 26px;
+  accent-color: var(--ink);
+}
+
+.draw-group select,
+.draw-row select {
+  min-height: 48px;
+  padding: 6px 10px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  font: inherit;
+  color: inherit;
+}
+
+.draw-row select {
+  flex: 1 1 9em;
+  min-width: 0;
+}
+
+.draw-link {
+  flex: 1 1 18em;
+}
+
+.draw-class {
+  margin: 14px 0;
+  padding: 12px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.draw-class h3 {
+  margin: 0 0 8px;
+}
+
+.draw-class h3 .muted {
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.draw-label {
+  margin: 8px 0 6px;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.draw-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 14px;
+  background: var(--paper);
+  border: 2px solid var(--rule);
+  border-radius: 26px;
+  font-weight: 700;
+}
+
+.draw-pick-on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.draw-pick-n {
+  min-width: 1.4em;
+  padding: 0 5px;
+  border: 1.5px solid currentColor;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  text-align: center;
+}

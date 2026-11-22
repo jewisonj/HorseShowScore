@@ -43,6 +43,8 @@ export interface ShowClass {
   pattern_id: string
   notes: string
   entries: Entry[]
+  /** Horses set aside for this class in case one is needed, in the order they would be used. */
+  alternates?: string[]
 }
 
 export interface Meet {
