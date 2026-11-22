@@ -95,6 +95,29 @@ export function keepMeetIds(before: Meet[], read: Meet[]): Meet[] {
   })
 }
 
+/**
+ * Bring a sheet that was just read into a show that is already set up.
+ *
+ * Days keep their ids (`keepMeetIds`). A class keeps the pattern already chosen
+ * for it, by class name and then by division. A class the sheet has no riders
+ * for yet keeps the riders this show already has, so reading a sheet before its
+ * draw is typed in does not empty the show. `kept` names those classes.
+ */
+export function mergeSheetRead(before: Meet[], read: Meet[]): { meets: Meet[]; kept: string[] } {
+  const old = before.flatMap((m) => m.classes)
+  const kept: string[] = []
+  const meets = keepMeetIds(before, read).map((m) => ({
+    ...m,
+    classes: m.classes.map((c) => {
+      const same = old.find((b) => b.name === c.name && b.pattern_id) ?? old.find((b) => b.class_no === c.class_no && b.pattern_id)
+      const riders = c.entries.length === 0 ? old.find((b) => b.name === c.name && b.entries.length > 0) : undefined
+      if (riders) kept.push(c.name)
+      return { ...c, pattern_id: same ? same.pattern_id : c.pattern_id, entries: riders ? riders.entries : c.entries }
+    }),
+  }))
+  return { meets, kept }
+}
+
 /** What still stops this show from being saved, in plain words. Empty when it is ready. */
 export function problemsIn(show: ShowFile): string[] {
   const problems: string[] = []

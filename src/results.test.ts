@@ -48,9 +48,11 @@ function scoreRun(
 }
 
 describe('test data', () => {
-  it('has Saturday’s twelve classes in running order, Sunday’s eight, and twelve patterns', () => {
+  it('has twelve classes a day in running order, and twelve patterns', () => {
     expect(meets).toHaveLength(2)
-    expect(meets.map((m) => m.classes.length)).toEqual([12, 8])
+    expect(meets.map((m) => m.classes.length)).toEqual([12, 12])
+    // Sunday runs the same classes as Saturday, by the same numbers and names.
+    expect(meets[1].classes.map((c) => [c.id, c.name])).toEqual(meets[0].classes.map((c) => [c.id, c.name]))
     expect(meets[0].classes.map((c) => c.id)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
     expect(meets[0].classes.slice(0, 3).map((c) => [c.name, c.class_no, c.section])).toEqual([
       ['Reining', '17', ''],
@@ -138,7 +140,8 @@ describe('adding riders', () => {
 
 describe('the draw', () => {
   it('fills Saturday’s classes in draw order with each rider’s horse', () => {
-    expect(loadDraw()).toBe(75)
+    // Saturday's 75 rides and Sunday's 74.
+    expect(loadDraw()).toBe(75 + 74)
     const reining = classState(getState(), classKey('meet-5', REINING)).runs
     expect(reining.map((r) => [r.draw, r.backNo, r.horse])).toEqual([
       [1, '1025', 'George'],
@@ -152,8 +155,10 @@ describe('the draw', () => {
     expect(reining.map((r) => r.rider)).toEqual(fixture.map((e) => e.rider))
     expect(reining[0].boxes).toHaveLength(8)
     expect(classState(getState(), classKey('meet-5', RANCH)).runs).toHaveLength(10)
-    // Sunday's draw is not known yet.
-    expect(classState(getState(), classKey('meet-6', '17')).runs).toHaveLength(0)
+    // Sunday's riders come from the show program, in program order. Their horses are drawn in setup.
+    const sunday = classState(getState(), classKey('meet-6', REINING)).runs
+    expect(sunday.map((r) => [r.draw, r.backNo])).toEqual([[1, '102'], [2, '1007'], [3, '553'], [4, '576'], [5, '1025']])
+    expect(sunday.every((r) => !r.horse)).toBe(true)
   })
 
   it('leaves a class alone once this device has touched it', () => {
@@ -173,8 +178,8 @@ describe('the draw', () => {
     const key = classKey('meet-5', REINING)
     addRiders(key, ['576', '1025', '999'], 8)
     scoreRun(key, '1025', [1, 1, 1, 1, 1, 1, 1, 1], [{ half: 2, box: 3 }], 'none', { fe: 6 })
-    // The other eleven classes, and the three riders of this class's draw the device did not have yet.
-    expect(loadDraw()).toBe(73)
+    // The other eleven classes, the three riders of this class's draw the device did not have yet, and Sunday's 74.
+    expect(loadDraw()).toBe(73 + 74)
     const entries = getClass('meet-5', REINING)!.entries
     const runs = classState(getState(), key).runs
     expect(runs.slice(0, 3).map((r) => [r.backNo, r.draw, r.horse, r.rider])).toEqual([
@@ -348,7 +353,7 @@ describe('CSV export', () => {
     )
     const lines = resultsCsv(getState()).trim().split('\n')
     expect(lines[0]).toBe(CSV_HEADER.join(','))
-    expect(lines).toHaveLength(1 + 75)
+    expect(lines).toHaveLength(1 + 75 + 74)
     const cells = (line: string) => Object.fromEntries(CSV_HEADER.map((name, i) => [name, line.split(',')[i]]))
     expect(cells(lines[1])).toEqual({
       meet: 'Saturday',

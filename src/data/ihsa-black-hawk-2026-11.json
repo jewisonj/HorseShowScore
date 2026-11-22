@@ -1,6 +1,6 @@
 {
-  "fixture_version": 3,
-  "description": "Test data for Horse Show Scorer: two IHSA Western meets. Saturday has the show's 12 classes in running order with the draw (back number, rider and horse). Sunday has the class list only. Patterns carry short maneuver codes and labels in our own words. No pattern diagrams.",
+  "fixture_version": 4,
+  "description": "Test data for Horse Show Scorer: two IHSA Western meets. Saturday has the show's 12 classes in running order with the draw (back number, rider and horse). Sunday has its 12 classes with the riders from the IHSA show program, in program order, and no horses: the horse draw is made in setup. Patterns carry short maneuver codes and labels in our own words. No pattern diagrams.",
   "event": {
     "id": "evt-bhc-2026-11",
     "name": "IHSA Western Meets",
@@ -635,97 +635,597 @@
       "id": "meet-6",
       "label": "Sunday",
       "date": "2026-11-22",
-      "coach_meeting": "08:00",
-      "start_time": "09:00",
+      "coach_meeting": "08:30",
+      "start_time": "10:00",
       "judges": [],
       "classes": [
         {
-          "id": "17",
+          "id": "1",
           "class_no": "17",
-          "name": "Open Reining",
+          "name": "Reining",
           "section": "",
           "card_family": "pattern",
           "rule_set": "ihsa-reining",
           "pattern_id": "nrha-8",
           "notes": "",
-          "entries": []
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "102",
+              "rider": "Mason Loser",
+              "horse": ""
+            },
+            {
+              "draw": 2,
+              "back_no": "1007",
+              "rider": "Elizabeth Ellis",
+              "horse": ""
+            },
+            {
+              "draw": 3,
+              "back_no": "553",
+              "rider": "Ava Armstrong",
+              "horse": ""
+            },
+            {
+              "draw": 4,
+              "back_no": "576",
+              "rider": "Rachel Kowitz",
+              "horse": ""
+            },
+            {
+              "draw": 5,
+              "back_no": "1025",
+              "rider": "Emily Kramer",
+              "horse": ""
+            }
+          ]
         },
         {
-          "id": "15",
+          "id": "2",
+          "class_no": "12B",
+          "name": "Rookie B Horsemanship, Sec. A",
+          "section": "A",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-s",
+          "notes": "",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "100",
+              "rider": "Kailey Miller",
+              "horse": ""
+            },
+            {
+              "draw": 2,
+              "back_no": "124",
+              "rider": "Adeline Bihary",
+              "horse": ""
+            },
+            {
+              "draw": 3,
+              "back_no": "134",
+              "rider": "Hannah Weikel",
+              "horse": ""
+            },
+            {
+              "draw": 4,
+              "back_no": "46",
+              "rider": "Felipe Velica",
+              "horse": ""
+            },
+            {
+              "draw": 5,
+              "back_no": "405",
+              "rider": "Stacy Behnke",
+              "horse": ""
+            },
+            {
+              "draw": 6,
+              "back_no": "1004",
+              "rider": "Tommie jo Lael",
+              "horse": ""
+            },
+            {
+              "draw": 7,
+              "back_no": "1022",
+              "rider": "Ella Carlock",
+              "horse": ""
+            }
+          ]
+        },
+        {
+          "id": "3",
           "class_no": "15",
-          "name": "Level II Ranch Riding",
+          "name": "Ranch Riding",
           "section": "",
           "card_family": "pattern",
           "rule_set": "ihsa-ranch-riding",
           "pattern_id": "aqha-rr-15",
           "notes": "",
-          "entries": []
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "663",
+              "rider": "Talia Pierard",
+              "horse": ""
+            },
+            {
+              "draw": 2,
+              "back_no": "642",
+              "rider": "Maddie Robinson Valley",
+              "horse": ""
+            },
+            {
+              "draw": 3,
+              "back_no": "1028",
+              "rider": "Shay Henson",
+              "horse": ""
+            },
+            {
+              "draw": 4,
+              "back_no": "415",
+              "rider": "Mia Diaz",
+              "horse": ""
+            },
+            {
+              "draw": 5,
+              "back_no": "590",
+              "rider": "Indigo Contos",
+              "horse": ""
+            },
+            {
+              "draw": 6,
+              "back_no": "669",
+              "rider": "Charlotte Tompkins",
+              "horse": ""
+            },
+            {
+              "draw": 7,
+              "back_no": "678",
+              "rider": "Stephanie Fortier",
+              "horse": ""
+            },
+            {
+              "draw": 8,
+              "back_no": "558",
+              "rider": "Madeline Toebe",
+              "horse": ""
+            },
+            {
+              "draw": 9,
+              "back_no": "673",
+              "rider": "Sydney Streich",
+              "horse": ""
+            },
+            {
+              "draw": 10,
+              "back_no": "1019",
+              "rider": "Baleigh Stouffer",
+              "horse": ""
+            }
+          ]
         },
         {
-          "id": "16",
-          "class_no": "16",
-          "name": "Open Western Horsemanship",
-          "section": "",
-          "card_family": "placings",
-          "rule_set": "ihsa-horsemanship",
-          "pattern_id": "hms-r",
-          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern.",
-          "entries": []
-        },
-        {
-          "id": "14",
-          "class_no": "14",
-          "name": "Level II Western Horsemanship",
-          "section": "",
-          "card_family": "placings",
-          "rule_set": "ihsa-horsemanship",
-          "pattern_id": "hms-r",
-          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern.",
-          "entries": []
-        },
-        {
-          "id": "13",
+          "id": "4",
           "class_no": "13",
-          "name": "Level I Western Horsemanship",
-          "section": "",
+          "name": "Level I Horsemanship, Sec. A",
+          "section": "A",
           "card_family": "placings",
           "rule_set": "ihsa-horsemanship",
           "pattern_id": "hms-i",
-          "notes": "Work the rail, then line up at the south end of the arena by the classroom to work the pattern.",
-          "entries": []
+          "notes": "",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "116",
+              "rider": "Kassidy Dixon",
+              "horse": ""
+            },
+            {
+              "draw": 2,
+              "back_no": "123",
+              "rider": "Stella Kenner",
+              "horse": ""
+            },
+            {
+              "draw": 3,
+              "back_no": "1030",
+              "rider": "Abby Bey",
+              "horse": ""
+            },
+            {
+              "draw": 4,
+              "back_no": "588",
+              "rider": "Alyssa Schenk",
+              "horse": ""
+            },
+            {
+              "draw": 5,
+              "back_no": "1005",
+              "rider": "Hanna Kiersten",
+              "horse": ""
+            },
+            {
+              "draw": 6,
+              "back_no": "114",
+              "rider": "Morgan Hess",
+              "horse": ""
+            }
+          ]
         },
         {
-          "id": "12B",
+          "id": "5",
           "class_no": "12B",
-          "name": "Rookie B Western Horsemanship",
-          "section": "",
+          "name": "Rookie B Horsemanship, Sec. B",
+          "section": "B",
           "card_family": "placings",
           "rule_set": "ihsa-horsemanship",
           "pattern_id": "hms-s",
-          "notes": "Work the rail, exit to the paddock. Patterns are worked from the gate.",
-          "entries": []
+          "notes": "",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "37",
+              "rider": "Skyler Holmes",
+              "horse": ""
+            },
+            {
+              "draw": 2,
+              "back_no": "126",
+              "rider": "Elizabeth Dungan",
+              "horse": ""
+            },
+            {
+              "draw": 3,
+              "back_no": "122",
+              "rider": "Alyssa Miller",
+              "horse": ""
+            },
+            {
+              "draw": 4,
+              "back_no": "91",
+              "rider": "Ave Beatty",
+              "horse": ""
+            },
+            {
+              "draw": 5,
+              "back_no": "675",
+              "rider": "Abygail Hinze",
+              "horse": ""
+            },
+            {
+              "draw": 6,
+              "back_no": "1024",
+              "rider": "Ava Oster",
+              "horse": ""
+            },
+            {
+              "draw": 7,
+              "back_no": "70",
+              "rider": "Natalia Szwajnos",
+              "horse": ""
+            }
+          ]
         },
         {
-          "id": "12A",
-          "class_no": "12A",
-          "name": "Rookie A Western Horsemanship",
+          "id": "6",
+          "class_no": "16",
+          "name": "Open Horsemanship",
           "section": "",
           "card_family": "placings",
           "rule_set": "ihsa-horsemanship",
-          "pattern_id": "hms-b",
-          "notes": "Lope on the rail. Exit to the paddock. Patterns are worked from the gate.",
-          "entries": []
+          "pattern_id": "hms-r",
+          "notes": "",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "102",
+              "rider": "Mason Loser",
+              "horse": ""
+            },
+            {
+              "draw": 2,
+              "back_no": "1007",
+              "rider": "Elizabeth Ellis",
+              "horse": ""
+            },
+            {
+              "draw": 3,
+              "back_no": "1028",
+              "rider": "Shay Henson",
+              "horse": ""
+            },
+            {
+              "draw": 4,
+              "back_no": "576",
+              "rider": "Rachel Kowitz",
+              "horse": ""
+            },
+            {
+              "draw": 5,
+              "back_no": "1025",
+              "rider": "Emily Kramer",
+              "horse": ""
+            }
+          ]
+        },
+        {
+          "id": "7",
+          "class_no": "13",
+          "name": "Level I Horsemanship, Sec. B",
+          "section": "B",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-i",
+          "notes": "",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "125",
+              "rider": "Paige Johnson",
+              "horse": ""
+            },
+            {
+              "draw": 2,
+              "back_no": "662",
+              "rider": "Korah Pinter",
+              "horse": ""
+            },
+            {
+              "draw": 3,
+              "back_no": "1029",
+              "rider": "Jessica Besch",
+              "horse": ""
+            },
+            {
+              "draw": 4,
+              "back_no": "1023",
+              "rider": "Matison Elvert",
+              "horse": ""
+            },
+            {
+              "draw": 5,
+              "back_no": "708",
+              "rider": "Talena Sprecher",
+              "horse": ""
+            }
+          ]
+        },
+        {
+          "id": "8",
+          "class_no": "14",
+          "name": "Level II Horsemanship, Sec. A",
+          "section": "A",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-r",
+          "notes": "",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "663",
+              "rider": "Talia Pierard",
+              "horse": ""
+            },
+            {
+              "draw": 2,
+              "back_no": "642",
+              "rider": "Maddie Robinson Valley",
+              "horse": ""
+            },
+            {
+              "draw": 3,
+              "back_no": "590",
+              "rider": "Indigo Contos",
+              "horse": ""
+            },
+            {
+              "draw": 4,
+              "back_no": "678",
+              "rider": "Stephanie Fortier",
+              "horse": ""
+            },
+            {
+              "draw": 5,
+              "back_no": "558",
+              "rider": "Madeline Toebe",
+              "horse": ""
+            },
+            {
+              "draw": 6,
+              "back_no": "1019",
+              "rider": "Baleigh Stouffer",
+              "horse": ""
+            }
+          ]
+        },
+        {
+          "id": "9",
+          "class_no": "12B",
+          "name": "Rookie B Horsemanship, Sec. C",
+          "section": "C",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-s",
+          "notes": "",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "106",
+              "rider": "Lillian Cozzi",
+              "horse": ""
+            },
+            {
+              "draw": 2,
+              "back_no": "1006",
+              "rider": "Margaret Martin",
+              "horse": ""
+            },
+            {
+              "draw": 3,
+              "back_no": "1011",
+              "rider": "Kelsey Heath",
+              "horse": ""
+            },
+            {
+              "draw": 4,
+              "back_no": "120",
+              "rider": "Paisley Knight",
+              "horse": ""
+            },
+            {
+              "draw": 5,
+              "back_no": "127",
+              "rider": "Paulina Esparza",
+              "horse": ""
+            },
+            {
+              "draw": 6,
+              "back_no": "104",
+              "rider": "Raven Ringhand",
+              "horse": ""
+            }
+          ]
+        },
+        {
+          "id": "10",
+          "class_no": "14",
+          "name": "Level II Horsemanship, Sec. B",
+          "section": "B",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-r",
+          "notes": "",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "49",
+              "rider": "Mackenzie Jenkins",
+              "horse": ""
+            },
+            {
+              "draw": 2,
+              "back_no": "415",
+              "rider": "Mia Diaz",
+              "horse": ""
+            },
+            {
+              "draw": 3,
+              "back_no": "669",
+              "rider": "Charlotte Tompkins",
+              "horse": ""
+            },
+            {
+              "draw": 4,
+              "back_no": "553",
+              "rider": "Ava Armstrong",
+              "horse": ""
+            },
+            {
+              "draw": 5,
+              "back_no": "673",
+              "rider": "Sydney Streich",
+              "horse": ""
+            }
+          ]
         },
         {
           "id": "11",
           "class_no": "11",
-          "name": "Beginner Western Horsemanship",
+          "name": "Beginner Horsemanship",
           "section": "",
           "card_family": "placings",
           "rule_set": "ihsa-horsemanship",
           "pattern_id": "hms-b",
-          "notes": "Walk and jog only. Exit to the paddock. Patterns are worked from the gate.",
-          "entries": []
+          "notes": "",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "103",
+              "rider": "Gabrie Gozder",
+              "horse": ""
+            },
+            {
+              "draw": 2,
+              "back_no": "113",
+              "rider": "Brianna Condon",
+              "horse": ""
+            },
+            {
+              "draw": 3,
+              "back_no": "133",
+              "rider": "Phoebe Cox",
+              "horse": ""
+            },
+            {
+              "draw": 4,
+              "back_no": "117",
+              "rider": "Mia Romo",
+              "horse": ""
+            },
+            {
+              "draw": 5,
+              "back_no": "130",
+              "rider": "Cady McCallum",
+              "horse": ""
+            },
+            {
+              "draw": 6,
+              "back_no": "115",
+              "rider": "Aubree Christian",
+              "horse": ""
+            },
+            {
+              "draw": 7,
+              "back_no": "109",
+              "rider": "Skyler Miles",
+              "horse": ""
+            },
+            {
+              "draw": 8,
+              "back_no": "112",
+              "rider": "Audree Kuhlman",
+              "horse": ""
+            }
+          ]
+        },
+        {
+          "id": "12",
+          "class_no": "12A",
+          "name": "Rookie A Horsemanship",
+          "section": "",
+          "card_family": "placings",
+          "rule_set": "ihsa-horsemanship",
+          "pattern_id": "hms-b",
+          "notes": "",
+          "entries": [
+            {
+              "draw": 1,
+              "back_no": "492",
+              "rider": "Aryanne Encarnacion-Cox",
+              "horse": ""
+            },
+            {
+              "draw": 2,
+              "back_no": "693",
+              "rider": "Liberty Vue",
+              "horse": ""
+            },
+            {
+              "draw": 3,
+              "back_no": "105",
+              "rider": "Lucy Zeug",
+              "horse": ""
+            },
+            {
+              "draw": 4,
+              "back_no": "128",
+              "rider": "Alyssa Parrell",
+              "horse": ""
+            }
+          ]
         }
       ]
     }
@@ -1667,6 +2167,6 @@
   "open_items": [
     "Box grouping follows our reading of the pattern book. The printed IHSA score sheet for a meet may group maneuvers differently.",
     "Penalty values are placeholders: the IHSA sheets seen so far do not list them.",
-    "Schools, coaches, judges and Sunday's draw are not in this file."
+    "Schools, coaches and judges are not in this file. Sunday's riders are in program order with no horses."
   ]
 }

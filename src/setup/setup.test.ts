@@ -5,7 +5,7 @@ import { sheetPlacings } from '../results'
 import { loadDraw } from '../seed'
 import { classState, clearAll, getState, resizeRuns, saveRun, setPlacings } from '../store'
 import { dateIn, inferDivision, nextDay, sectionOf, tagsFor, titleCase } from './build'
-import { blankShow, boxesFromLines, copyPattern, finishShow, keepMeetIds, patternLibrary, problemsIn } from './draft'
+import { blankShow, boxesFromLines, copyPattern, finishShow, keepMeetIds, mergeSheetRead, patternLibrary, problemsIn } from './draft'
 import { sampleShowWorkbook } from './testWorkbook'
 import { readShowWorkbook } from './workbook'
 import { readXlsx } from './xlsx'
@@ -45,6 +45,25 @@ describe('reading a sheet again into a show that is already set up', () => {
     // A day the show never had gets the id it was read with, and no id is used twice.
     expect(keepMeetIds([day('a', 'Saturday')], [day('x1', 'Saturday'), day('x2', 'Sunday')]).map((m) => m.id)).toEqual(['a', 'x2'])
     expect(keepMeetIds([day('a', 'Saturday'), day('b', 'Saturday')], [day('x1', 'Saturday'), day('x2', 'Saturday')]).map((m) => m.id)).toEqual(['a', 'b'])
+  })
+
+  it('keeps the riders a show already has when the sheet has none for that class yet', () => {
+    // Sunday's show holds the riders from the program. Its sheet is up, but the draw is not typed in yet.
+    const sunday = builtInShows.find((s) => s.id === 'evt-bhc-2026-11-22')!
+    const emptySheet: Meet[] = [
+      { ...sunday.meets[0], id: 'read-m1', classes: sunday.meets[0].classes.map((c) => ({ ...c, pattern_id: '', entries: [] })) },
+    ]
+    const { meets, kept } = mergeSheetRead(sunday.meets, emptySheet)
+    expect(meets[0].id).toBe('meet-6')
+    expect(kept).toHaveLength(12)
+    expect(meets[0].classes.map((c) => c.entries.length)).toEqual(sunday.meets[0].classes.map((c) => c.entries.length))
+    expect(meets[0].classes.map((c) => c.pattern_id)).toEqual(sunday.meets[0].classes.map((c) => c.pattern_id))
+
+    // Once the sheet has a class's draw, the sheet's riders are the ones used.
+    const drawn = emptySheet[0].classes.map((c, i) => (i === 0 ? { ...c, entries: [{ draw: 1, back_no: '7', rider: 'A Rider', horse: 'Dot' }] } : c))
+    const second = mergeSheetRead(sunday.meets, [{ ...emptySheet[0], classes: drawn }])
+    expect(second.kept).toHaveLength(11)
+    expect(second.meets[0].classes[0].entries).toEqual([{ draw: 1, back_no: '7', rider: 'A Rider', horse: 'Dot' }])
   })
 })
 

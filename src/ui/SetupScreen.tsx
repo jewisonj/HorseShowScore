@@ -12,7 +12,7 @@ import {
   boxesFromLines,
   copyPattern,
   finishShow,
-  keepMeetIds,
+  mergeSheetRead,
   patternLibrary,
   problemsIn,
 } from '../setup/draft'
@@ -257,22 +257,19 @@ export function SetupScreen({ showId }: { showId?: string }) {
     try {
       const wb = readXlsx(bytes)
       const read = readShowWorkbook(wb, draft.id)
-      // Keep pattern choices already made, by class name and then by division.
-      const before = draft.meets.flatMap((m) => m.classes)
-      // A day already in this show keeps its id, matched by name and then by position.
-      // Scores are filed under the day's id, so this is what keeps them with their classes.
-      const meets = keepMeetIds(draft.meets, read.meets).map((m) => ({
-        ...m,
-        classes: m.classes.map((c) => {
-          const same = before.find((b) => b.name === c.name && b.pattern_id) ?? before.find((b) => b.class_no === c.class_no && b.pattern_id)
-          return same ? { ...c, pattern_id: same.pattern_id } : c
-        }),
-      }))
+      // Days keep their ids, classes keep their patterns, and a class the sheet has no riders for yet keeps the ones here.
+      const { meets, kept } = mergeSheetRead(draft.meets, read.meets)
       setDraft((d) => ({ ...d, name: d.name.trim() === '' ? read.title : d.name, meets }))
       const classes = meets.reduce((n, m) => n + m.classes.length, 0)
+      const rides = meets.reduce((n, m) => n + m.classes.reduce((k, c) => k + c.entries.length, 0), 0)
       setNotes([
         `Read ${classes} classes and ${read.rides} rides over ${meets.length === 1 ? '1 day' : `${meets.length} days`}. The workbook was only read. Nothing in it was changed.`,
-        ...read.notes,
+        ...(kept.length > 0
+          ? [
+              `The sheet has no riders yet for ${kept.length === 1 ? '1 class' : `${kept.length} classes`}. The riders already in this show were kept: ${rides} rides in all.`,
+            ]
+          : []),
+        ...read.notes.filter((note) => !kept.some((name) => note.startsWith(`"${name}" has no riders yet`))),
       ])
       setProblems([])
     } catch (err) {
