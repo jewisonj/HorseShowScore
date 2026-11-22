@@ -259,7 +259,7 @@ await allowed('anyone sees the names of the teams whose coach may sign on, and o
 const coach = (team, pin) => `select public.coach_riders('${team}', '${pin}') as got`
 const mark = (team, pin, back, height, group) => `select public.coach_set_mark('${team}', '${pin}', '${back}', ${height}, ${group}) as said`
 const choose = (team, pin, next) => `select public.coach_change_pin('${team}', '${pin}', '${next}') as said`
-await allowed('the starting PIN shows no riders, only that a PIN must be chosen', 'anon', coach('North College', '0000'), (r) => r.rows[0].got.ok === true && r.rows[0].got.change_pin === true && !('riders' in r.rows[0].got))
+await allowed('the starting PIN shows no riders and no horses, only that a PIN must be chosen', 'anon', coach('North College', '0000'), (r) => r.rows[0].got.ok === true && r.rows[0].got.change_pin === true && !('riders' in r.rows[0].got) && !('horses' in r.rows[0].got))
 await allowed('and sets no mark', 'anon', mark('North College', '0000', '102', true, 3), said('change_pin'))
 await allowed('the starting PIN does not open a team whose coach sign-on is off', 'anon', coach('West College', '0000'), (r) => r.rows[0].got.ok === false)
 await allowed('nor a team that is not on the list', 'anon', coach('Nowhere College', '0000'), (r) => r.rows[0].got.ok === false)
@@ -273,6 +273,8 @@ if (kept.rows[0].changed && kept.rows[1].changed && !kept.rows[2].changed && /^[
 else fail('a chosen PIN is kept as a salted hash, never as its digits', JSON.stringify(kept.rows))
 await allowed('after that the starting PIN no longer opens the team', 'anon', coach('North College', '0000'), (r) => r.rows[0].got.ok === false)
 await allowed('a coach sees their own team\'s riders and marks, and nobody else\'s', 'anon', coach('North College', '2468'), (r) => r.rows[0].got.ok === true && r.rows[0].got.team === 'North College' && r.rows[0].got.riders.length === 2 && r.rows[0].got.riders.every((x) => ['101', '102'].includes(x.back_no)) && r.rows[0].got.riders.find((x) => x.back_no === '101').height_rider === true && r.rows[0].got.riders.find((x) => x.back_no === '101').weight_group === 2)
+await allowed('a show admin lists a horse whose provider is the same school written another way', ADMIN, `insert into public.horses (name, provider) values ('Comet', 'North - College'), ('Blaze', 'south university') returning name`, (r) => r.rows.length === 2)
+await allowed('a coach sees the horses their own school brings, and nobody else\'s', 'anon', coach('North College', '2468'), (r) => JSON.stringify(r.rows[0].got.horses) === JSON.stringify(['Comet', 'Rocket']))
 await allowed('a wrong coach PIN sees nothing', 'anon', coach('North College', '2469'), (r) => r.rows[0].got.ok === false && !('riders' in r.rows[0].got))
 await allowed('nor does an empty one', 'anon', coach('North College', ''), (r) => r.rows[0].got.ok === false)
 await allowed('a show PIN is not a coach PIN', 'anon', coach('North College', '111111'), (r) => r.rows[0].got.ok === false)

@@ -302,6 +302,16 @@ describe('a coach looking over the draw', () => {
     level1.entries = level1.entries.map((e, i) => ({ ...e, horse: `Horse ${i + 1}` }))
     level1.alternates = ['Spare One', 'Spare Two']
     server.shows = [sunday]
+    // Her school brings two horses: one that another school's rider drew, and an alternate. Her own rider is on
+    // another school's horse. The school is written with a dash on the horse list and without one on the riders list.
+    const hersHorse = level1.entries.find((e) => e.back_no === '662')!.horse
+    const theirHorse = level1.entries.find((e) => e.back_no !== '662')!.horse
+    server.horses = [
+      { name: theirHorse, provider: 'Example - College', takesHeight: true, maxGroup: 3 },
+      { name: 'Spare One', provider: 'example college', takesHeight: true, maxGroup: 3 },
+      { name: hersHorse, provider: 'Sample University', takesHeight: true, maxGroup: 3 },
+      { name: 'Spare Two', provider: '', takesHeight: true, maxGroup: 3 },
+    ]
     await startCloud()
     render(<App />)
     fireEvent.click(await screen.findByRole('button', { name: /^Coach/ }))
@@ -319,9 +329,9 @@ describe('a coach looking over the draw', () => {
     // Riders in draw order, each with a horse.
     const rows = within(table).getAllByRole('row').slice(1)
     const sorted = [...level1.entries].sort((a, b) => a.draw - b.draw)
-    expect(rows.slice(0, sorted.length).map((r) => within(r).getAllByRole('cell').map((c) => c.textContent!.replace(' (your rider)', '')))).toEqual(sorted.map((e) => [String(e.draw), e.back_no, e.rider, e.horse]))
+    expect(rows.slice(0, sorted.length).map((r) => within(r).getAllByRole('cell').map((c) => c.textContent!.replace(/ \(your (rider|horse)\)/, '')))).toEqual(sorted.map((e) => [String(e.draw), e.back_no, e.rider, e.horse]))
     // The alternates come last.
-    expect(rows.slice(sorted.length).map((r) => r.textContent)).toEqual(['AlternateSpare One', 'AlternateSpare Two'])
+    expect(rows.slice(sorted.length).map((r) => r.textContent!.replace(' (your horse)', ''))).toEqual(['AlternateSpare One', 'AlternateSpare Two'])
     // The coach's rider is marked, and only hers.
     const hers = await waitFor(() => {
       const row = rows.find((r) => r.className === 'sheet-draw-mine')
@@ -334,6 +344,12 @@ describe('a coach looking over the draw', () => {
     // Nothing of the marks or the limits is on this page.
     expect(screen.queryByLabelText(/Weight group|Height rider/)).toBeNull()
     expect(screen.queryByText(/group \d/i)).toBeNull()
+
+    // The horses her school brings are in red, wherever they go: under another school's rider, and as an alternate.
+    const red = [...document.querySelectorAll('.sheet-draw-ourhorse')].map((td) => td.textContent)
+    expect(red).toEqual([`${theirHorse} (your horse)`, 'Spare One (your horse)'])
+    expect(sorted.find((e) => e.horse === theirHorse)!.back_no).not.toBe('662')
+    expect(screen.getByText(/The horses your school brings are in red: 1 ride to have them ready for\./)).toBeTruthy()
 
     // After the draws: her entries, which say where each of her riders goes, and the height and weight screen.
     const after = screen.getAllByRole('table').pop()!

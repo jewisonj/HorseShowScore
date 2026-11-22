@@ -206,7 +206,10 @@ export function makeFakeBackend(): FakeBackend {
       const said = coachSeat(team, pin)
       if (said === null) return null
       if (said === 'change_pin') return 'change_pin'
-      return { team, riders: fake.riders.filter((r) => r.team === team).map((r) => ({ ...r })) }
+      // A school is written a little differently from tab to tab of the sheet, so only letters and digits are compared.
+      const plain = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '')
+      const horses = fake.horses.filter((h) => plain(h.provider) !== '' && plain(h.provider) === plain(team)).map((h) => h.name).sort()
+      return { team, riders: fake.riders.filter((r) => r.team === team).map((r) => ({ ...r })), horses }
     },
     async coachSetMark(team, pin, backNo, height, group) {
       if (fake.down) throw new Error('Failed to fetch')

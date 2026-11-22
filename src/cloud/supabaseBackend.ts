@@ -194,11 +194,12 @@ export function createSupabaseBackend(url: string, key: string): CloudBackend {
     async coachRiders(team, pin) {
       const { data, error } = await sb.rpc('coach_riders', { p_team: team, p_pin: pin })
       if (error) throw new Error(error.message)
-      const got = data as { ok?: boolean; team?: string; change_pin?: boolean; riders?: unknown } | null
+      const got = data as { ok?: boolean; team?: string; change_pin?: boolean; riders?: unknown; horses?: unknown } | null
       if (!got || got.ok !== true) return null
       if (got.change_pin === true) return 'change_pin'
       if (!Array.isArray(got.riders)) return null
-      return { team, riders: (got.riders as RiderRow[]).map((r) => rosterRider({ ...r, team })) }
+      const horses = Array.isArray(got.horses) ? (got.horses as unknown[]).filter((h): h is string => typeof h === 'string') : []
+      return { team, riders: (got.riders as RiderRow[]).map((r) => rosterRider({ ...r, team })), horses }
     },
     async coachSetMark(team, pin, backNo, height, group) {
       const { data, error } = await sb.rpc('coach_set_mark', { p_team: team, p_pin: pin, p_back_no: backNo, p_height: height, p_group: group })

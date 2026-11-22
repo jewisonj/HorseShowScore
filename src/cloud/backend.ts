@@ -206,8 +206,8 @@ export interface CloudBackend {
   putTeam(team: string, coach: 'off' | 'start'): Promise<void>
   /** Anyone: the names of the teams whose coach may sign on, for a coach to pick theirs. */
   coachTeams(): Promise<string[]>
-  /** A coach's team and PIN: the team's riders, or 'change_pin' for the starting PIN, which shows nothing. Null for a wrong PIN. Throws when the server refuses or cannot be reached. */
-  coachRiders(team: string, pin: string): Promise<{ team: string; riders: RosterRider[] } | 'change_pin' | null>
+  /** A coach's team and PIN: the team's riders and the names of the horses the team provides, or 'change_pin' for the starting PIN, which shows nothing. Null for a wrong PIN. Throws when the server refuses or cannot be reached. */
+  coachRiders(team: string, pin: string): Promise<{ team: string; riders: RosterRider[]; horses: string[] } | 'change_pin' | null>
   /** A coach's team and PIN: set the marks of one of that team's riders. */
   coachSetMark(team: string, pin: string, backNo: string, height: boolean, group: 1 | 2 | 3): Promise<'ok' | 'wrong_pin' | 'not_yours'>
   /** A coach chooses their own PIN, with the one they have now. The first time that is the starting PIN. */

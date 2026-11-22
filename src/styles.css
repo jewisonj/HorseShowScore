@@ -2124,3 +2124,10 @@ h2 {
 .sheet-draw-placed td:first-child {
   width: 4.2rem;
 }
+
+/* A horse the coach's own school brings: red, in a class of theirs or not. Alternates too. */
+.sheet-draw td.sheet-draw-ourhorse,
+.sheet-draw .sheet-draw-alt td.sheet-draw-ourhorse {
+  color: var(--minus);
+  font-weight: 700;
+}

@@ -14,9 +14,21 @@ import { usePublishedShows } from './PublicScreens'
  * the placings: place, back number, rider and horse, first place first.
  *
  * It shows only what is published, which anyone may see. The rows of the
- * coach's own riders are marked on the coach's own device.
+ * coach's own riders are marked on the coach's own device, and a horse their
+ * own school brings is in red, so they know to have it ready for a class even
+ * when no rider of theirs is in it (owner, 2026-11-22).
  */
-export function DrawTable({ cls, mine, placings }: { cls: ShowClass; mine: Set<string>; placings?: PublicPlacing[] }) {
+export function DrawTable({ cls, mine, horses, placings }: { cls: ShowClass; mine: Set<string>; horses?: Set<string>; placings?: PublicPlacing[] }) {
+  /** A horse cell: red, and said aloud, when the coach's school brings that horse. `horses` holds names in small letters. */
+  const horseCell = (name: string, key?: string) => {
+    const theirs = name !== '' && horses !== undefined && horses.has(name.toLowerCase())
+    return (
+      <td key={key} className={theirs ? 'sheet-draw-ourhorse' : undefined}>
+        {name}
+        {theirs && <span className="sr-only"> (your horse)</span>}
+      </td>
+    )
+  }
   const riders = [...cls.entries].sort((a, b) => a.draw - b.draw)
   const drawn = riders.some((r) => r.horse)
   const placed = placings !== undefined && placings.length > 0
@@ -54,7 +66,7 @@ export function DrawTable({ cls, mine, placings }: { cls: ShowClass; mine: Set<s
                     {r.rider || 'Rider not named'}
                     {yours && <span className="sr-only"> (your rider)</span>}
                   </td>
-                  <td>{r.horse}</td>
+                  {horseCell(r.horse)}
                 </tr>
               )
             })
@@ -68,7 +80,7 @@ export function DrawTable({ cls, mine, placings }: { cls: ShowClass; mine: Set<s
                     {r.rider || 'Rider to be named'}
                     {yours && <span className="sr-only"> (your rider)</span>}
                   </td>
-                  <td>{r.horse}</td>
+                  {horseCell(r.horse)}
                 </tr>
               )
             })}
@@ -76,7 +88,7 @@ export function DrawTable({ cls, mine, placings }: { cls: ShowClass; mine: Set<s
           (cls.alternates ?? []).map((horse, i) => (
             <tr key={`alt:${i}:${horse}`} className="sheet-draw-alt">
               <td colSpan={3}>Alternate</td>
-              <td>{horse}</td>
+              {horseCell(horse)}
             </tr>
           ))}
       </tbody>
@@ -107,9 +119,10 @@ const LOOK_EVERY_MS = 60_000
 /**
  * A published show's draw and placings, class by class, for a coach: what they
  * want to see first (owner, 2026-11-22). A class shows its draw until its
- * placings are published, then its placings. `mine` marks the coach's riders.
+ * placings are published, then its placings. `mine` marks the coach's riders,
+ * and `horses` (names in small letters) the horses the coach's school brings.
  */
-export function ShowDraw({ showId, mine }: { showId?: string; mine: Set<string> }) {
+export function ShowDraw({ showId, mine, horses }: { showId?: string; mine: Set<string>; horses?: Set<string> }) {
   const cloud = useCloud()
   const { shows, checkedAt } = usePublishedShows()
   const [checking, setChecking] = useState(false)
@@ -145,6 +158,8 @@ export function ShowDraw({ showId, mine }: { showId?: string; mine: Set<string> 
     )
   }
   const yours = show.meets.reduce((n, m) => n + m.classes.reduce((k, c) => k + c.entries.filter((e) => mine.has(e.back_no)).length, 0), 0)
+  const theirHorses = horses ?? new Set<string>()
+  const horseRides = show.meets.reduce((n, m) => n + m.classes.reduce((k, c) => k + c.entries.filter((e) => e.horse && theirHorses.has(e.horse.toLowerCase())).length, 0), 0)
   const placedCount = show.meets.reduce((n, m) => n + m.classes.filter((c) => (placings[classKey(m.id, c.id)] ?? []).length > 0).length, 0)
   return (
     <>
@@ -166,6 +181,7 @@ export function ShowDraw({ showId, mine }: { showId?: string; mine: Set<string> 
       )}
       <p className="hint">
         {yours > 0 ? `Your riders are marked: ${yours === 1 ? '1 ride' : `${yours} rides`} in this show. ` : ''}
+        {theirHorses.size > 0 ? `The horses your school brings are in red: ${horseRides === 1 ? '1 ride' : `${horseRides} rides`} to have them ready for. ` : ''}
         Each class shows its draw, then its placings once the show office posts them.
         {placedCount > 0 ? ` Placings are in for ${placedCount === 1 ? '1 class' : `${placedCount} classes`}.` : ''}
         {checkedAt ? ` Checked ${whenChecked(checkedAt)}.` : ''}
@@ -193,7 +209,7 @@ export function ShowDraw({ showId, mine }: { showId?: string; mine: Set<string> 
           {meet.classes.length === 0 && <p className="empty">No classes yet.</p>}
           <div className="sheet-draws">
             {meet.classes.map((cls) => (
-              <DrawTable key={cls.id} cls={cls} mine={mine} placings={placings[classKey(meet.id, cls.id)]} />
+              <DrawTable key={cls.id} cls={cls} mine={mine} horses={theirHorses} placings={placings[classKey(meet.id, cls.id)]} />
             ))}
           </div>
         </section>

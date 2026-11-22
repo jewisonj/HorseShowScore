@@ -33,9 +33,12 @@ export function CoachScreen(props: { showId?: string } = {}) {
   const [again, setAgain] = useState('')
   const [busy, setBusy] = useState(false)
   const [riders, setRiders] = useState<RosterRider[] | null>(null)
+  // The horses the coach's own school brings, by name.
+  const [horses, setHorses] = useState<string[]>([])
   const [problem, setProblem] = useState('')
   const [saved, setSaved] = useState('')
   const mine = useMemo(() => new Set((riders ?? []).map((r) => r.backNo)), [riders])
+  const ours = useMemo(() => new Set(horses.map((h) => h.toLowerCase())), [horses])
   useEffect(() => {
     void startCloud()
   }, [])
@@ -56,7 +59,10 @@ export function CoachScreen(props: { showId?: string } = {}) {
     let current = true
     void loadCoachRiders().then((got) => {
       if (!current) return
-      if (got.ok) setRiders(got.riders)
+      if (got.ok) {
+        setRiders(got.riders)
+        setHorses(got.horses)
+      }
       else setProblem(got.error)
     })
     return () => {
@@ -160,6 +166,7 @@ export function CoachScreen(props: { showId?: string } = {}) {
             }
             setPin('')
             setRiders(got.riders)
+            setHorses(got.horses)
           }}
         >
           <label className="field">
@@ -197,7 +204,7 @@ export function CoachScreen(props: { showId?: string } = {}) {
 
   return (
     <Screen title={coach.team} sub="Coach" wide>
-      <ShowDraw showId={props.showId} mine={mine} />
+      <ShowDraw showId={props.showId} mine={mine} horses={ours} />
       {problem && (
         <p className="warning" role="alert">
           {problem}
@@ -232,6 +239,7 @@ export function CoachScreen(props: { showId?: string } = {}) {
           onClick={() => {
             coachSignOff()
             setRiders(null)
+            setHorses([])
             setTeams(null)
             go('/')
           }}

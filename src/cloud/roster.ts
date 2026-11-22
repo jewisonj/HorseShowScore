@@ -96,7 +96,8 @@ export function useCoach(): CoachSeat | null {
 }
 
 export type CoachRiders =
-  | { ok: true; team: string; riders: RosterRider[] }
+  /** `horses`: the names of the horses the coach's own school provides. */
+  | { ok: true; team: string; riders: RosterRider[]; horses: string[] }
   /** `choosePin`: the PIN was the starting one, and the coach has to choose their own before anything is shown. */
   | { ok: false; error: string; wrongPin?: boolean; choosePin?: boolean }
 
@@ -122,7 +123,7 @@ async function fetchCoach(team: string, pin: string): Promise<CoachRiders> {
     const got = await b.coachRiders(team, pin)
     if (got === 'change_pin') return { ok: false, error: 'Choose your own PIN first.', choosePin: true }
     if (!got) return { ok: false, error: `That is not the coach PIN for ${team}.`, wrongPin: true }
-    return { ok: true, team: got.team, riders: got.riders }
+    return { ok: true, team: got.team, riders: got.riders, horses: got.horses }
   } catch (e) {
     return { ok: false, error: tooMany(explainServerError(e)) }
   }
