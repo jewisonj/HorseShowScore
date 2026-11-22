@@ -1,6 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
 import type { ShowFile } from '../data/fixture'
-import type { CloudBackend, CloudUser, PublicCard, PublicPlacing, SeatRole, SentRow } from './backend'
+import type { CloudBackend, CloudUser, PublicCard, PublicPlacing, RosterRider, SeatRole, SentRow } from './backend'
+
+interface RiderRow {
+  back_no: string
+  rider: string
+  team?: string
+  height_rider: boolean
+  weight_group: number
+}
+
+function rosterRider(r: RiderRow): RosterRider {
+  return { backNo: String(r.back_no), rider: String(r.rider ?? ''), team: String(r.team ?? ''), height: r.height_rider === true, group: r.weight_group === 2 ? 2 : r.weight_group === 3 ? 3 : 1 }
+}
 
 function toUser(u: { id: string; email?: string } | null | undefined): CloudUser | null {
   return u ? { id: u.id, email: u.email ?? '' } : null
@@ -120,6 +132,40 @@ export function createSupabaseBackend(url: string, key: string): CloudBackend {
       const { data, error } = await sb.rpc('judge_decide_reride', { p_show: showId, p_pin: pin, p_id: id, p_approve: approve })
       if (error) throw new Error(error.message)
       return data === 'ok' || data === 'already_decided' || data === 'not_found' ? data : 'wrong_pin'
+    },
+    async listRiders() {
+      const { data, error } = await sb.from('riders').select('back_no, rider, team, height_rider, weight_group').order('team').order('rider')
+      if (error) throw new Error(error.message)
+      return (data ?? []).map(rosterRider)
+    },
+    async putRiders(riders) {
+      if (riders.length === 0) return
+      const { error } = await sb
+        .from('riders')
+        .upsert(riders.map((r) => ({ back_no: r.backNo, rider: r.rider, team: r.team, height_rider: r.height, weight_group: r.group, updated_at: new Date().toISOString() })), { onConflict: 'back_no' })
+      if (error) throw new Error(error.message)
+    },
+    async listTeams() {
+      const { data, error } = await sb.from('teams').select('team, pin').order('team')
+      if (error) throw new Error(error.message)
+      return (data ?? []).map((t: { team: string; pin: string | null }) => ({ team: t.team, pin: t.pin }))
+    },
+    async putTeam(team, pin) {
+      const { error } = await sb.from('teams').upsert({ team, pin }, { onConflict: 'team' })
+      if (error) throw new Error(error.message)
+    },
+    async coachRiders(pin) {
+      const { data, error } = await sb.rpc('coach_riders', { p_pin: pin })
+      if (error) throw new Error(error.message)
+      const got = data as { ok?: boolean; team?: string; riders?: unknown } | null
+      if (!got || got.ok !== true || typeof got.team !== 'string' || !Array.isArray(got.riders)) return null
+      const team = got.team
+      return { team, riders: (got.riders as RiderRow[]).map((r) => rosterRider({ ...r, team })) }
+    },
+    async coachSetMark(pin, backNo, height, group) {
+      const { data, error } = await sb.rpc('coach_set_mark', { p_pin: pin, p_back_no: backNo, p_height: height, p_group: group })
+      if (error) throw new Error(error.message)
+      return data === 'ok' || data === 'not_yours' ? data : 'wrong_pin'
     },
     async listClassScores(showId, pin) {
       const { data, error } = await sb.rpc('office_scores', { p_show: showId, p_pin: pin })

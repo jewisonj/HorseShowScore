@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useCloud } from './cloud/cloud'
+import { useCoach } from './cloud/roster'
 import { seatName, signOff, useSeat } from './cloud/seat'
 import { useCloudCache } from './data/cloudShows'
 import { showOfMeet } from './data/fixture'
@@ -7,6 +8,7 @@ import { useSaveFailed } from './store'
 import { go } from './ui/bits'
 import { AccountScreen } from './ui/AccountScreen'
 import { ClassScreen } from './ui/ClassScreen'
+import { CoachScreen } from './ui/CoachScreen'
 import { DrawScreen } from './ui/DrawScreen'
 import { Home } from './ui/Home'
 import { MeetScreen } from './ui/MeetScreen'
@@ -14,6 +16,7 @@ import { PlacingsScreen } from './ui/PlacingsScreen'
 import { RailScreen } from './ui/RailScreen'
 import { PublicHome, PublicShow } from './ui/PublicScreens'
 import { ResultsAdminScreen } from './ui/ResultsAdminScreen'
+import { RidersScreen } from './ui/RidersScreen'
 import { ScoreCard } from './ui/ScoreCard'
 import { SeatsScreen } from './ui/SeatsScreen'
 import { SetupScreen } from './ui/SetupScreen'
@@ -68,6 +71,7 @@ function Route() {
   const p = useHashParts()
   const cloud = useCloud()
   const seat = useSeat()
+  const coach = useCoach()
   // Where the app has a server, each part is open only to the role it is for.
   // The server checks again whenever something is sent or published.
   const everything = !cloud.configured || cloud.admin
@@ -77,6 +81,8 @@ function Route() {
 
   if (p[0] === 'public') return p[1] ? <PublicShow key={p[1]} showId={p[1]} /> : <PublicHome />
   if (p[0] === 'account') return <AccountScreen />
+  if (p[0] === 'riders') return <RidersScreen />
+  if (p[0] === 'coach') return <CoachScreen />
   if (p[0] === 'm' && p[1]) {
     const meetId = p[1]
     if (!judgeOf(showOfMeet(meetId)?.id)) return <SignOnScreen />
@@ -106,6 +112,7 @@ function Route() {
   if (seat?.role === 'judge') return <ShowScreen showId={seat.showId} />
   if (seat?.role === 'office') return <ResultsAdminScreen key={`results:${seat.showId}`} showId={seat.showId} />
   if (seat?.role === 'steward') return <StewardScreen key={`steward:${seat.showId}`} showId={seat.showId} />
+  if (coach) return <CoachScreen />
   return <SignOnScreen />
 }
 

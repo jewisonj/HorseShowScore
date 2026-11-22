@@ -121,6 +121,11 @@ export function Home() {
             go(`/s/${show.id}`)
           }}
         />
+        {cloud.configured && cloud.admin && (
+          <button className="btn" onClick={() => go('/riders')}>
+            Riders and coaches
+          </button>
+        )}
         {cloud.configured && (
           <button className="btn" onClick={() => go('/account')}>
             {cloud.user ? `Signed in as ${cloud.user.email}` : 'Sign in to set up shows'}

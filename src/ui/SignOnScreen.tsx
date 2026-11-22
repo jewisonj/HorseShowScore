@@ -41,6 +41,10 @@ export function SignOnScreen() {
               <span>{ROLE_WORDS[r].does} Needs the PIN from the show admin.</span>
             </button>
           ))}
+          <button className="btn btn-wide role" onClick={() => go('/coach')}>
+            <strong>Coach</strong>
+            <span>Mark your team's height riders and weight groups. Needs your team's PIN from the show admin.</span>
+          </button>
           <button className="btn btn-wide role" onClick={() => go('/account')}>
             <strong>Admin</strong>
             <span>Set up shows, set PINs, do everything. Signs in with an email and password.</span>

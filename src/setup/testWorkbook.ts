@@ -70,6 +70,14 @@ export function sampleShowWorkbook(): Uint8Array {
     'Level I Horsemanship, Sec. A ': classTab([[503, 'Cy Cole', 'SUPER PETE'], [504, 'Di Dunn', "O'MALLEY"], [505, 'Eve Ely', 'ROCKET']]),
     'Level II Horsemanship': classTab([]),
     'Ranch Riding': classTab([[501, 'Ada Able', 'DUKE & DAISY']]),
-    Exhibitors: { B4: 'Input Back Number' },
+    Exhibitors: {
+      B4: 'Input Back Number', C4: 'Input Rider Name', D4: 'Input School Name',
+      B5: 501, C5: 'Ada  Able ', D5: 'Example College',
+      B6: 502, C6: 'Ben Baker', D6: 'Example College',
+      B7: 503, C7: 'Cy Cole', D7: 'Sample University ',
+      B8: 504, C8: 'Di Dunn', D8: 'Sample University',
+      B9: 505, C9: 'Eve Ely', D9: 'Sample University',
+      C10: 'No number yet', D10: 'Sample University',
+    },
   })
 }

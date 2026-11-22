@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { fetchWorkbook, startCloud, useCloud } from '../cloud/cloud'
+import type { RosterRider } from '../cloud/backend'
+import { explainServerError, fetchWorkbook, getBackend, startCloud, useCloud } from '../cloud/cloud'
 import { useCloudCache } from '../data/cloudShows'
 import { allShows, classKey, getShow, type ShowClass, type ShowFile } from '../data/fixture'
 import { saveShow, useUserShows } from '../data/shows'
 import { ruleSetFor } from '../rules/rulesets'
 import { loadDraw } from '../seed'
 import { finishShow } from '../setup/draft'
-import { addHorses, markOf, saveDrawBook, useDrawBook, type BookHorse, type DrawBook } from '../setup/drawBook'
+import { addHorses, markOf, saveDrawBook, useDrawBook, type BookHorse, type DrawBook, type RiderMark } from '../setup/drawBook'
 import { drawClass, fits, redrawOne, suggestSet, rideCounts, type DrawRider, type WeightGroup } from '../setup/horseDraw'
 import { rememberSheetLink, sheetLinkFor } from '../setup/sheetLink'
 import { readHorseList } from '../setup/workbook'
@@ -45,9 +46,29 @@ export function DrawScreen({ showId }: { showId: string }) {
   const [horseNote, setHorseNote] = useState('')
   const [classNote, setClassNote] = useState<Record<string, string>>({})
   const [showRiders, setShowRiders] = useState(false)
+  // The riders list on the server, by back number. Null where there is no server, or it could not be reached.
+  const [roster, setRoster] = useState<Map<string, RosterRider> | null>(null)
+  const [rosterNote, setRosterNote] = useState('')
   useEffect(() => {
     void startCloud()
   }, [])
+  useEffect(() => {
+    if (!cloud.configured || !cloud.admin) return
+    let current = true
+    void (async () => {
+      try {
+        const b = await getBackend()
+        if (!b) return
+        const list = await b.listRiders()
+        if (current) setRoster(new Map(list.map((r) => [r.backNo, r])))
+      } catch (e) {
+        if (current) setRosterNote(`Could not reach the riders list, so the marks kept on this computer are used. ${explainServerError(e)}`)
+      }
+    })()
+    return () => {
+      current = false
+    }
+  }, [cloud.configured, cloud.admin])
 
   if (cloud.configured && !cloud.admin) {
     return (
@@ -76,7 +97,51 @@ export function DrawScreen({ showId }: { showId: string }) {
   const used = rideCounts(show.meets.flatMap((m) => m.classes))
   const riders = new Map<string, string>()
   for (const { cls } of classes) for (const e of cls.entries) if (!riders.has(e.back_no)) riders.set(e.back_no, e.rider)
-  const marked = [...riders.keys()].filter((b) => book.riders[b] && (book.riders[b].height || book.riders[b].group !== 1)).length
+  /** A rider's marks: from the riders list on the server where there is one, else from this computer. */
+  const markFor = (backNo: string): RiderMark => {
+    const onList = roster?.get(backNo)
+    return onList ? { height: onList.height, group: onList.group } : markOf(book, backNo)
+  }
+  const marked = [...riders.keys()].filter((b) => markFor(b).height || markFor(b).group !== 1).length
+  // Marks made on this computer before the riders list existed, for riders the list has nothing on yet.
+  const stranded = roster ? Object.entries(book.riders).filter(([b, m]) => (m.height || m.group !== 1) && riders.has(b) && !(roster.get(b)?.height || (roster.get(b)?.group ?? 1) !== 1)) : []
+
+  async function setMark(backNo: string, name: string, next: RiderMark) {
+    if (!roster) {
+      setBook({ ...book, riders: { ...book.riders, [backNo]: next } })
+      return
+    }
+    const row: RosterRider = { backNo, rider: roster.get(backNo)?.rider || name, team: roster.get(backNo)?.team ?? '', height: next.height, group: next.group }
+    const before = roster
+    setRoster(new Map(roster).set(backNo, row))
+    setRosterNote('')
+    try {
+      const b = await getBackend()
+      if (!b) throw new Error('This copy of the app is not connected to a server.')
+      await b.putRiders([row])
+    } catch (e) {
+      setRoster(before)
+      setRosterNote(`${backNo} was not saved. ${explainServerError(e)}`)
+    }
+  }
+
+  async function moveMarks() {
+    if (!roster) return
+    const rows: RosterRider[] = stranded.map(([backNo, m]) => ({ backNo, rider: roster.get(backNo)?.rider || riders.get(backNo) || '', team: roster.get(backNo)?.team ?? '', height: m.height, group: m.group }))
+    try {
+      const b = await getBackend()
+      if (!b) throw new Error('This copy of the app is not connected to a server.')
+      await b.putRiders(rows)
+      const next = new Map(roster)
+      for (const r of rows) next.set(r.backNo, r)
+      setRoster(next)
+      // They live on the riders list now. This computer keeps no copy.
+      setBook({ ...book, riders: {} })
+      setRosterNote(`${rows.length} ${rows.length === 1 ? 'mark' : 'marks'} moved to the riders list.`)
+    } catch (e) {
+      setRosterNote(explainServerError(e))
+    }
+  }
   const others = allShows()
     .filter((s) => s.id !== show.id)
     .map((s) => ({ show: s, horses: [...rideCounts(s.meets.flatMap((m) => m.classes)).keys()] }))
@@ -107,7 +172,7 @@ export function DrawScreen({ showId }: { showId: string }) {
   }
 
   function ridersOf(cls: ShowClass): DrawRider[] {
-    return cls.entries.map((e) => ({ backNo: e.back_no, ...markOf(book, e.back_no) }))
+    return cls.entries.map((e) => ({ backNo: e.back_no, ...markFor(e.back_no) }))
   }
 
   function horsesOf(key: string): BookHorse[] {
@@ -297,17 +362,38 @@ export function DrawScreen({ showId }: { showId: string }) {
 
       <h2>Riders</h2>
       <p className="hint">
-        Mark the height riders and each rider's weight group. A rider with nothing marked fits any horse. These marks
-        stay on this computer. They are never published, sent or exported.
+        Mark the height riders and each rider's weight group. A rider with nothing marked fits any horse.{' '}
+        {roster
+          ? 'The marks are kept in the riders list on the server, where only show admins and each team’s coach see them. They are never published.'
+          : 'These marks stay on this computer. They are never published, sent or exported.'}
       </p>
+      {rosterNote && (
+        <p className="hint" role="status">
+          {rosterNote}
+        </p>
+      )}
+      {stranded.length > 0 && (
+        <div className="row-actions">
+          <button className="btn" onClick={() => void moveMarks()}>
+            Move the {stranded.length} {stranded.length === 1 ? 'mark' : 'marks'} kept on this computer to the riders list
+          </button>
+        </div>
+      )}
+      {roster && (
+        <div className="row-actions">
+          <button className="btn" onClick={() => go('/riders')}>
+            Open the riders list and coach PINs
+          </button>
+        </div>
+      )}
       <button className="btn" aria-expanded={showRiders} onClick={() => setShowRiders(!showRiders)}>
         {showRiders ? 'Hide the riders' : `Show the ${riders.size} riders (${marked} marked)`}
       </button>
       {showRiders && (
         <ul className="list draw-riders">
           {[...riders].map(([backNo, name]) => {
-            const mark = markOf(book, backNo)
-            const set = (next: { height: boolean; group: WeightGroup }) => setBook({ ...book, riders: { ...book.riders, [backNo]: next } })
+            const mark = markFor(backNo)
+            const set = (next: { height: boolean; group: WeightGroup }) => void setMark(backNo, name, next)
             return (
               <li key={backNo} className="draw-rider">
                 <BackNumber value={backNo} size="sm" />
@@ -400,7 +486,7 @@ export function DrawScreen({ showId }: { showId: string }) {
                   .sort((a, b) => a.draw - b.draw)
                   .map((e) => {
                     const mine = book.horses.find((h) => h.name === e.horse)
-                    const misfit = mine !== undefined && !fits(markOf(book, e.back_no), mine)
+                    const misfit = mine !== undefined && !fits(markFor(e.back_no), mine)
                     const options = [...new Set([...horses.map((h) => h.name), ...(e.horse ? [e.horse] : [])])]
                     return (
                       <li key={e.back_no} className="draw-row">

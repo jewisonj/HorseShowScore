@@ -1974,3 +1974,13 @@ h2 {
 .steward-yes {
   color: var(--plus);
 }
+
+.coach-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+}

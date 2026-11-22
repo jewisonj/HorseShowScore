@@ -75,6 +75,25 @@ export interface SeatPin {
   pin: string
 }
 
+/**
+ * A rider on the riders list, with the two marks the horse draw works from.
+ * Never a height or a weight: a yes or no, and a group of 1, 2 or 3. Only show
+ * admins see the list, and a coach sees the riders of their own team.
+ */
+export interface RosterRider {
+  backNo: string
+  rider: string
+  team: string
+  height: boolean
+  group: 1 | 2 | 3
+}
+
+/** A team and the PIN its coach signs on with. Null when the team has no coach PIN. */
+export interface TeamPin {
+  team: string
+  pin: string | null
+}
+
 /** A steward's request to the judge for a re-ride. It names the class and the back number, never the rider. */
 export interface RerideAsk {
   id: string
@@ -145,6 +164,18 @@ export interface CloudBackend {
   listRerideAsks(showId: string, pin: string): Promise<RerideAsk[] | 'wrong_pin'>
   /** A judge PIN, or a signed-in show admin with an empty PIN: approve or deny an ask. */
   decideReride(showId: string, pin: string, id: string, approve: boolean): Promise<'ok' | 'wrong_pin' | 'already_decided' | 'not_found'>
+  /** Show admins only: everyone on the riders list. */
+  listRiders(): Promise<RosterRider[]>
+  /** Show admins only: add riders, or replace the ones with the same back number. */
+  putRiders(riders: RosterRider[]): Promise<void>
+  /** Show admins only: the teams and their coach PINs. */
+  listTeams(): Promise<TeamPin[]>
+  /** Show admins only: add a team or change its coach PIN. */
+  putTeam(team: string, pin: string | null): Promise<void>
+  /** A coach PIN: the team it opens and that team's riders. Null for a wrong PIN. Throws when the server refuses or cannot be reached. */
+  coachRiders(pin: string): Promise<{ team: string; riders: RosterRider[] } | null>
+  /** A coach PIN: set the marks of one of that team's riders. */
+  coachSetMark(pin: string, backNo: string, height: boolean, group: 1 | 2 | 3): Promise<'ok' | 'wrong_pin' | 'not_yours'>
   /** Anyone: the score cards released for a show. */
   listCards(showId: string): Promise<ReleasedCards[]>
   /** Anyone: the placings published for a show. */

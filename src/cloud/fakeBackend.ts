@@ -1,5 +1,5 @@
 import type { ShowFile } from '../data/fixture'
-import type { CloudBackend, CloudUser, PublishedClass, ReleasedCards, RerideAsk, SeatPin, SentScores } from './backend'
+import type { CloudBackend, CloudUser, PublishedClass, ReleasedCards, RerideAsk, RosterRider, SeatPin, SentScores, TeamPin } from './backend'
 
 /** A stand-in server for tests. Nothing here touches the network. */
 export interface FakeBackend extends CloudBackend {
@@ -16,6 +16,10 @@ export interface FakeBackend extends CloudBackend {
   seats: Record<string, SeatPin[]>
   /** True for the show's office PIN, or a signed-in show admin giving no PIN. */
   office(showId: string, pin: string): Promise<boolean>
+  /** The riders list. */
+  riders: RosterRider[]
+  /** The teams and their coach PINs. */
+  teams: TeamPin[]
   /** Re-rides asked for, by show id, oldest first. */
   asks: Record<string, RerideAsk[]>
   /** The kind of seat a PIN opens in a show, 'admin' for a signed-in show admin giving no PIN, or null. */
@@ -50,6 +54,8 @@ export function makeFakeBackend(): FakeBackend {
     placings: {},
     cards: {},
     asks: {},
+    riders: [],
+    teams: [],
     async roleOf(showId, pin) {
       if (pin === '') return (await fake.isShowAdmin()) ? 'admin' : null
       return (fake.seats[showId] ?? []).find((x) => x.pin === pin)?.role ?? null
@@ -149,6 +155,40 @@ export function makeFakeBackend(): FakeBackend {
       if (!ask) return 'not_found'
       if (ask.status !== 'asked') return 'already_decided'
       fake.asks[showId] = (fake.asks[showId] ?? []).map((a) => (a.id === id ? { ...a, status: approve ? 'approved' : 'denied', decidedAt: new Date().toISOString() } : a))
+      return 'ok'
+    },
+    async listRiders() {
+      if (fake.down) throw new Error('Failed to fetch')
+      return (await fake.isShowAdmin()) ? fake.riders.map((r) => ({ ...r })) : []
+    },
+    async putRiders(riders) {
+      if (fake.down) throw new Error('Failed to fetch')
+      if (!(await fake.isShowAdmin())) throw new Error('new row violates row-level security policy')
+      const put = new Set(riders.map((r) => r.backNo))
+      fake.riders = [...fake.riders.filter((r) => !put.has(r.backNo)), ...riders.map((r) => ({ ...r }))]
+    },
+    async listTeams() {
+      if (fake.down) throw new Error('Failed to fetch')
+      return (await fake.isShowAdmin()) ? fake.teams.map((t) => ({ ...t })) : []
+    },
+    async putTeam(team, pin) {
+      if (fake.down) throw new Error('Failed to fetch')
+      if (!(await fake.isShowAdmin())) throw new Error('new row violates row-level security policy')
+      if (pin !== null && fake.teams.some((t) => t.team !== team && t.pin === pin)) throw new Error('duplicate key value violates unique constraint "teams_pin_once"')
+      fake.teams = [...fake.teams.filter((t) => t.team !== team), { team, pin }]
+    },
+    async coachRiders(pin) {
+      if (fake.down) throw new Error('Failed to fetch')
+      const team = pin === '' ? undefined : fake.teams.find((t) => t.pin === pin)
+      if (!team) return null
+      return { team: team.team, riders: fake.riders.filter((r) => r.team === team.team).map((r) => ({ ...r })) }
+    },
+    async coachSetMark(pin, backNo, height, group) {
+      if (fake.down) throw new Error('Failed to fetch')
+      const team = pin === '' ? undefined : fake.teams.find((t) => t.pin === pin)
+      if (!team) return 'wrong_pin'
+      if (!fake.riders.some((r) => r.backNo === backNo && r.team === team.team)) return 'not_yours'
+      fake.riders = fake.riders.map((r) => (r.backNo === backNo ? { ...r, height, group } : r))
       return 'ok'
     },
     async listClassScores(showId, pin) {

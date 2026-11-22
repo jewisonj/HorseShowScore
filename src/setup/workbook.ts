@@ -13,6 +13,7 @@ import type { CellValue, Workbook } from './xlsx'
  * - Placings are typed into J6 to J17 of each class tab. Nothing else on the
  *   tab is typed in for results.
  * - "Horse Points": the show's horses, one name per row from C3.
+ * - "Exhibitors": back number in B, rider in C, school in D, from row 5.
  */
 export const FIRST_ROW = 6
 export const LAST_ROW = 17
@@ -57,6 +58,34 @@ export function readHorseList(wb: Workbook): string[] {
     names.push(name)
   }
   return names
+}
+
+/** A rider as the workbook's Exhibitors tab lists them: back number, name and school. */
+export interface WorkbookRider {
+  backNo: string
+  rider: string
+  team: string
+}
+
+/**
+ * Everyone on the "Exhibitors" tab: back number in B, rider in C and school in
+ * D, from row 5. A row with no back number is left out. Each back number once.
+ */
+export function readRoster(wb: Workbook): WorkbookRider[] {
+  const tab = findTab(wb, 'Exhibitors')
+  if (!tab) return []
+  const riders: WorkbookRider[] = []
+  const seen = new Set<string>()
+  for (let row = 5; row <= 400; row++) {
+    const back = wb.cell(tab, `B${row}`)
+    const backNo = typeof back === 'number' ? String(back) : text(back)
+    if (!/^[A-Za-z0-9]{1,8}$/.test(backNo) || backNo === '0' || seen.has(backNo)) continue
+    const rider = text(wb.cell(tab, `C${row}`))
+    if (!rider || rider.startsWith('#')) continue
+    seen.add(backNo)
+    riders.push({ backNo, rider, team: text(wb.cell(tab, `D${row}`)) })
+  }
+  return riders
 }
 
 function entriesOf(wb: Workbook, tab: string): Entry[] {
