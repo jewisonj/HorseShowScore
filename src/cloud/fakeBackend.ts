@@ -1,5 +1,5 @@
 import type { ShowFile } from '../data/fixture'
-import type { CloudBackend, CloudUser, PublishedClass, ReleasedCards, SeatPin, SentScores } from './backend'
+import type { CloudBackend, CloudUser, PublishedClass, ReleasedCards, RerideAsk, SeatPin, SentScores } from './backend'
 
 /** A stand-in server for tests. Nothing here touches the network. */
 export interface FakeBackend extends CloudBackend {
@@ -16,6 +16,10 @@ export interface FakeBackend extends CloudBackend {
   seats: Record<string, SeatPin[]>
   /** True for the show's office PIN, or a signed-in show admin giving no PIN. */
   office(showId: string, pin: string): Promise<boolean>
+  /** Re-rides asked for, by show id, oldest first. */
+  asks: Record<string, RerideAsk[]>
+  /** The kind of seat a PIN opens in a show, 'admin' for a signed-in show admin giving no PIN, or null. */
+  roleOf(showId: string, pin: string): Promise<'judge' | 'office' | 'steward' | 'admin' | null>
   /** Released score cards, by show id. */
   cards: Record<string, ReleasedCards[]>
   /** Published placings, by show id. */
@@ -45,6 +49,11 @@ export function makeFakeBackend(): FakeBackend {
     },
     placings: {},
     cards: {},
+    asks: {},
+    async roleOf(showId, pin) {
+      if (pin === '') return (await fake.isShowAdmin()) ? 'admin' : null
+      return (fake.seats[showId] ?? []).find((x) => x.pin === pin)?.role ?? null
+    },
     pages: {},
     workbook: null,
     workbookLinks: [],
@@ -115,6 +124,31 @@ export function makeFakeBackend(): FakeBackend {
         rows: JSON.parse(JSON.stringify(send.rows)),
         sentAt: new Date(Date.now() + fake.sent.length).toISOString(),
       })
+      return 'ok'
+    },
+    async askReride(showId, pin, classKey, backNo, reason) {
+      if (fake.down) throw new Error('Failed to fetch')
+      if (!fake.shows.some((s) => s.id === showId)) return 'not_published'
+      const role = await fake.roleOf(showId, pin)
+      if (role !== 'steward' && role !== 'admin') return 'wrong_pin'
+      const asks = fake.asks[showId] ?? []
+      if (asks.some((a) => a.classKey === classKey && a.backNo === backNo && a.status === 'asked')) return 'already_asked'
+      fake.asks[showId] = [...asks, { id: `ask-${asks.length + 1}`, classKey, backNo, reason: reason.slice(0, 200), status: 'asked', askedAt: new Date(Date.now() + asks.length).toISOString(), decidedAt: null }]
+      return 'ok'
+    },
+    async listRerideAsks(showId, pin) {
+      if (fake.down) throw new Error('Failed to fetch')
+      if ((await fake.roleOf(showId, pin)) === null) return 'wrong_pin'
+      return (fake.asks[showId] ?? []).map((a) => ({ ...a }))
+    },
+    async decideReride(showId, pin, id, approve) {
+      if (fake.down) throw new Error('Failed to fetch')
+      const role = await fake.roleOf(showId, pin)
+      if (role !== 'judge' && role !== 'admin') return 'wrong_pin'
+      const ask = (fake.asks[showId] ?? []).find((a) => a.id === id)
+      if (!ask) return 'not_found'
+      if (ask.status !== 'asked') return 'already_decided'
+      fake.asks[showId] = (fake.asks[showId] ?? []).map((a) => (a.id === id ? { ...a, status: approve ? 'approved' : 'denied', decidedAt: new Date().toISOString() } : a))
       return 'ok'
     },
     async listClassScores(showId, pin) {

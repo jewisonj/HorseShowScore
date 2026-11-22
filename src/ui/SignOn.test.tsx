@@ -174,9 +174,11 @@ describe('a show admin sets the judges and their PINs', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save the PINs' }))
     expect(await screen.findByText(/Saved/)).toBeTruthy()
     const saved = server.seats[SHOW]
-    expect(saved.map((s) => `${s.role} ${s.seatNo}`)).toEqual(['judge 1', 'judge 2', 'judge 3', 'office 1'])
+    // A show set up before stewards existed gets a steward PIN with the next save.
+    expect(saved.map((s) => `${s.role} ${s.seatNo}`)).toEqual(['judge 1', 'judge 2', 'judge 3', 'office 1', 'steward 1'])
     expect(saved[1].pin).toBe('424242')
-    expect(new Set(saved.map((s) => s.pin)).size).toBe(4)
+    expect(saved[4].pin).toBe((screen.getByLabelText('Steward PIN') as HTMLInputElement).value)
+    expect(new Set(saved.map((s) => s.pin)).size).toBe(5)
   })
 
   it('refuses two seats with the same PIN', async () => {

@@ -7,6 +7,7 @@ import { ruleSetFor } from '../rules/rulesets'
 import { addRiders, classState, isReride, parseBackNumbers, setClassFinished, useAppState } from '../store'
 import { BackNumber, Code, Ribbon, Screen, go, pts } from './bits'
 import { CallReride } from './CallReride'
+import { ClassRerideAsks } from './RerideAsks'
 import { PatternPagePicture } from './PatternPagePicture'
 
 export function ClassScreen({ meetId, classId }: { meetId: string; classId: string }) {
@@ -96,6 +97,8 @@ export function ClassScreen({ meetId, classId }: { meetId: string; classId: stri
           </div>
         )}
       </section>
+
+      <ClassRerideAsks meetId={meetId} classId={classId} />
 
       <h2>Riders</h2>
       <form

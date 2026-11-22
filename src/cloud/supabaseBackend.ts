@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { ShowFile } from '../data/fixture'
-import type { CloudBackend, CloudUser, PublicCard, PublicPlacing, SentRow } from './backend'
+import type { CloudBackend, CloudUser, PublicCard, PublicPlacing, SeatRole, SentRow } from './backend'
 
 function toUser(u: { id: string; email?: string } | null | undefined): CloudUser | null {
   return u ? { id: u.id, email: u.email ?? '' } : null
@@ -67,12 +67,14 @@ export function createSupabaseBackend(url: string, key: string): CloudBackend {
       const { data, error } = await sb.rpc('seat_for', { p_show: showId, p_pin: pin })
       if (error) throw new Error(error.message)
       const seat = Array.isArray(data) ? (data[0] as { role?: string; seat_no?: number } | undefined) : undefined
-      return seat && (seat.role === 'judge' || seat.role === 'office') && typeof seat.seat_no === 'number' ? { role: seat.role, seatNo: seat.seat_no } : null
+      return seat && (seat.role === 'judge' || seat.role === 'office' || seat.role === 'steward') && typeof seat.seat_no === 'number' ? { role: seat.role, seatNo: seat.seat_no } : null
     },
     async listSeats(showId) {
       const { data, error } = await sb.from('show_seats').select('role, seat_no, pin').eq('show_id', showId).order('role').order('seat_no')
       if (error) throw new Error(error.message)
-      return (data ?? []).map((r: { role: string; seat_no: number; pin: string }) => ({ role: r.role === 'office' ? 'office' : 'judge', seatNo: r.seat_no, pin: r.pin }))
+      return (data ?? [])
+        .filter((r: { role: string }) => r.role === 'judge' || r.role === 'office' || r.role === 'steward')
+        .map((r: { role: string; seat_no: number; pin: string }) => ({ role: r.role as SeatRole, seatNo: r.seat_no, pin: r.pin }))
     },
     async replaceSeats(showId, seats) {
       const gone = await sb.from('show_seats').delete().eq('show_id', showId)
@@ -93,6 +95,31 @@ export function createSupabaseBackend(url: string, key: string): CloudBackend {
       })
       if (error) throw new Error(error.message)
       return data === 'ok' || data === 'not_published' ? data : 'wrong_pin'
+    },
+    async askReride(showId, pin, classKey, backNo, reason) {
+      const { data, error } = await sb.rpc('steward_ask_reride', { p_show: showId, p_pin: pin, p_class_key: classKey, p_back_no: backNo, p_reason: reason })
+      if (error) throw new Error(error.message)
+      return data === 'ok' || data === 'not_published' || data === 'already_asked' || data === 'too_many' ? data : 'wrong_pin'
+    },
+    async listRerideAsks(showId, pin) {
+      const { data, error } = await sb.rpc('reride_asks_for', { p_show: showId, p_pin: pin })
+      if (error) throw new Error(error.message)
+      const got = data as { ok?: boolean; asks?: unknown } | null
+      if (!got || got.ok !== true || !Array.isArray(got.asks)) return 'wrong_pin'
+      return (got.asks as { id: string; class_key: string; back_no: string; reason: string; status: string; asked_at: string; decided_at: string | null }[]).map((a) => ({
+        id: String(a.id),
+        classKey: String(a.class_key),
+        backNo: String(a.back_no),
+        reason: String(a.reason ?? ''),
+        status: a.status === 'approved' || a.status === 'denied' ? a.status : 'asked',
+        askedAt: String(a.asked_at),
+        decidedAt: a.decided_at ? String(a.decided_at) : null,
+      }))
+    },
+    async decideReride(showId, pin, id, approve) {
+      const { data, error } = await sb.rpc('judge_decide_reride', { p_show: showId, p_pin: pin, p_id: id, p_approve: approve })
+      if (error) throw new Error(error.message)
+      return data === 'ok' || data === 'already_decided' || data === 'not_found' ? data : 'wrong_pin'
     },
     async listClassScores(showId, pin) {
       const { data, error } = await sb.rpc('office_scores', { p_show: showId, p_pin: pin })

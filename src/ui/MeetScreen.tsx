@@ -1,6 +1,7 @@
 import { classKey, findPattern, formatDate, getMeet, showOfMeet } from '../data/fixture'
 import { classState, judgeName, setJudgeName, useAppState } from '../store'
 import { Screen, go } from './bits'
+import { DayRerideAsks } from './RerideAsks'
 
 export function MeetScreen({ meetId }: { meetId: string }) {
   const state = useAppState()
@@ -26,6 +27,8 @@ export function MeetScreen({ meetId }: { meetId: string }) {
         <input value={judge} onChange={(e) => setJudgeName(meet.id, e.target.value)} placeholder="Your name" autoComplete="off" />
       </label>
       <p className="hint">Stays on this phone or tablet and goes in its results file. It is not sent to the server.</p>
+
+      <DayRerideAsks meetId={meet.id} />
 
       <h2>Classes</h2>
       <ul className="list">

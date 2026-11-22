@@ -19,6 +19,7 @@ import { SeatsScreen } from './ui/SeatsScreen'
 import { SetupScreen } from './ui/SetupScreen'
 import { ShowScreen } from './ui/ShowScreen'
 import { SignOnScreen } from './ui/SignOnScreen'
+import { StewardScreen } from './ui/StewardScreen'
 
 function useHashParts(): string[] {
   const [hash, setHash] = useState(() => window.location.hash)
@@ -72,6 +73,7 @@ function Route() {
   const everything = !cloud.configured || cloud.admin
   const judgeOf = (showId: string | undefined) => everything || (seat?.role === 'judge' && seat.showId === showId)
   const officeOf = (showId: string | undefined) => everything || (seat?.role === 'office' && seat.showId === showId)
+  const stewardOf = (showId: string | undefined) => everything || (seat?.role === 'steward' && seat.showId === showId)
 
   if (p[0] === 'public') return p[1] ? <PublicShow key={p[1]} showId={p[1]} /> : <PublicHome />
   if (p[0] === 'account') return <AccountScreen />
@@ -92,8 +94,10 @@ function Route() {
     if (p[2] === 'seats') return <SeatsScreen key={`seats:${p[1]}`} showId={p[1]} />
     if (p[2] === 'draw') return <DrawScreen key={`draw:${p[1]}`} showId={p[1]} />
     if (p[2] === 'results') return officeOf(p[1]) ? <ResultsAdminScreen key={`results:${p[1]}`} showId={p[1]} /> : <SignOnScreen />
+    if (p[2] === 'steward') return stewardOf(p[1]) ? <StewardScreen key={`steward:${p[1]}`} showId={p[1]} /> : <SignOnScreen />
     if (judgeOf(p[1])) return <ShowScreen showId={p[1]} />
     if (officeOf(p[1])) return <ResultsAdminScreen key={`results:${p[1]}`} showId={p[1]} />
+    if (stewardOf(p[1])) return <StewardScreen key={`steward:${p[1]}`} showId={p[1]} />
     return <SignOnScreen />
   }
   if (p[0] === 'new') return <SetupScreen key="new" />
@@ -101,6 +105,7 @@ function Route() {
   if (everything) return <Home />
   if (seat?.role === 'judge') return <ShowScreen showId={seat.showId} />
   if (seat?.role === 'office') return <ResultsAdminScreen key={`results:${seat.showId}`} showId={seat.showId} />
+  if (seat?.role === 'steward') return <StewardScreen key={`steward:${seat.showId}`} showId={seat.showId} />
   return <SignOnScreen />
 }
 

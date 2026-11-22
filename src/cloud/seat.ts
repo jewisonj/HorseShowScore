@@ -1,15 +1,16 @@
 import { useSyncExternalStore } from 'react'
+import type { SeatRole } from './backend'
 import { explainServerError, getBackend } from './cloud'
 
 /**
  * Who this device is signed on as, when it signed on with a PIN: a judge (or
- * scribe) or the show office, for one show. The PIN is kept on the device
+ * scribe), the show office or a steward, for one show. The PIN is kept on the device
  * because the server asks for it with every score sent and every class
  * published. A show admin signs in with an account instead (cloud.ts).
  */
 export interface Seat {
   showId: string
-  role: 'judge' | 'office'
+  role: SeatRole
   seatNo: number
   pin: string
   /** The server stopped accepting this PIN, for example because the admin changed it. */
@@ -21,7 +22,7 @@ const STORAGE_KEY = 'hss.seat.v1'
 function load(): Seat | null {
   try {
     const s = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as Seat | null
-    if (!s || typeof s.showId !== 'string' || (s.role !== 'judge' && s.role !== 'office') || typeof s.seatNo !== 'number' || typeof s.pin !== 'string') return null
+    if (!s || typeof s.showId !== 'string' || (s.role !== 'judge' && s.role !== 'office' && s.role !== 'steward') || typeof s.seatNo !== 'number' || typeof s.pin !== 'string') return null
     return { showId: s.showId, role: s.role, seatNo: s.seatNo, pin: s.pin, ...(s.rejected ? { rejected: true } : {}) }
   } catch {
     return null
@@ -57,9 +58,9 @@ export function useSeat(): Seat | null {
   )
 }
 
-/** "Judge 2" or "Show office". */
-export function seatName(s: { role: 'judge' | 'office'; seatNo: number }): string {
-  return s.role === 'office' ? 'Show office' : `Judge ${s.seatNo}`
+/** "Judge 2", "Show office" or "Steward". */
+export function seatName(s: { role: SeatRole; seatNo: number }): string {
+  return s.role === 'office' ? 'Show office' : s.role === 'steward' ? 'Steward' : `Judge ${s.seatNo}`
 }
 
 export type SignOnResult = { ok: true; seat: Seat } | { ok: false; error: string }

@@ -65,11 +65,25 @@ export interface SentScores {
   sentAt: string
 }
 
-/** A seat of a show that signs on with a PIN: a judge (or scribe), or the show office. */
+/** The kinds of seat that sign on to a show with a PIN. */
+export type SeatRole = 'judge' | 'office' | 'steward'
+
+/** A seat of a show that signs on with a PIN: a judge (or scribe), the show office, or a steward. */
 export interface SeatPin {
-  role: 'judge' | 'office'
+  role: SeatRole
   seatNo: number
   pin: string
+}
+
+/** A steward's request to the judge for a re-ride. It names the class and the back number, never the rider. */
+export interface RerideAsk {
+  id: string
+  classKey: string
+  backNo: string
+  reason: string
+  status: 'asked' | 'approved' | 'denied'
+  askedAt: string
+  decidedAt: string | null
 }
 
 /** One line of published placings. No score: scores and cards are never public. */
@@ -105,7 +119,7 @@ export interface CloudBackend {
   publishShow(show: ShowFile): Promise<void>
   removeShow(id: string): Promise<void>
   /** Which seat a PIN opens in a show, or null for a wrong PIN. Throws when the server refuses or cannot be reached. */
-  checkPin(showId: string, pin: string): Promise<{ role: 'judge' | 'office'; seatNo: number } | null>
+  checkPin(showId: string, pin: string): Promise<{ role: SeatRole; seatNo: number } | null>
   /** Show admins only: the seats of a show and their PINs. */
   listSeats(showId: string): Promise<SeatPin[]>
   /** Show admins only: set the seats of a show and their PINs, replacing what was there. */
@@ -125,6 +139,12 @@ export interface CloudBackend {
   releaseCards(showId: string, classKey: string, cards: PublicCard[], pin: string): Promise<'ok' | 'wrong_pin'>
   /** The office PIN, or a signed-in show admin with an empty PIN: take a class's score cards down. */
   takeDownCards(showId: string, classKey: string, pin: string): Promise<'ok' | 'wrong_pin'>
+  /** The steward PIN, or a signed-in show admin with an empty PIN: ask the judge for a re-ride. */
+  askReride(showId: string, pin: string, classKey: string, backNo: string, reason: string): Promise<'ok' | 'wrong_pin' | 'not_published' | 'already_asked' | 'too_many'>
+  /** Any PIN of the show, or a signed-in show admin with an empty PIN: the re-rides asked for, oldest first. */
+  listRerideAsks(showId: string, pin: string): Promise<RerideAsk[] | 'wrong_pin'>
+  /** A judge PIN, or a signed-in show admin with an empty PIN: approve or deny an ask. */
+  decideReride(showId: string, pin: string, id: string, approve: boolean): Promise<'ok' | 'wrong_pin' | 'already_decided' | 'not_found'>
   /** Anyone: the score cards released for a show. */
   listCards(showId: string): Promise<ReleasedCards[]>
   /** Anyone: the placings published for a show. */

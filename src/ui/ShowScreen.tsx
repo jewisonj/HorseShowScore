@@ -140,6 +140,9 @@ export function ShowScreen({ showId }: { showId: string }) {
                 <button className="btn" onClick={() => go(`/s/${show.id}/seats`)}>
                   Judges and PINs
                 </button>
+                <button className="btn" onClick={() => go(`/s/${show.id}/steward`)}>
+                  Ask for a re-ride, as a steward
+                </button>
               </>
             )}
             {published && onServer && (

@@ -5,16 +5,17 @@ import { useCloudCache } from '../data/cloudShows'
 import { Screen, go } from './bits'
 import { showDates } from './Home'
 
-type Role = 'judge' | 'office'
+type Role = 'judge' | 'office' | 'steward'
 const ROLE_WORDS: Record<Role, { title: string; does: string }> = {
   judge: { title: 'Judge or scribe', does: 'Enter scores and mark a class finished.' },
   office: { title: 'Show office', does: 'See the scores and publish placings.' },
+  steward: { title: 'Steward', does: 'Ask the judge for a re-ride.' },
 }
 
 /**
  * The first screen where the app has a server: say who you are.
- * A judge or scribe and the show office sign on with the PIN the show admin
- * gave them. An admin signs in with an account. The public needs nothing.
+ * A judge or scribe, the show office and a steward sign on with the PIN the
+ * show admin gave them. An admin signs in with an account. The public needs nothing.
  */
 export function SignOnScreen() {
   const cloud = useCloud()
@@ -34,7 +35,7 @@ export function SignOnScreen() {
     return (
       <Screen title="Horse Show Scorer" sub="Who is using this device?">
         <div className="stack role-list">
-          {(['judge', 'office'] as Role[]).map((r) => (
+          {(['judge', 'office', 'steward'] as Role[]).map((r) => (
             <button key={r} className="btn btn-wide role" onClick={() => setRole(r)}>
               <strong>{ROLE_WORDS[r].title}</strong>
               <span>{ROLE_WORDS[r].does} Needs the PIN from the show admin.</span>
@@ -70,7 +71,8 @@ export function SignOnScreen() {
             return
           }
           setPin('')
-          go(got.seat.role === 'office' ? `/s/${chosen.id}/results` : `/s/${chosen.id}`)
+          // The PIN decides the seat, whichever button was pressed.
+          go(got.seat.role === 'office' ? `/s/${chosen.id}/results` : got.seat.role === 'steward' ? `/s/${chosen.id}/steward` : `/s/${chosen.id}`)
         }}
       >
         {shows.length === 0 ? (
