@@ -2274,9 +2274,11 @@ h2 {
   background: #fff3c4;
 }
 
-.class-sheet .class-sheet-notes td {
-  text-align: left;
-  white-space: normal;
+/* What a judge wrote for a rider, under the table and never between its rows. */
+.class-sheet-judge {
+  margin: 8px 10px 0;
+  padding: 0;
+  list-style: none;
   font-size: 0.85rem;
   color: var(--ink-2);
 }
@@ -2325,6 +2327,11 @@ h2 {
     max-width: none !important;
   }
 
+  /* The sheet's own heading names the class, so the bar above it only costs a row. */
+  .screen:has(.class-sheet) .topbar {
+    display: none;
+  }
+
   .class-sheet-scroll {
     overflow: visible;
     border: 0;
@@ -2335,7 +2342,20 @@ h2 {
     font-size: 9pt;
   }
 
+  /* Tight rows, so a class of twelve stays on one page. */
+  .class-sheet th,
+  .class-sheet td {
+    padding: 1px 5px;
+  }
+
   .class-sheet tr {
+    break-inside: avoid;
+  }
+
+  .class-sheet-key,
+  .class-sheet-judge,
+  .class-sheet-foot {
+    font-size: 8pt;
     break-inside: avoid;
   }
 

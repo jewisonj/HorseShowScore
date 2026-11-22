@@ -17,6 +17,12 @@ import { usePublishedShows } from './PublicScreens'
  * rider, a column for each maneuver with the penalty over the score, then the
  * boxes outside the maneuvers, the penalty total and the score.
  *
+ * Nothing is written between the rows (owner, 2026-11-22). A penalty is its
+ * number over the maneuver's score and nothing else: the sheets for these
+ * classes print no letter for a penalty. A rule set whose card does print
+ * letters puts the letter beside the number. What a judge wrote for a rider
+ * is listed under the table.
+ *
  * Only what the show office has released, which anyone may see. No school, no
  * judge, nothing of a class that has not been released.
  */
@@ -25,7 +31,8 @@ export function ClassSheetTable({ cls, pattern, cards, mine }: { cls: ShowClass;
   const columns = Math.max(pattern?.boxes.length ?? 0, ...cards.map((c) => c.boxes.length))
   // First place first. Riders with no place follow, best score first.
   const rows = [...cards].sort((a, b) => (a.place ?? 9999) - (b.place ?? 9999) || (b.score ?? -1) - (a.score ?? -1))
-  const span = 3 + columns + rules.extras.length + 2
+  const noted = rows.filter((card) => card.note)
+  const circled = cards.some((card) => card.penalties.some((p) => p.circled))
   return (
     <div className="class-sheet-scroll">
       <table className="class-sheet">
@@ -70,16 +77,7 @@ export function ClassSheetTable({ cls, pattern, cards, mine }: { cls: ShowClass;
             const counted = card.penalties.filter((p) => !p.circled).reduce((n, p) => n + p.half, 0)
             // A disqualified rider has no score. A score of 0 is a 0. An off pattern ride keeps its score, with OP beside it.
             const total = card.mark === 'DQ' ? 'DQ' : card.mark === 'ZERO' ? '0' : card.score !== null ? formatHalf(card.score) : 'No score'
-            // What the numbers do not say by themselves: the mark, each penalty's reason, and the judge's note.
-            const notes: string[] = []
-            if (card.mark !== 'none' && MARK_WORDS[card.mark]) notes.push(`${MARK_WORDS[card.mark]}.`)
-            for (const p of card.penalties) {
-              const reason = reasonById(rules, p.half, p.reason)
-              const where = p.box >= 0 && p.box < columns ? `Maneuver ${p.box + 1}` : 'Penalty'
-              if (reason || p.circled || where === 'Penalty') notes.push(`${where}: ${formatHalf(p.half)}${reason ? ` ${reason.short}` : ''}${p.circled ? ' (circled, not counted)' : ''}.`)
-            }
-            if (card.note) notes.push(`Judge’s note: ${card.note}`)
-            return [
+            return (
               <tr key={card.back_no} className={yours ? 'class-sheet-mine' : undefined}>
                 <td>{card.place === null ? '' : `${card.place}${card.tied ? ' tie' : ''}`}</td>
                 <td className="class-sheet-back">{card.back_no}</td>
@@ -93,7 +91,19 @@ export function ClassSheetTable({ cls, pattern, cards, mine }: { cls: ShowClass;
                   const here = card.penalties.filter((p) => p.box === i)
                   return (
                     <td key={i}>
-                      <span className="class-sheet-pen">{here.map((p) => (p.circled ? `(${formatHalf(p.half)})` : formatHalf(p.half))).join(' ')}</span>
+                      <span className="class-sheet-pen">
+                        {here.map((p, n) => {
+                          // The reason is there for a pointer or a screen reader, and takes no room on the sheet.
+                          const reason = reasonById(rules, p.half, p.reason)
+                          const text = p.circled ? `(${formatHalf(p.half)})` : formatHalf(p.half)
+                          return (
+                            <span key={n} title={reason?.text}>
+                              {n > 0 ? ' ' : ''}
+                              {text}
+                            </span>
+                          )
+                        })}
+                      </span>
                       <span className="class-sheet-score">{value === null ? '' : formatHalf(value, { sign: true })}</span>
                     </td>
                   )
@@ -108,19 +118,12 @@ export function ClassSheetTable({ cls, pattern, cards, mine }: { cls: ShowClass;
                   )
                 })}
                 <td className={counted > 0 ? 'class-sheet-pentotal' : undefined}>{formatHalf(counted)}</td>
-                <td className="class-sheet-total">
+                <td className="class-sheet-total" title={card.mark !== 'none' ? MARK_WORDS[card.mark] : undefined}>
                   {total}
                   {card.mark === 'OP' && <span className="class-sheet-mark"> OP</span>}
                 </td>
-              </tr>,
-              notes.length > 0 && (
-                <tr key={`${card.back_no}:notes`} className={yours ? 'class-sheet-notes class-sheet-mine' : 'class-sheet-notes'}>
-                  <td colSpan={span}>
-                    {card.back_no}: {notes.join(' ')}
-                  </td>
-                </tr>
-              ),
-            ]
+              </tr>
+            )
           })}
         </tbody>
       </table>
@@ -131,8 +134,18 @@ export function ClassSheetTable({ cls, pattern, cards, mine }: { cls: ShowClass;
           ))}
         </ol>
       )}
+      {noted.length > 0 && (
+        <ul className="class-sheet-judge" aria-label="Judge’s notes">
+          {noted.map((card) => (
+            <li key={card.back_no}>
+              <strong>{card.back_no}</strong> {card.note}
+            </li>
+          ))}
+        </ul>
+      )}
       <p className="class-sheet-foot">
-        The penalty is over the score in each box. Score = 70 + maneuvers{rules.extras.length > 0 ? ` + ${rules.extras.map((e) => e.abbr).join(' + ')}` : ''} − penalties.
+        The penalty is over the score in each box.{circled ? ' A penalty in brackets was circled and is not counted.' : ''} Score = 70 + maneuvers
+        {rules.extras.length > 0 ? ` + ${rules.extras.map((e) => e.abbr).join(' + ')}` : ''} − penalties.
         {rules.extras.some((e) => e.id === 'fe') ? ' F&E: 5 excellent, 4 very good, 3 good, 0 to 2 average.' : ''}
       </p>
     </div>

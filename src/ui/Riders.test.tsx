@@ -452,7 +452,9 @@ describe('a coach looking over the draw', () => {
     expect(heads.slice(3 + n)).toEqual(['Form and effectiveness', 'Pen.', 'Score'])
 
     const cells = (row: HTMLElement) => within(row).getAllByRole('cell').map((c) => c.textContent!.replace(' (your rider)', ''))
+    // One row for each rider and nothing written between them.
     const rows = within(table).getAllByRole('row').slice(1)
+    expect(rows).toHaveLength(3)
     // First place first: every maneuver +1, F&E 3½, no penalty.
     expect(cells(rows[0])).toEqual(['1', '9001', 'Robin SampleAlpha', ...boxes(0).map(() => '+1'), '3½', '0', formatHalf(140 + 2 * n + 7)])
     expect(rows[0].className).toBe('class-sheet-mine')
@@ -462,13 +464,14 @@ describe('a coach looking over the draw', () => {
     expect(second.slice(3, 6)).toEqual(['0', '10', '(½)0'])
     expect(second.slice(3 + n)).toEqual(['2', '1', '71 OP'])
     expect(rows[1].className).toBe('')
-    expect(rows[2].textContent).toBe('9002: Off pattern. Maneuver 3: ½ (circled, not counted). Judge’s note: Good hands.')
     // Last: the disqualified rider, with no place and no score, and the penalty still on the sheet.
-    const last = cells(rows[3])
+    const last = cells(rows[2])
     expect([last[0], last[1], last[last.length - 2], last[last.length - 1]]).toEqual(['', '9003', '5', 'DQ'])
     expect(last[3 + 4]).toBe('50')
-    expect(rows[4].textContent).toBe('9003: Disqualified.')
-    expect(rows).toHaveLength(5)
+    // What the judge wrote is under the table, and the sheet says what the brackets mean.
+    expect(within(screen.getByRole('list', { name: 'Judge’s notes' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['9002 Good hands.'])
+    expect(screen.getByText(/A penalty in brackets was circled and is not counted\./)).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/Off pattern\.|Disqualified\.|Judge’s note:/)
     // Nothing of a school or a judge is on it.
     expect(document.body.textContent).not.toMatch(/Sample University|Judge:/)
 
