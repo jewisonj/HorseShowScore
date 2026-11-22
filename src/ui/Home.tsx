@@ -122,9 +122,14 @@ export function Home() {
           }}
         />
         {cloud.configured && cloud.admin && (
-          <button className="btn" onClick={() => go('/riders')}>
-            Riders and coaches
-          </button>
+          <>
+            <button className="btn" onClick={() => go('/riders')}>
+              Riders and coaches
+            </button>
+            <button className="btn" onClick={() => go('/horses')}>
+              Horses
+            </button>
+          </>
         )}
         {cloud.configured && (
           <button className="btn" onClick={() => go('/account')}>

@@ -11,6 +11,7 @@ import { ClassScreen } from './ui/ClassScreen'
 import { CoachScreen } from './ui/CoachScreen'
 import { DrawScreen } from './ui/DrawScreen'
 import { Home } from './ui/Home'
+import { HorsesScreen } from './ui/HorsesScreen'
 import { MeetScreen } from './ui/MeetScreen'
 import { PlacingsScreen } from './ui/PlacingsScreen'
 import { RailScreen } from './ui/RailScreen'
@@ -82,6 +83,7 @@ function Route() {
   if (p[0] === 'public') return p[1] ? <PublicShow key={p[1]} showId={p[1]} /> : <PublicHome />
   if (p[0] === 'account') return <AccountScreen />
   if (p[0] === 'riders') return <RidersScreen />
+  if (p[0] === 'horses') return <HorsesScreen />
   if (p[0] === 'coach') return <CoachScreen />
   if (p[0] === 'm' && p[1]) {
     const meetId = p[1]

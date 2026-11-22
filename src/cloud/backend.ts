@@ -88,6 +88,18 @@ export interface RosterRider {
   group: 1 | 2 | 3
 }
 
+/**
+ * A horse on the horses list, with what the horse draw needs to know about it.
+ * A horse is its name together with who provides it. Only show admins see the list.
+ */
+export interface StableHorse {
+  name: string
+  provider: string
+  takesHeight: boolean
+  /** The heaviest weight group this horse carries. */
+  maxGroup: 1 | 2 | 3
+}
+
 /** A team and the PIN its coach signs on with. Null when the team has no coach PIN. */
 export interface TeamPin {
   team: string
@@ -168,6 +180,10 @@ export interface CloudBackend {
   listRiders(): Promise<RosterRider[]>
   /** Show admins only: add riders, or replace the ones with the same back number. */
   putRiders(riders: RosterRider[]): Promise<void>
+  /** Show admins only: every horse on the horses list. */
+  listHorses(): Promise<StableHorse[]>
+  /** Show admins only: add horses, or replace the ones with the same name and provider. */
+  putHorses(horses: StableHorse[]): Promise<void>
   /** Show admins only: the teams and their coach PINs. */
   listTeams(): Promise<TeamPin[]>
   /** Show admins only: add a team or change its coach PIN. */

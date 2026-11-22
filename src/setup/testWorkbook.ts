@@ -61,7 +61,16 @@ export function sampleShowWorkbook(): Uint8Array {
       M4: 3, P6: 'DUKE & DAISY', P18: 'SPARE', P19: "O'MALLEY",
       A24: 4, D26: 'SUPER PETE', D28: 'ROCKET',
     },
-    'Horse Points': { C2: 'Input Horse Name', C3: 'ROCKET', C4: 'ARCHIE (ROAN)', C5: 'SUPER PETE', C6: "O'MALLEY", C7: 'DUKE & DAISY', C8: 'rocket', C9: 'SPARE' },
+    'Horse Points': {
+      C2: 'Input Horse Name', E2: 'Input Provider',
+      C3: 'ROCKET', E3: 'Example College',
+      C4: 'ARCHIE (ROAN)', E4: 'Example College',
+      C5: 'SUPER PETE', E5: 'Sample University ',
+      C6: "O'MALLEY", E6: 'Sample University',
+      C7: 'DUKE & DAISY',
+      C8: 'rocket', E8: 'Another Barn',
+      C9: 'SPARE', E9: 'Example College',
+    },
     'Class List': {
       B1: 'Class Source List Populates All Pages',
       A2: 'T', B2: 'March 6, 2027 Spring Western Show',

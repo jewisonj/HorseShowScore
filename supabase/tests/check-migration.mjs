@@ -230,6 +230,16 @@ await allowed('the steward sees both answers', 'anon', asks('444444'), (r) => r.
 await allowed('once decided, the steward can ask again for that rider', 'anon', ask('444444'), said('ok'))
 await db.exec(`delete from public.show_seats where role = 'steward';`)
 
+console.log('\n  The horses list')
+await allowed('a show admin lists a horse with what it carries', ADMIN, `insert into public.horses (name, provider, takes_height, max_group) values ('Rocket', 'North College', false, 2), ('Rocket', 'South University', true, 3), ('Dot', '', true, 1) returning name`, (r) => r.rows.length === 3)
+await refused('the same horse from the same provider is listed once', ADMIN, `insert into public.horses (name, provider) values ('Rocket', 'North College')`, /horses_pkey/)
+await refused('a horse carries up to group 1, 2 or 3', ADMIN, `update public.horses set max_group = 0 where name = 'Dot'`, /horses_max_group/)
+await allowed('a show admin changes what a horse carries', ADMIN, `update public.horses set max_group = 3, takes_height = true where name = 'Rocket' and provider = 'North College' returning name`, (r) => r.rows.length === 1)
+await refused('a phone with only the app key cannot read the horses list', 'anon', `select * from public.horses`, /permission denied/)
+await refused('nor add to it', 'anon', `insert into public.horses (name) values ('Nobody')`, /permission denied/)
+await allowed('a signed-in person off the list sees no horses', OTHER, `select * from public.horses`, (r) => r.rows.length === 0)
+await refused('and cannot change one', OTHER, `update public.horses set max_group = 1 where name = 'Dot' returning name`, /row-level security/)
+
 console.log('\n  The riders list and coaches')
 await allowed('a show admin puts riders on the list with their teams', ADMIN, `insert into public.riders (back_no, rider, team) values ('101', 'Avery Example', 'North College'), ('102', 'Blake Sample', 'North College'), ('201', 'Casey Test', 'South University') returning back_no`, (r) => r.rows.length === 3)
 await allowed('and marks a height rider in weight group 2', ADMIN, `update public.riders set height_rider = true, weight_group = 2 where back_no = '101' returning back_no`, (r) => r.rows.length === 1)

@@ -1,5 +1,5 @@
 import type { ShowFile } from '../data/fixture'
-import type { CloudBackend, CloudUser, PublishedClass, ReleasedCards, RerideAsk, RosterRider, SeatPin, SentScores, TeamPin } from './backend'
+import type { CloudBackend, CloudUser, PublishedClass, ReleasedCards, RerideAsk, RosterRider, SeatPin, SentScores, StableHorse, TeamPin } from './backend'
 
 /** A stand-in server for tests. Nothing here touches the network. */
 export interface FakeBackend extends CloudBackend {
@@ -20,6 +20,8 @@ export interface FakeBackend extends CloudBackend {
   riders: RosterRider[]
   /** The teams and their coach PINs. */
   teams: TeamPin[]
+  /** The horses list. */
+  horses: StableHorse[]
   /** Re-rides asked for, by show id, oldest first. */
   asks: Record<string, RerideAsk[]>
   /** The kind of seat a PIN opens in a show, 'admin' for a signed-in show admin giving no PIN, or null. */
@@ -56,6 +58,7 @@ export function makeFakeBackend(): FakeBackend {
     asks: {},
     riders: [],
     teams: [],
+    horses: [],
     async roleOf(showId, pin) {
       if (pin === '') return (await fake.isShowAdmin()) ? 'admin' : null
       return (fake.seats[showId] ?? []).find((x) => x.pin === pin)?.role ?? null
@@ -166,6 +169,16 @@ export function makeFakeBackend(): FakeBackend {
       if (!(await fake.isShowAdmin())) throw new Error('new row violates row-level security policy')
       const put = new Set(riders.map((r) => r.backNo))
       fake.riders = [...fake.riders.filter((r) => !put.has(r.backNo)), ...riders.map((r) => ({ ...r }))]
+    },
+    async listHorses() {
+      if (fake.down) throw new Error('Failed to fetch')
+      return (await fake.isShowAdmin()) ? fake.horses.map((h) => ({ ...h })) : []
+    },
+    async putHorses(horses) {
+      if (fake.down) throw new Error('Failed to fetch')
+      if (!(await fake.isShowAdmin())) throw new Error('new row violates row-level security policy')
+      const same = (a: StableHorse, b: StableHorse) => a.name === b.name && a.provider === b.provider
+      fake.horses = [...fake.horses.filter((h) => !horses.some((p) => same(h, p))), ...horses.map((h) => ({ ...h }))]
     },
     async listTeams() {
       if (fake.down) throw new Error('Failed to fetch')

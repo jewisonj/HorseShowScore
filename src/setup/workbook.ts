@@ -12,7 +12,7 @@ import type { CellValue, Workbook } from './xlsx'
  *   draw places: draw in D, back number in E, rider in F, horse in H.
  * - Placings are typed into J6 to J17 of each class tab. Nothing else on the
  *   tab is typed in for results.
- * - "Horse Points": the show's horses, one name per row from C3.
+ * - "Horse Points": the show's horses, one per row from row 3: name in C, provider in E.
  * - "Exhibitors": back number in B, rider in C, school in D, from row 5.
  * - The draw tab, whose name ends in "Draw": three classes side by side, twenty
  *   rows to a band. A class's number is in A, G or M of the band's heading row
@@ -51,17 +51,23 @@ function findTab(wb: Workbook, name: string): string | undefined {
  * tab, C3 downward. Empty when the workbook has no such tab.
  */
 export function readHorseList(wb: Workbook): string[] {
+  return readHorses(wb).map((h) => h.name)
+}
+
+/** The same list with who provides each horse: name in C and provider in E of "Horse Points", from row 3. */
+export function readHorses(wb: Workbook): { name: string; provider: string }[] {
   const tab = findTab(wb, 'Horse Points')
   if (!tab) return []
-  const names: string[] = []
+  const horses: { name: string; provider: string }[] = []
   const seen = new Set<string>()
   for (let row = 3; row <= 200; row++) {
     const name = titleCase(text(wb.cell(tab, `C${row}`)))
     if (!name || name.startsWith('#') || seen.has(name.toLowerCase())) continue
     seen.add(name.toLowerCase())
-    names.push(name)
+    const provider = text(wb.cell(tab, `E${row}`))
+    horses.push({ name, provider: provider.startsWith('#') ? '' : provider })
   }
-  return names
+  return horses
 }
 
 /** The horses the draw tab sets for one class: one per draw place, top to bottom, then the alternates. */

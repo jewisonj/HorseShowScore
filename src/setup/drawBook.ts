@@ -14,6 +14,8 @@ const STORAGE_KEY = 'hss.drawbook.v1'
 
 export interface BookHorse {
   name: string
+  /** Who provides the horse, when the show's sheet says. It tells two barns' horses of the same name apart on the horses list. */
+  provider?: string
   takesHeight: boolean
   /** The heaviest weight group this horse carries. */
   maxGroup: WeightGroup
@@ -109,17 +111,32 @@ export function markOf(book: DrawBook, backNo: string): RiderMark {
   return book.riders[backNo] ?? NO_MARK
 }
 
-/** Add horses by name. A name already in the book, in any letter case, is skipped. Returns how many were added. */
-export function addHorses(book: DrawBook, names: string[]): { book: DrawBook; added: number } {
-  const have = new Set(book.horses.map((h) => h.name.trim().toLowerCase()))
-  const fresh: BookHorse[] = []
-  for (const raw of names) {
-    const name = raw.replace(/\s+/g, ' ').trim()
-    if (!name || have.has(name.toLowerCase())) continue
-    have.add(name.toLowerCase())
-    fresh.push({ name, takesHeight: true, maxGroup: 3 })
+/**
+ * Add horses by name, with their provider where it is known. A name already in
+ * the book, in any letter case, is not added again, but takes the provider if
+ * it had none. Returns how many were added.
+ */
+export function addHorses(book: DrawBook, items: (string | { name: string; provider?: string })[]): { book: DrawBook; added: number } {
+  const tidy = (text: string) => text.replace(/\s+/g, ' ').trim()
+  const horses = book.horses.map((h) => ({ ...h }))
+  let added = 0
+  let changed = false
+  for (const item of items) {
+    const name = tidy(typeof item === 'string' ? item : item.name)
+    const provider = tidy(typeof item === 'string' ? '' : (item.provider ?? ''))
+    if (!name) continue
+    const have = horses.find((h) => h.name.trim().toLowerCase() === name.toLowerCase())
+    if (have) {
+      if (provider && !have.provider) {
+        have.provider = provider
+        changed = true
+      }
+      continue
+    }
+    horses.push({ name, ...(provider ? { provider } : {}), takesHeight: true, maxGroup: 3 })
+    added++
   }
-  return { book: fresh.length ? { ...book, horses: [...book.horses, ...fresh] } : book, added: fresh.length }
+  return { book: added > 0 || changed ? { ...book, horses } : book, added }
 }
 
 /** For tests. */

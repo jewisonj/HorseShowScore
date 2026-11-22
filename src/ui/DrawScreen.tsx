@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import type { RosterRider } from '../cloud/backend'
+import { useEffect, useRef, useState } from 'react'
+import type { RosterRider, StableHorse } from '../cloud/backend'
 import { explainServerError, fetchWorkbook, getBackend, startCloud, useCloud } from '../cloud/cloud'
 import { useCloudCache } from '../data/cloudShows'
 import { allShows, classKey, getShow, type ShowClass, type ShowFile } from '../data/fixture'
@@ -11,7 +11,8 @@ import { addHorses, markOf, saveDrawBook, useDrawBook, type BookHorse, type Draw
 import { drawCsv, runningNumber, sheetDraw } from '../setup/drawExport'
 import { drawClass, drawPlaces, fits, redrawOne, suggestSet, rideCounts, type DrawRider, type WeightGroup } from '../setup/horseDraw'
 import { rememberSheetLink, sheetLinkFor } from '../setup/sheetLink'
-import { readDrawTab, readHorseList } from '../setup/workbook'
+import { findStable, stableRow, withListLimits } from '../setup/stable'
+import { readDrawTab, readHorses } from '../setup/workbook'
 import { readXlsx } from '../setup/xlsx'
 import { BackNumber, Screen, go } from './bits'
 import { download, slug } from './files'
@@ -55,9 +56,49 @@ export function DrawScreen({ showId }: { showId: string }) {
   // The riders list on the server, by back number. Null where there is no server, or it could not be reached.
   const [roster, setRoster] = useState<Map<string, RosterRider> | null>(null)
   const [rosterNote, setRosterNote] = useState('')
+  // The horses list on the server, where each horse's limits are kept from show to show. Null where there is no server, or it could not be reached.
+  const [stable, setStable] = useState<StableHorse[] | null>(null)
+  const stableStopped = useRef(false)
   useEffect(() => {
     void startCloud()
   }, [])
+  useEffect(() => {
+    if (!cloud.configured || !cloud.admin) return
+    let current = true
+    void (async () => {
+      try {
+        const b = await getBackend()
+        if (!b) return
+        const list = await b.listHorses()
+        if (current) setStable(list)
+      } catch (e) {
+        if (current) setHorseNote(`Could not reach the horses list, so the limits kept on this computer are used. ${explainServerError(e)}`)
+      }
+    })()
+    return () => {
+      current = false
+    }
+  }, [cloud.configured, cloud.admin])
+  // A horse of this show that the list does not have yet is put on it, with the limits set here.
+  useEffect(() => {
+    if (!stable || stableStopped.current) return
+    const missing = book.horses.filter((h) => !findStable(stable, h))
+    if (missing.length === 0) return
+    const rows = missing.map((h) => stableRow(stable, h))
+    stableStopped.current = true
+    void (async () => {
+      try {
+        const b = await getBackend()
+        if (!b) return
+        await b.putHorses(rows)
+        setStable((list) => [...(list ?? []), ...rows])
+        stableStopped.current = false
+      } catch (e) {
+        // Left stopped, so a server that is refusing is not asked again and again. The limits stay on this computer.
+        setHorseNote(`The horses could not be saved to the horses list. Their limits are kept on this computer for now. ${explainServerError(e)}`)
+      }
+    })()
+  }, [stable, book.horses])
   useEffect(() => {
     if (!cloud.configured || !cloud.admin) return
     let current = true
@@ -157,6 +198,30 @@ export function DrawScreen({ showId }: { showId: string }) {
     if (!saveDrawBook(showId, next)) setHorseNote('This computer could not store the change. Its storage may be full.')
   }
 
+  /** This show's horses, each with the limits the horses list has for it. */
+  const horsesNow: BookHorse[] = book.horses.map((h) => withListLimits(stable, h))
+
+  /** Change what a horse carries. It is kept on this computer and, where there is a server, on the horses list. */
+  async function setLimits(name: string, patch: Partial<Pick<BookHorse, 'takesHeight' | 'maxGroup'>>) {
+    const now = horsesNow.find((h) => h.name === name)
+    if (!now) return
+    const next = { ...now, ...patch }
+    setBook({ ...book, horses: book.horses.map((h) => (h.name === name ? { ...h, ...patch, takesHeight: next.takesHeight, maxGroup: next.maxGroup } : h)) })
+    if (!stable) return
+    const row = stableRow(stable, next)
+    const before = stable
+    setStable([...stable.filter((s) => s !== findStable(stable, next)), row])
+    try {
+      const b = await getBackend()
+      if (!b) throw new Error('This copy of the app is not connected to a server.')
+      await b.putHorses([row])
+      setHorseNote('')
+    } catch (e) {
+      setStable(before)
+      setHorseNote(`${name} was not saved to the horses list. ${explainServerError(e)}`)
+    }
+  }
+
   /** Change one class of the show. Saved on this computer before the screen shows it. */
   function changeClass(key: string, fn: (c: ShowClass) => ShowClass) {
     const current = getShow(showId)
@@ -183,7 +248,7 @@ export function DrawScreen({ showId }: { showId: string }) {
 
   function horsesOf(key: string): BookHorse[] {
     const set = book.sets[key] ?? []
-    return book.horses.filter((h) => set.includes(h.name))
+    return horsesNow.filter((h) => set.includes(h.name))
   }
 
   function setSet(key: string, cls: ShowClass, set: string[]) {
@@ -198,7 +263,7 @@ export function DrawScreen({ showId }: { showId: string }) {
   }
 
   function bookHorse(name: string): BookHorse {
-    return book.horses.find((h) => h.name === name) ?? { name, takesHeight: true, maxGroup: 3 }
+    return horsesNow.find((h) => h.name === name) ?? { name, takesHeight: true, maxGroup: 3 }
   }
 
   function draw(key: string, cls: ShowClass) {
@@ -307,15 +372,16 @@ export function DrawScreen({ showId }: { showId: string }) {
     }
     try {
       const wb = readXlsx(got.bytes)
-      const found = readHorseList(wb)
+      const found = readHorses(wb)
       const perClass = readDrawTab(wb)
       if (found.length === 0 && perClass.length === 0) {
         setHorseNote('That sheet has no horses on its "Horse Points" tab or its draw tab.')
         return
       }
       rememberSheetLink(showId, link.trim())
-      const listed = [...found, ...perClass.flatMap((c) => [...c.places, ...c.alternates]).filter(Boolean)]
-      const { book: withHorses, added } = addHorses(book, listed)
+      const listed = [...found.map((h) => h.name), ...perClass.flatMap((c) => [...c.places, ...c.alternates]).filter(Boolean)]
+      // The sheet's own list says who provides each horse. A horse only named on the draw tab has no provider.
+      const { book: withHorses, added } = addHorses(book, [...found, ...perClass.flatMap((c) => [...c.places, ...c.alternates]).filter(Boolean)])
       // Each class the sheet has horses for takes them, in the sheet's own order of draw places.
       const places = { ...(withHorses.places ?? {}) }
       const alts = { ...(withHorses.alts ?? {}) }
@@ -354,11 +420,17 @@ export function DrawScreen({ showId }: { showId: string }) {
       </p>
 
       <h2>Horses</h2>
+      {stable && (
+        <p className="hint">
+          What each horse carries is kept on the horses list on the server, so it is here for the next show too. Only show
+          admins see it.
+        </p>
+      )}
       {book.horses.length === 0 ? (
         <p className="empty">No horses yet. Add them below.</p>
       ) : (
         <ul className="list draw-horses">
-          {book.horses.map((h) => (
+          {horsesNow.map((h) => (
             <li key={h.name} className="draw-horse">
               <span className="draw-horse-name">
                 <strong>{h.name}</strong>
@@ -368,7 +440,7 @@ export function DrawScreen({ showId }: { showId: string }) {
                 <input
                   type="checkbox"
                   checked={h.takesHeight}
-                  onChange={(e) => setBook({ ...book, horses: book.horses.map((x) => (x.name === h.name ? { ...x, takesHeight: e.target.checked } : x)) })}
+                  onChange={(e) => void setLimits(h.name, { takesHeight: e.target.checked })}
                 />
                 <span>Takes height riders</span>
               </label>
@@ -377,7 +449,7 @@ export function DrawScreen({ showId }: { showId: string }) {
                 <select
                   aria-label={`Heaviest weight group ${h.name} carries`}
                   value={h.maxGroup}
-                  onChange={(e) => setBook({ ...book, horses: book.horses.map((x) => (x.name === h.name ? { ...x, maxGroup: Number(e.target.value) as WeightGroup } : x)) })}
+                  onChange={(e) => void setLimits(h.name, { maxGroup: Number(e.target.value) as WeightGroup })}
                 >
                   {GROUPS.map((g) => (
                     <option key={g} value={g}>
@@ -578,7 +650,7 @@ export function DrawScreen({ showId }: { showId: string }) {
                   <div className="row-actions">
                     <button
                       className="btn"
-                      onClick={() => setSet(key, cls, suggestSet(ridersOf(cls), book.horses, used, rail ? cls.entries.length + 2 : cls.entries.length))}
+                      onClick={() => setSet(key, cls, suggestSet(ridersOf(cls), horsesNow, used, rail ? cls.entries.length + 2 : cls.entries.length))}
                     >
                       Pick the least used
                     </button>
@@ -607,7 +679,7 @@ export function DrawScreen({ showId }: { showId: string }) {
                 {[...cls.entries]
                   .sort((a, b) => a.draw - b.draw)
                   .map((e) => {
-                    const mine = book.horses.find((h) => h.name === e.horse)
+                    const mine = horsesNow.find((h) => h.name === e.horse)
                     const misfit = mine !== undefined && !fits(markFor(e.back_no), mine)
                     const options = [...new Set([...horses.map((h) => h.name), ...(fromSheet ? (book.alts?.[key] ?? []) : []), ...(e.horse ? [e.horse] : [])])]
                     return (

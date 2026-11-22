@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { ShowFile } from '../data/fixture'
-import type { CloudBackend, CloudUser, PublicCard, PublicPlacing, RosterRider, SeatRole, SentRow } from './backend'
+import type { CloudBackend, CloudUser, PublicCard, PublicPlacing, RosterRider, SeatRole, SentRow, StableHorse } from './backend'
 
 interface RiderRow {
   back_no: string
@@ -143,6 +143,25 @@ export function createSupabaseBackend(url: string, key: string): CloudBackend {
       const { error } = await sb
         .from('riders')
         .upsert(riders.map((r) => ({ back_no: r.backNo, rider: r.rider, team: r.team, height_rider: r.height, weight_group: r.group, updated_at: new Date().toISOString() })), { onConflict: 'back_no' })
+      if (error) throw new Error(error.message)
+    },
+    async listHorses() {
+      const { data, error } = await sb.from('horses').select('name, provider, takes_height, max_group').order('provider').order('name')
+      if (error) throw new Error(error.message)
+      return (data ?? []).map(
+        (h: { name: string; provider: string; takes_height: boolean; max_group: number }): StableHorse => ({
+          name: String(h.name),
+          provider: String(h.provider ?? ''),
+          takesHeight: h.takes_height !== false,
+          maxGroup: h.max_group === 1 ? 1 : h.max_group === 2 ? 2 : 3,
+        }),
+      )
+    },
+    async putHorses(horses) {
+      if (horses.length === 0) return
+      const { error } = await sb
+        .from('horses')
+        .upsert(horses.map((h) => ({ name: h.name, provider: h.provider, takes_height: h.takesHeight, max_group: h.maxGroup, updated_at: new Date().toISOString() })), { onConflict: 'name,provider' })
       if (error) throw new Error(error.message)
     },
     async listTeams() {
