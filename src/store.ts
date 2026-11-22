@@ -257,6 +257,7 @@ export function addRiders(key: string, backNos: string[], boxCount: number): num
  *    One with a score, penalty, mark or placing stays.
  *  - A rider added here by hand is left alone.
  *  - Everyone still in the draw gets their order, name and horse brought up to date.
+ *  - A class with nothing entered yet is put in the draw's order. Once anything is entered the order stays.
  *
  * Nothing that was entered is ever changed or removed. Returns how many riders were added.
  */
@@ -277,6 +278,12 @@ export function syncDraw(key: string, riders: NewRider[], boxCount: number): num
     updateClass(key, (c) => ({ ...c, runs: [...kept, ...fresh] }))
   }
   updateDetails(key, riders)
+  // A class nobody has started yet follows the draw's order, so a draw made after the riders were loaded shows in order of go.
+  const now = classState(state, key)
+  if (now.placings.length === 0 && now.runs.every((r) => r.draw !== undefined && !hasWork(r) && !isReride(r))) {
+    const inOrder = [...now.runs].sort((a, b) => a.draw! - b.draw!)
+    if (inOrder.some((r, i) => r.id !== now.runs[i].id)) updateClass(key, (c) => ({ ...c, runs: inOrder }))
+  }
   return fresh.length
 }
 

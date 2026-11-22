@@ -7,7 +7,7 @@ import { classState, clearAll, getState, resizeRuns, saveRun, setPlacings } from
 import { dateIn, inferDivision, nextDay, sectionOf, tagsFor, titleCase } from './build'
 import { blankShow, boxesFromLines, copyPattern, finishShow, keepMeetIds, mergeSheetRead, patternLibrary, problemsIn } from './draft'
 import { sampleShowWorkbook } from './testWorkbook'
-import { readHorseList, readShowWorkbook } from './workbook'
+import { drawTabCells, readDrawTab, readHorseList, readShowWorkbook } from './workbook'
 import { readXlsx } from './xlsx'
 
 beforeEach(() => {
@@ -49,6 +49,25 @@ describe('reading a sheet again into a show that is already set up', () => {
 
   it('reads the show\'s horses from the workbook, each once', () => {
     expect(readHorseList(readXlsx(sampleShowWorkbook()))).toEqual(['Rocket', 'Archie (Roan)', 'Super Pete', "O'Malley", 'Duke & Daisy', 'Spare'])
+  })
+
+  it('reads the horses the draw tab sets for each class, place by place, and the alternates', () => {
+    expect(readDrawTab(readXlsx(sampleShowWorkbook()))).toEqual([
+      // A horse listed in two places goes twice.
+      { classNo: 1, places: ['Rocket', 'Archie (Roan)', 'Rocket'], alternates: ['Spare'] },
+      { classNo: 3, places: ['Duke & Daisy'], alternates: ['Spare', "O'Malley"] },
+      // A place left empty between two horses keeps its position.
+      { classNo: 4, places: ['Super Pete', '', 'Rocket'], alternates: [] },
+    ])
+  })
+
+  it('knows where each class sits on the draw tab', () => {
+    expect(drawTabCells(1)).toEqual({ backCell: 'B6', horseCell: 'D6', alternateCell: 'D18' })
+    expect(drawTabCells(2)).toEqual({ backCell: 'H6', horseCell: 'J6', alternateCell: 'J18' })
+    expect(drawTabCells(3)).toEqual({ backCell: 'N6', horseCell: 'P6', alternateCell: 'P18' })
+    expect(drawTabCells(4)).toEqual({ backCell: 'B26', horseCell: 'D26', alternateCell: 'D38' })
+    expect(drawTabCells(12)).toEqual({ backCell: 'N66', horseCell: 'P66', alternateCell: 'P78' })
+    expect(drawTabCells(0)).toBeNull()
   })
 
   it('keeps the riders a show already has when the sheet has none for that class yet', () => {

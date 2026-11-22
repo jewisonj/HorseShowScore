@@ -161,6 +161,24 @@ describe('the draw', () => {
     expect(sunday.every((r) => !r.horse)).toBe(true)
   })
 
+  it('puts a class nobody has started in the draw’s order, and leaves a started class as it is', () => {
+    const key = classKey('meet-5', REINING)
+    // A device that had the riders before the draw gave them their places.
+    addRiders(key, ['576', '1025', '102', '1007', '553'], 8)
+    loadDraw()
+    expect(classState(getState(), key).runs.map((r) => [r.draw, r.backNo])).toEqual([[1, '1025'], [2, '102'], [3, '1007'], [4, '553'], [5, '576']])
+
+    // Ranch riding the same way, but one rider is already scored: the order is not touched.
+    clearAll()
+    const ranch = classKey('meet-5', RANCH)
+    const draw = getClass('meet-5', RANCH)!.entries.map((e) => e.back_no)
+    const mixed = [draw[3], draw[0], draw[1], draw[2], ...draw.slice(4)]
+    addRiders(ranch, mixed, 12)
+    scoreRun(ranch, draw[3], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [], 'none')
+    loadDraw()
+    expect(classState(getState(), ranch).runs.map((r) => r.backNo)).toEqual(mixed)
+  })
+
   it('leaves a class alone once this device has touched it', () => {
     loadDraw()
     const key = classKey('meet-5', REINING)

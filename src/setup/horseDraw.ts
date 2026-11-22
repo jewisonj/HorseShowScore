@@ -130,6 +130,38 @@ export function drawClass(riders: DrawRider[], horses: DrawHorse[], options: Dra
   return { horseOf, alternates: unused, noHorse: waiting.map((r) => r.backNo) }
 }
 
+export interface PlacesResult {
+  /** Back number to the draw place they drew, counted from 0. */
+  placeOf: Record<string, number>
+  /** Draw places that have a horse and no rider, lowest first. */
+  free: number[]
+  /** Back numbers left without a place: no free horse fits them, or there are more riders than horses. */
+  noHorse: string[]
+}
+
+/**
+ * Draw riders onto draw places that already have their horses, the way a show
+ * sheet is filled in: the horse committee sets a horse beside each draw place,
+ * then every rider draws a place at random. A horse can be listed in two places
+ * when it goes twice. A place with no horse (null) is never drawn.
+ */
+export function drawPlaces(riders: DrawRider[], places: (DrawHorse | null)[], random: () => number = Math.random): PlacesResult {
+  // Each place is its own thing to draw, even when two hold the same horse.
+  const slots = places.map((h, i) => (h ? { ...h, name: String(i) } : null)).filter((h): h is DrawHorse => h !== null)
+  const most = bestMatch(riders, slots, random).size
+  let got = new Map<string, string>()
+  for (let attempt = 0; attempt < 40 && got.size < most; attempt++) got = deal(riders, slots, random)
+  if (got.size < most) got = bestMatch(riders, slots, random)
+  const placeOf: Record<string, number> = {}
+  for (const [backNo, slot] of got) placeOf[backNo] = Number(slot)
+  const taken = new Set(Object.values(placeOf))
+  return {
+    placeOf,
+    free: slots.map((h) => Number(h.name)).filter((i) => !taken.has(i)),
+    noHorse: riders.filter((r) => !got.has(r.backNo)).map((r) => r.backNo),
+  }
+}
+
 /**
  * Draw again for one rider. They get a different horse that fits, at random:
  * one nobody else in the class has when horses may not go twice. Returns the

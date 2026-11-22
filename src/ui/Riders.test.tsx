@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
 import type { RosterRider } from '../cloud/backend'
 import { publishShow, setBackendForTests, signIn, startCloud } from '../cloud/cloud'
@@ -8,13 +8,15 @@ import { clearCoachForTests, currentCoach, mergeRoster } from '../cloud/roster'
 import { resetScoreSendingForTests } from '../cloud/scores'
 import { clearSeatForTests } from '../cloud/seat'
 import { clearCloudCache } from '../data/cloudShows'
-import { getClass, getShow } from '../data/fixture'
+import { classKey, getClass, getShow } from '../data/fixture'
 import { clearShows } from '../data/shows'
 import { clearDrawBooks, drawBook, saveDrawBook } from '../setup/drawBook'
-import { sampleShowWorkbook } from '../setup/testWorkbook'
+import { drawCsv } from '../setup/drawExport'
+import { makeXlsx, sampleShowWorkbook } from '../setup/testWorkbook'
 import { readRoster } from '../setup/workbook'
 import { readXlsx } from '../setup/xlsx'
-import { clearAll } from '../store'
+import { loadDraw } from '../seed'
+import { classState, clearAll, getState } from '../store'
 import { DrawScreen } from './DrawScreen'
 import { RidersScreen } from './RidersScreen'
 
@@ -207,5 +209,96 @@ describe('the draw page with the riders list', () => {
     await waitFor(() => expect(server.riders).toEqual([rider('125', 'Paige Johnson', '', true, 3)]))
     expect(drawBook(SUNDAY).riders).toEqual({})
     expect(await screen.findByText('1 mark moved to the riders list.')).toBeTruthy()
+  })
+})
+
+describe('the draw page with a sheet that already has the horses for a class', () => {
+  const LINK = 'https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdefgh/edit?usp=sharing'
+
+  beforeEach(() => {
+    // Reining is class 1: five draw places, George in two of them, and two alternates. Class 2 has nothing yet.
+    server.workbook = makeXlsx({
+      Draw: { A4: 1, D6: 'BUNNY', D7: 'GEORGE', D8: 'CISCO', D9: 'REY', D10: 'GEORGE', D18: 'KASH', D19: 'HANK', G4: 2 },
+      'Horse Points': { C3: 'Bunny', C4: 'George', C5: 'Cisco', C6: 'Rey', C7: 'Kash', C8: 'Hank', C9: 'Extra' },
+    })
+  })
+
+  afterEach(() => vi.restoreAllMocks())
+
+  async function readTheSheet() {
+    await asAdmin()
+    render(<DrawScreen showId={SUNDAY} />)
+    fireEvent.change(await screen.findByLabelText(/Or read the horse list/), { target: { value: LINK } })
+    fireEvent.click(screen.getByRole('button', { name: 'Read the horses from the sheet' }))
+    expect(await screen.findByText(/It sets the horses for 1 class, which now use the sheet's list\./, {}, { timeout: 5000 })).toBeTruthy()
+  }
+
+  it('takes each class’s horses from the sheet, draws the riders onto them, and gives the columns back', async () => {
+    await readTheSheet()
+    expect(drawBook(SUNDAY).horses.map((h) => h.name)).toEqual(['Bunny', 'George', 'Cisco', 'Rey', 'Kash', 'Hank', 'Extra'])
+    const panel = screen.getByRole('region', { name: 'Reining, Sunday' })
+    expect(within(panel).getByText('1 Bunny, 2 George, 3 Cisco, 4 Rey, 5 George')).toBeTruthy()
+    expect(within(panel).getByText('Alternates on the sheet: Kash, Hank')).toBeTruthy()
+    // The judge's list has the sheet's alternates before anyone draws.
+    expect(getClass('meet-6', '1')!.alternates).toEqual(['Kash', 'Hank'])
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Draw for this class' }))
+    const cls = getClass('meet-6', '1')!
+    // Five riders, five places, each rider on the horse the sheet has in that place.
+    expect(cls.entries.map((e) => e.draw).sort()).toEqual([1, 2, 3, 4, 5])
+    const sheetOrder = ['Bunny', 'George', 'Cisco', 'Rey', 'George']
+    for (const e of cls.entries) expect(e.horse).toBe(sheetOrder[e.draw - 1])
+    expect(cls.alternates).toEqual(['Kash', 'Hank'])
+
+    // The back numbers, one line per draw place, to paste beside the sheet's horses.
+    const byPlace = [...cls.entries].sort((a, b) => a.draw - b.draw).map((e) => e.back_no)
+    fireEvent.click(within(panel).getByRole('button', { name: 'Copy the back numbers' }))
+    const box = (await within(panel).findByLabelText('Lines to paste for Reining')) as HTMLTextAreaElement
+    expect(box.value.split('\n')).toEqual([...byPlace, '', '', '', '', '', '', ''])
+    expect(within(panel).getByRole('status').textContent).toBe("This device would not copy by itself. Select the lines below and copy them. On the sheet's draw tab, click B6 and paste. Paste as values only.")
+
+    // Where the device can copy, it does, and says where to paste.
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
+    fireEvent.click(within(panel).getByRole('button', { name: 'Copy the horses' }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(['BUNNY', 'GEORGE', 'CISCO', 'REY', 'GEORGE', '', '', '', '', '', '', ''].join('\n')))
+    await waitFor(() => expect(within(panel).getByRole('status').textContent).toBe("The horses are copied. On the sheet's draw tab, click D6 and paste. Paste as values only."))
+    fireEvent.click(within(panel).getByRole('button', { name: 'Copy the alternates' }))
+    await waitFor(() => expect(writeText).toHaveBeenLastCalledWith(['KASH', 'HANK', '', '', ''].join('\n')))
+    vi.unstubAllGlobals()
+
+    // The CSV carries the same columns for the whole show.
+    const csv = drawCsv(getShow(SUNDAY)!).split('\n')
+    expect(csv[1].startsWith('Paste at,B6,D6,H6,J6,N6,P6,B26,D26')).toBe(true)
+    expect(csv[2].startsWith(`1,${byPlace[0]},BUNNY,`)).toBe(true)
+
+    // A phone that already had the riders in program order now lists them in the order they drew.
+    loadDraw()
+    expect(classState(getState(), classKey('meet-6', '1')).runs.map((r) => r.backNo)).toEqual(byPlace)
+  })
+
+  it('draws again for one rider only onto a place nobody holds', async () => {
+    await readTheSheet()
+    const panel = screen.getByRole('region', { name: 'Reining, Sunday' })
+    fireEvent.click(within(panel).getByRole('button', { name: 'Draw for this class' }))
+    const first = getClass('meet-6', '1')!.entries[0]
+    fireEvent.click(within(panel).getByRole('button', { name: `Draw again for ${first.back_no}` }))
+    // Every place is held, so there is nothing to draw. Nobody else is moved.
+    expect(within(panel).getByRole('status').textContent).toBe(`There is no free horse on the sheet's list for ${first.back_no}. Give them a horse by hand.`)
+    expect(getClass('meet-6', '1')!.entries[0]).toEqual(first)
+    // An alternate can still be given by hand.
+    fireEvent.change(within(panel).getByLabelText(`Horse for ${first.back_no}`), { target: { value: 'Kash' } })
+    expect(getClass('meet-6', '1')!.entries[0].horse).toBe('Kash')
+    expect(getClass('meet-6', '1')!.alternates).toEqual(['Kash', 'Hank'])
+  })
+
+  it('goes back to picking the horses here when asked', async () => {
+    await readTheSheet()
+    const panel = screen.getByRole('region', { name: 'Reining, Sunday' })
+    fireEvent.click(within(panel).getByRole('button', { name: 'Pick the horses here instead' }))
+    expect(within(panel).queryByText(/The sheet sets this class's horses/)).toBeNull()
+    expect(within(panel).getByRole('button', { name: 'Pick the least used' })).toBeTruthy()
+    // The horses the sheet had for it are still picked.
+    expect(drawBook(SUNDAY).sets[classKey('meet-6', '1')]).toEqual(['Bunny', 'George', 'Cisco', 'Rey'])
   })
 })

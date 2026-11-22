@@ -8,11 +8,13 @@ import { ruleSetFor } from '../rules/rulesets'
 import { loadDraw } from '../seed'
 import { finishShow } from '../setup/draft'
 import { addHorses, markOf, saveDrawBook, useDrawBook, type BookHorse, type DrawBook, type RiderMark } from '../setup/drawBook'
-import { drawClass, fits, redrawOne, suggestSet, rideCounts, type DrawRider, type WeightGroup } from '../setup/horseDraw'
+import { drawCsv, runningNumber, sheetDraw } from '../setup/drawExport'
+import { drawClass, drawPlaces, fits, redrawOne, suggestSet, rideCounts, type DrawRider, type WeightGroup } from '../setup/horseDraw'
 import { rememberSheetLink, sheetLinkFor } from '../setup/sheetLink'
-import { readHorseList } from '../setup/workbook'
+import { readDrawTab, readHorseList } from '../setup/workbook'
 import { readXlsx } from '../setup/xlsx'
 import { BackNumber, Screen, go } from './bits'
+import { download, slug } from './files'
 
 const GROUPS: WeightGroup[] = [1, 2, 3]
 
@@ -45,6 +47,8 @@ export function DrawScreen({ showId }: { showId: string }) {
   const [busy, setBusy] = useState(false)
   const [horseNote, setHorseNote] = useState('')
   const [classNote, setClassNote] = useState<Record<string, string>>({})
+  // Lines copied for the sheet that the device would not copy by itself, shown to be copied by hand.
+  const [toCopy, setToCopy] = useState<Record<string, string>>({})
   const [showRiders, setShowRiders] = useState(false)
   // The riders list on the server, by back number. Null where there is no server, or it could not be reached.
   const [roster, setRoster] = useState<Map<string, RosterRider> | null>(null)
@@ -185,13 +189,44 @@ export function DrawScreen({ showId }: { showId: string }) {
     if (cls.entries.some((e) => e.horse)) changeClass(key, (c) => ({ ...c, alternates: alternatesOf(c, set) }))
   }
 
+  /** The horse in each draw place of a class whose horses came from the sheet, or null when they are picked here. */
+  function placesOf(key: string): string[] | null {
+    const places = book.places?.[key]
+    return places && places.some((p) => p !== '') ? places : null
+  }
+
+  function bookHorse(name: string): BookHorse {
+    return book.horses.find((h) => h.name === name) ?? { name, takesHeight: true, maxGroup: 3 }
+  }
+
   function draw(key: string, cls: ShowClass) {
+    const places = placesOf(key)
     const horses = horsesOf(key)
-    if (horses.length === 0) {
+    if (!places && horses.length === 0) {
       note(key, 'Pick the horses for this class first.')
       return
     }
     if (cls.entries.some((e) => e.horse) && !window.confirm(`Draw ${cls.name} again? Every rider in it gets a new horse.`)) return
+    if (places) {
+      // The sheet has a horse beside each draw place. Every rider draws a place.
+      const result = drawPlaces(ridersOf(cls), places.map((name) => (name ? bookHorse(name) : null)))
+      let after = places.length
+      changeClass(key, (c) => ({
+        ...c,
+        entries: c.entries.map((e) => {
+          const place = result.placeOf[e.back_no]
+          return place === undefined ? { ...e, horse: '', draw: ++after } : { ...e, horse: places[place], draw: place + 1 }
+        }),
+        alternates: [...new Set([...(book.alts?.[key] ?? []), ...result.free.map((i) => places[i])])],
+      }))
+      note(
+        key,
+        result.noHorse.length > 0
+          ? `No free horse on the sheet's list fits ${result.noHorse.join(', ')}. Give them a horse by hand.`
+          : `Drawn. ${cls.entries.length} riders each drew a place on the sheet's list of horses.`,
+      )
+      return
+    }
     const result = drawClass(ridersOf(cls), horses, { reuse: !isRailClass(cls) })
     changeClass(key, (c) => ({
       ...c,
@@ -209,6 +244,21 @@ export function DrawScreen({ showId }: { showId: string }) {
   function redraw(key: string, cls: ShowClass, backNo: string) {
     const rider = ridersOf(cls).find((r) => r.backNo === backNo)
     if (!rider) return
+    const places = placesOf(key)
+    if (places) {
+      // Only a place nobody holds can be drawn again. Their own place goes back on the list.
+      const held = new Set(cls.entries.filter((e) => e.back_no !== backNo && e.horse).map((e) => e.draw - 1))
+      const mine = cls.entries.find((e) => e.back_no === backNo)
+      const free = places.map((name, i) => ({ name, i })).filter((p) => p.name && !held.has(p.i) && p.i !== (mine?.horse ? mine.draw - 1 : -1) && fits(rider, bookHorse(p.name)))
+      if (free.length === 0) {
+        note(key, `There is no free horse on the sheet's list for ${backNo}. Give them a horse by hand.`)
+        return
+      }
+      const pick = free[Math.floor(Math.random() * free.length)]
+      changeClass(key, (c) => ({ ...c, entries: c.entries.map((e) => (e.back_no === backNo ? { ...e, horse: pick.name, draw: pick.i + 1 } : e)) }))
+      note(key, `${backNo} drew ${pick.name}, place ${pick.i + 1}.`)
+      return
+    }
     const horseOf = Object.fromEntries(cls.entries.filter((e) => e.horse).map((e) => [e.back_no, e.horse]))
     const horse = redrawOne(rider, horsesOf(key), horseOf, { reuse: !isRailClass(cls) })
     if (horse === null) {
@@ -219,11 +269,27 @@ export function DrawScreen({ showId }: { showId: string }) {
     note(key, `${backNo} drew ${horse}.`)
   }
 
+  /** Copy one column of a class's draw for the sheet, and say where it goes. */
+  async function copyColumn(key: string, what: 'back numbers' | 'horses' | 'alternates', lines: string[], cell: string | undefined) {
+    const text = lines.join('\n')
+    const where = cell ? `On the sheet's draw tab, click ${cell} and paste. Paste as values only.` : 'Paste it into that class on the sheet\'s draw tab, as values only.'
+    try {
+      await navigator.clipboard.writeText(text)
+      setToCopy((c) => ({ ...c, [key]: '' }))
+      note(key, `The ${what} are copied. ${where}`)
+    } catch {
+      setToCopy((c) => ({ ...c, [key]: text }))
+      note(key, `This device would not copy by itself. Select the lines below and copy them. ${where}`)
+    }
+  }
+
   function assign(key: string, backNo: string, horse: string) {
     const set = book.sets[key] ?? []
+    const fromSheet = placesOf(key) !== null
     changeClass(key, (c) => {
       const next = { ...c, entries: c.entries.map((e) => (e.back_no === backNo ? { ...e, horse } : e)) }
-      return { ...next, alternates: alternatesOf(next, set) }
+      // A class on the sheet's list keeps the sheet's alternates. Otherwise the alternates are the set's horses nobody has.
+      return fromSheet ? next : { ...next, alternates: alternatesOf(next, set) }
     })
   }
 
@@ -238,15 +304,41 @@ export function DrawScreen({ showId }: { showId: string }) {
       return
     }
     try {
-      const found = readHorseList(readXlsx(got.bytes))
-      if (found.length === 0) {
-        setHorseNote('That sheet has no horses on its "Horse Points" tab.')
+      const wb = readXlsx(got.bytes)
+      const found = readHorseList(wb)
+      const perClass = readDrawTab(wb)
+      if (found.length === 0 && perClass.length === 0) {
+        setHorseNote('That sheet has no horses on its "Horse Points" tab or its draw tab.')
         return
       }
       rememberSheetLink(showId, link.trim())
-      const { book: next, added } = addHorses(book, found)
-      setBook(next)
-      setHorseNote(`The sheet lists ${found.length} horses. ${added} were added. The sheet was only read. Nothing in it was changed.`)
+      const listed = [...found, ...perClass.flatMap((c) => [...c.places, ...c.alternates]).filter(Boolean)]
+      const { book: withHorses, added } = addHorses(book, listed)
+      // Each class the sheet has horses for takes them, in the sheet's own order of draw places.
+      const places = { ...(withHorses.places ?? {}) }
+      const alts = { ...(withHorses.alts ?? {}) }
+      const sets = { ...withHorses.sets }
+      const current = getShow(showId)
+      let matched = 0
+      for (const meet of current?.meets ?? []) {
+        for (const cls of meet.classes) {
+          const from = perClass.find((c) => c.classNo === runningNumber(meet, cls))
+          if (!from) continue
+          const key = classKey(meet.id, cls.id)
+          places[key] = from.places
+          alts[key] = from.alternates
+          sets[key] = [...new Set(from.places.filter(Boolean))]
+          matched++
+          // The judge's class list shows the sheet's alternates straight away.
+          changeClass(key, (c) => ({ ...c, alternates: from.alternates }))
+        }
+      }
+      setBook({ ...withHorses, places, alts, sets })
+      setHorseNote(
+        `The sheet lists ${new Set(listed.map((h) => h.toLowerCase())).size} horses. ${added} were added.` +
+          (matched > 0 ? ` It sets the horses for ${matched} ${matched === 1 ? 'class' : 'classes'}, which now use the sheet's list.` : ' It has no horses set for a class yet.') +
+          ' The sheet was only read. Nothing in it was changed.',
+      )
     } catch {
       setHorseNote('That file could not be read.')
     }
@@ -346,7 +438,7 @@ export function DrawScreen({ showId }: { showId: string }) {
       {cloud.configured && cloud.admin && (
         <div className="row-actions">
           <label className="field draw-link">
-            <span>Or read the horse list from the show's Google Sheet</span>
+            <span>Or read the horse list, and the horses set for each class, from the show's Google Sheet</span>
             <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Paste the sheet's link" autoComplete="off" />
           </label>
           <button className="btn" disabled={busy || link.trim() === ''} onClick={() => void readSheetHorses()}>
@@ -424,6 +516,8 @@ export function DrawScreen({ showId }: { showId: string }) {
         const rail = isRailClass(cls)
         const drawn = cls.entries.some((e) => e.horse)
         const horses = horsesOf(key)
+        const fromSheet = placesOf(key)
+        const forSheet = sheetDraw(meet, cls)
         return (
           <section key={key} className="panel draw-class" aria-label={`${cls.name}, ${meet.label}`}>
             <h3>
@@ -434,44 +528,67 @@ export function DrawScreen({ showId }: { showId: string }) {
                 {cls.entries.length} riders. {rail ? 'No horse goes twice.' : 'A horse may go again.'}
               </span>
             </h3>
-            {book.horses.length > 0 && (
+            {fromSheet ? (
               <>
-                <p className="draw-label">
-                  Horses for this class: {set.length} picked
-                </p>
-                <div className="chips">
-                  {book.horses.map((h) => {
-                    const on = set.includes(h.name)
-                    return (
-                      <button
-                        key={h.name}
-                        className={on ? 'draw-pick draw-pick-on' : 'draw-pick'}
-                        aria-pressed={on}
-                        onClick={() => setSet(key, cls, on ? set.filter((n) => n !== h.name) : [...set, h.name])}
-                      >
-                        {h.name} <span className="draw-pick-n">{used.get(h.name) ?? 0}</span>
-                      </button>
-                    )
-                  })}
-                </div>
+                <p className="draw-label">The sheet sets this class's horses, one for each draw place:</p>
+                <p className="draw-places">{fromSheet.map((name, i) => `${i + 1} ${name || 'none'}`).join(', ')}</p>
+                {(book.alts?.[key] ?? []).length > 0 && <p className="draw-places">Alternates on the sheet: {(book.alts?.[key] ?? []).join(', ')}</p>}
                 <div className="row-actions">
-                  <button
-                    className="btn"
-                    onClick={() => setSet(key, cls, suggestSet(ridersOf(cls), book.horses, used, rail ? cls.entries.length + 2 : cls.entries.length))}
-                  >
-                    Pick the least used
-                  </button>
-                  <button className="btn" onClick={() => setSet(key, cls, book.horses.map((h) => h.name))}>
-                    Pick all
-                  </button>
-                  <button className="btn" onClick={() => setSet(key, cls, [])}>
-                    Pick none
-                  </button>
                   <button className="btn btn-primary" disabled={cls.entries.length === 0} onClick={() => draw(key, cls)}>
                     {drawn ? 'Draw this class again' : 'Draw for this class'}
                   </button>
+                  <button
+                    className="btn"
+                    onClick={() => {
+                      const places = { ...(book.places ?? {}) }
+                      const alts = { ...(book.alts ?? {}) }
+                      delete places[key]
+                      delete alts[key]
+                      setBook({ ...book, places, alts })
+                    }}
+                  >
+                    Pick the horses here instead
+                  </button>
                 </div>
               </>
+            ) : (
+              book.horses.length > 0 && (
+                <>
+                  <p className="draw-label">Horses for this class: {set.length} picked</p>
+                  <div className="chips">
+                    {book.horses.map((h) => {
+                      const on = set.includes(h.name)
+                      return (
+                        <button
+                          key={h.name}
+                          className={on ? 'draw-pick draw-pick-on' : 'draw-pick'}
+                          aria-pressed={on}
+                          onClick={() => setSet(key, cls, on ? set.filter((n) => n !== h.name) : [...set, h.name])}
+                        >
+                          {h.name} <span className="draw-pick-n">{used.get(h.name) ?? 0}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div className="row-actions">
+                    <button
+                      className="btn"
+                      onClick={() => setSet(key, cls, suggestSet(ridersOf(cls), book.horses, used, rail ? cls.entries.length + 2 : cls.entries.length))}
+                    >
+                      Pick the least used
+                    </button>
+                    <button className="btn" onClick={() => setSet(key, cls, book.horses.map((h) => h.name))}>
+                      Pick all
+                    </button>
+                    <button className="btn" onClick={() => setSet(key, cls, [])}>
+                      Pick none
+                    </button>
+                    <button className="btn btn-primary" disabled={cls.entries.length === 0} onClick={() => draw(key, cls)}>
+                      {drawn ? 'Draw this class again' : 'Draw for this class'}
+                    </button>
+                  </div>
+                </>
+              )
             )}
             {classNote[key] && (
               <p className="hint" role="status">
@@ -487,7 +604,7 @@ export function DrawScreen({ showId }: { showId: string }) {
                   .map((e) => {
                     const mine = book.horses.find((h) => h.name === e.horse)
                     const misfit = mine !== undefined && !fits(markFor(e.back_no), mine)
-                    const options = [...new Set([...horses.map((h) => h.name), ...(e.horse ? [e.horse] : [])])]
+                    const options = [...new Set([...horses.map((h) => h.name), ...(fromSheet ? (book.alts?.[key] ?? []) : []), ...(e.horse ? [e.horse] : [])])]
                     return (
                       <li key={e.back_no} className="draw-row">
                         <span className="draw">{e.draw}</span>
@@ -502,7 +619,7 @@ export function DrawScreen({ showId }: { showId: string }) {
                           ))}
                         </select>
                         {misfit && <span className="tag tag-warn">Does not fit</span>}
-                        <button className="btn btn-small" disabled={horses.length === 0} aria-label={`Draw again for ${e.back_no}`} onClick={() => redraw(key, cls, e.back_no)}>
+                        <button className="btn btn-small" disabled={horses.length === 0 && !fromSheet} aria-label={`Draw again for ${e.back_no}`} onClick={() => redraw(key, cls, e.back_no)}>
                           Redraw
                         </button>
                       </li>
@@ -514,6 +631,26 @@ export function DrawScreen({ showId }: { showId: string }) {
               <p className="alternates">
                 <strong>Alternates:</strong> {(cls.alternates ?? []).join(', ')}
               </p>
+            )}
+            {drawn && (
+              <>
+                <p className="draw-label">For the show's sheet, one line for each draw place:</p>
+                <div className="row-actions">
+                  <button className="btn" onClick={() => void copyColumn(key, 'back numbers', forSheet.backNos, forSheet.cells?.backCell)}>
+                    Copy the back numbers
+                  </button>
+                  <button className="btn" onClick={() => void copyColumn(key, 'horses', forSheet.horses, forSheet.cells?.horseCell)}>
+                    Copy the horses
+                  </button>
+                  {(cls.alternates ?? []).length > 0 && (
+                    <button className="btn" onClick={() => void copyColumn(key, 'alternates', forSheet.alternates, forSheet.cells?.alternateCell)}>
+                      Copy the alternates
+                    </button>
+                  )}
+                </div>
+                {forSheet.leftOut.length > 0 && <p className="hint">The sheet has twelve draw places. {forSheet.leftOut.join(', ')} did not fit and are not in the copy.</p>}
+                {toCopy[key] && <textarea readOnly rows={12} value={toCopy[key]} aria-label={`Lines to paste for ${cls.name}`} onFocus={(e) => e.target.select()} />}
+              </>
             )}
           </section>
         )
@@ -527,7 +664,14 @@ export function DrawScreen({ showId }: { showId: string }) {
         <button className="btn btn-primary btn-wide" onClick={() => go(`/s/${show.id}`)}>
           {cloud.configured ? 'Back to the show to publish' : 'Back to the show'}
         </button>
+        <button className="btn btn-wide" onClick={() => download(`${slug(show.name)}-draw.csv`, drawCsv(show), 'text/csv')}>
+          Download the draw as CSV
+        </button>
       </div>
+      <p className="hint">
+        The CSV has a back number column and a horse column for each class, one row for each draw place, with the cell
+        to paste at. Open it beside the sheet and copy a column across. The app never writes to the sheet itself.
+      </p>
     </Screen>
   )
 }

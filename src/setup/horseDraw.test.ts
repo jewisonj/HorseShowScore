@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { drawClass, fits, redrawOne, suggestSet, rideCounts, type DrawHorse, type DrawRider } from './horseDraw'
+import { drawClass, drawPlaces, fits, redrawOne, suggestSet, rideCounts, type DrawHorse, type DrawRider } from './horseDraw'
 
 /** A repeatable random source, so a failing draw can be run again. */
 function seeded(seed: number): () => number {
@@ -106,6 +106,44 @@ describe('drawing a class', () => {
       expect(Math.max(...counts)).toBe(2)
       expect(r.alternates).toEqual([])
     }
+  })
+})
+
+describe('drawing onto the draw places a sheet already has horses in', () => {
+  it('gives every rider a place of their own, at random, and a horse listed twice goes twice', () => {
+    // Reining, the way a sheet lists it: five places, George in two of them.
+    const places = [horse('Bunny'), horse('George'), horse('Cisco'), horse('Rey'), horse('George')]
+    const five = ['1', '2', '3', '4', '5'].map((n) => rider(n))
+    const firstPlace = new Set<number>()
+    for (let seed = 1; seed <= 200; seed++) {
+      const r = drawPlaces(five, places, seeded(seed))
+      expect(Object.values(r.placeOf).sort()).toEqual([0, 1, 2, 3, 4])
+      expect(r.free).toEqual([])
+      expect(r.noHorse).toEqual([])
+      firstPlace.add(r.placeOf['1'])
+    }
+    // Over many draws a rider lands in every place.
+    expect(firstPlace.size).toBe(5)
+  })
+
+  it('keeps to the fit rule and skips places with no horse', () => {
+    const places = [horse('Light', 1), null, horse('Big', 3), horse('Mid', 2, false)]
+    const riders = [rider('1', 3), rider('2', 1), rider('3', 2)]
+    for (let seed = 1; seed <= 100; seed++) {
+      const r = drawPlaces(riders, places, seeded(seed))
+      // Only Big carries group 3, so the group 2 rider must be on Mid and the light rider on Light.
+      expect(r.placeOf).toEqual({ '1': 2, '2': 0, '3': 3 })
+    }
+  })
+
+  it('names the riders left over and the places left free', () => {
+    const r = drawPlaces([rider('1', 3), rider('2', 3)], [horse('Big', 3), horse('Light', 1), horse('Light2', 1)], seeded(2))
+    expect(Object.keys(r.placeOf)).toHaveLength(1)
+    expect(r.noHorse).toHaveLength(1)
+    expect(r.free).toEqual([1, 2])
+    const short = drawPlaces(['1', '2', '3'].map((n) => rider(n)), [horse('A'), horse('B')], seeded(5))
+    expect(Object.keys(short.placeOf)).toHaveLength(2)
+    expect(short.noHorse).toHaveLength(1)
   })
 })
 

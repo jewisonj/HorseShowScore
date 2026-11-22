@@ -54,6 +54,13 @@ export function sampleShowWorkbook(): Uint8Array {
   }
   return makeXlsx({
     ABOUT: { A1: 'Quick Start User Instructions' },
+    // The horse committee has set the horses for classes 1 and 3. Class 2 is still empty.
+    'Saturday Draw': {
+      A4: 1, D5: 'Horse', D6: 'ROCKET', D7: 'ARCHIE (ROAN)', D8: 'ROCKET', D18: 'SPARE',
+      G4: 2,
+      M4: 3, P6: 'DUKE & DAISY', P18: 'SPARE', P19: "O'MALLEY",
+      A24: 4, D26: 'SUPER PETE', D28: 'ROCKET',
+    },
     'Horse Points': { C2: 'Input Horse Name', C3: 'ROCKET', C4: 'ARCHIE (ROAN)', C5: 'SUPER PETE', C6: "O'MALLEY", C7: 'DUKE & DAISY', C8: 'rocket', C9: 'SPARE' },
     'Class List': {
       B1: 'Class Source List Populates All Pages',

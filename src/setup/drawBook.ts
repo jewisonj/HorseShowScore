@@ -30,6 +30,14 @@ export interface DrawBook {
   riders: Record<string, RiderMark>
   /** The horses set for each class, by class key (meet id and class id). */
   sets: Record<string, string[]>
+  /**
+   * For a class whose horses came from the show's sheet: the horse in each draw
+   * place, first place first, empty where a place has none. Riders are then
+   * drawn onto the places, so the sheet's own order of horses is kept.
+   */
+  places?: Record<string, string[]>
+  /** The alternates the sheet lists for such a class. */
+  alts?: Record<string, string[]>
 }
 
 const EMPTY: DrawBook = { horses: [], riders: {}, sets: {} }
