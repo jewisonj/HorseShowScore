@@ -122,6 +122,9 @@ export function CoachScreen() {
         </p>
       )}
       <div className="stack">
+        <button className="btn btn-primary btn-wide" onClick={() => go('/coach/draw')}>
+          See the draw
+        </button>
         <button
           className="btn"
           onClick={() => {

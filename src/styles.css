@@ -1997,3 +1997,78 @@ h2 {
   border-radius: 8px;
   font: inherit;
 }
+
+/* ---------- The draw, laid out like the show's sheet ---------- */
+
+/* The sheet puts three classes side by side under a light blue band. A phone gets one at a time. */
+.sheet-draws {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  align-items: start;
+  margin: 14px 0;
+}
+
+.sheet-draw {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--paper);
+  border: 1px solid var(--ink-2);
+}
+
+.sheet-draw caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 700;
+  padding: 9px 10px 7px;
+  background: #a4c2f4;
+  color: var(--ink);
+  border: 1px solid var(--ink-2);
+  border-bottom: 0;
+}
+
+.sheet-draw-note {
+  font-weight: 400;
+}
+
+.sheet-draw th {
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 6px 8px;
+  border-bottom: 2px solid var(--ink-2);
+}
+
+.sheet-draw td {
+  padding: 8px;
+  border-top: 1px solid var(--rule);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.sheet-draw th:first-child,
+.sheet-draw td:first-child {
+  width: 3.4rem;
+  text-align: right;
+}
+
+.sheet-draw td:nth-child(2) {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sheet-draw-mine td {
+  background: #fff3c4;
+  font-weight: 700;
+}
+
+.sheet-draw .sheet-draw-alt td {
+  background: var(--ground);
+  color: var(--ink-2);
+  text-align: left;
+}
+
+.sheet-draw .sheet-draw-empty {
+  text-align: left;
+  color: var(--muted);
+}

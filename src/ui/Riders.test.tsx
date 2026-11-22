@@ -8,7 +8,7 @@ import { clearCoachForTests, currentCoach, mergeRoster } from '../cloud/roster'
 import { resetScoreSendingForTests } from '../cloud/scores'
 import { clearSeatForTests } from '../cloud/seat'
 import { clearCloudCache } from '../data/cloudShows'
-import { classKey, getClass, getShow } from '../data/fixture'
+import { classKey, getClass, getShow, type ShowFile } from '../data/fixture'
 import { clearShows } from '../data/shows'
 import { clearDrawBooks, drawBook, saveDrawBook } from '../setup/drawBook'
 import { drawCsv } from '../setup/drawExport'
@@ -19,6 +19,7 @@ import { readXlsx } from '../setup/xlsx'
 import { loadDraw } from '../seed'
 import { classState, clearAll, getState } from '../store'
 import { DrawScreen } from './DrawScreen'
+import { showForToday } from './DrawSheet'
 import { RidersScreen } from './RidersScreen'
 
 const SUNDAY = 'evt-bhc-2026-11-22'
@@ -169,6 +170,71 @@ describe('a coach', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign off' }))
     expect(currentCoach()).toBeNull()
     expect(await screen.findByRole('button', { name: /^Coach/ })).toBeTruthy()
+  })
+})
+
+describe('a coach looking over the draw', () => {
+  beforeEach(() => {
+    // 662 rides in Sunday's show. She is on the coach's team.
+    server.riders = [rider('662', 'Korah Pinter', 'Example College'), rider('503', 'Cy Cole', 'Sample University')]
+    server.teams = [{ team: 'Example College', pin: '700001' }]
+  })
+
+  it('sees each class as a table like the sheet’s, with their own riders marked and the alternates underneath', async () => {
+    const sunday = JSON.parse(JSON.stringify(getShow(SUNDAY)!)) as ShowFile
+    const level1 = sunday.meets[0].classes.find((c) => c.entries.some((e) => e.back_no === '662'))!
+    level1.entries = level1.entries.map((e, i) => ({ ...e, horse: `Horse ${i + 1}` }))
+    level1.alternates = ['Spare One', 'Spare Two']
+    server.shows = [sunday]
+    await startCloud()
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: /^Coach/ }))
+    fireEvent.change(await screen.findByLabelText('Coach PIN'), { target: { value: '700001' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign on' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'See the draw' }))
+
+    expect(await screen.findByRole('heading', { name: 'The draw' })).toBeTruthy()
+    // One table for each class of the show.
+    expect(screen.getAllByRole('table')).toHaveLength(sunday.meets[0].classes.length)
+    const table = screen.getByRole('table', { name: new RegExp(`^${level1.id}\\. ${level1.name.replace(/[.]/g, '\\.')}`) })
+    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Draw', 'Back #', 'Rider', 'Horse'])
+    // Riders in draw order, each with a horse.
+    const rows = within(table).getAllByRole('row').slice(1)
+    const sorted = [...level1.entries].sort((a, b) => a.draw - b.draw)
+    expect(rows.slice(0, sorted.length).map((r) => within(r).getAllByRole('cell').map((c) => c.textContent!.replace(' (your rider)', '')))).toEqual(sorted.map((e) => [String(e.draw), e.back_no, e.rider, e.horse]))
+    // The alternates come last.
+    expect(rows.slice(sorted.length).map((r) => r.textContent)).toEqual(['AlternateSpare One', 'AlternateSpare Two'])
+    // The coach's rider is marked, and only hers.
+    const hers = await waitFor(() => {
+      const row = rows.find((r) => r.className === 'sheet-draw-mine')
+      expect(row).toBeTruthy()
+      return row!
+    })
+    expect(hers.textContent).toContain('662')
+    expect(rows.filter((r) => r.className === 'sheet-draw-mine')).toHaveLength(1)
+    expect(screen.getByText(/Your riders are marked/)).toBeTruthy()
+    // Nothing of the marks or the limits is on this page.
+    expect(screen.queryByText(/weight group|height/i)).toBeNull()
+    // And back to the riders.
+    fireEvent.click(screen.getByRole('button', { name: /My riders/ }))
+    expect(await screen.findByRole('heading', { name: 'Example College' })).toBeTruthy()
+  })
+
+  it('opens today’s show, else the next one coming, else the newest', () => {
+    const show = (id: string, date: string) => ({ ...getShow(SUNDAY)!, id, meets: [{ ...getShow(SUNDAY)!.meets[0], date }] })
+    const list = [show('a', '2026-11-21'), show('b', '2026-11-22'), show('c', '2027-02-06')]
+    expect(showForToday(list, '2026-11-22')!.id).toBe('b')
+    expect(showForToday(list, '2026-12-01')!.id).toBe('c')
+    expect(showForToday(list, '2027-03-01')!.id).toBe('c')
+    expect(showForToday([], '2026-11-22')).toBeUndefined()
+  })
+
+  it('is sent to the sign-on when not signed on as a coach', async () => {
+    window.location.hash = '#/coach/draw'
+    await startCloud()
+    render(<App />)
+    expect(await screen.findByLabelText('Coach PIN')).toBeTruthy()
+    expect(screen.queryByRole('table')).toBeNull()
   })
 })
 

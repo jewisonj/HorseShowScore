@@ -17,7 +17,7 @@ import { PublicCardView } from './PublicCard'
  * copy of a show being worked on here, and the samples that come with the app,
  * are not listed.
  */
-function usePublishedShows(): { shows: ShowFile[]; checkedAt: string | null } {
+export function usePublishedShows(): { shows: ShowFile[]; checkedAt: string | null } {
   const cache = useCloudCache()
   useEffect(() => {
     void startCloud().then(refreshShowsIfStale)
