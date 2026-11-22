@@ -73,7 +73,7 @@ describe('a class on the sheet and the class of the show it is', () => {
     expect(classForSheet(meet, { classNo: 3, name: '' })).toBeUndefined()
   })
 
-  it('puts each rider on the horse of the place the sheet has them in, and drops nobody', () => {
+  it('puts each rider on the horse of the place the sheet has them in, and the class is then who the sheet has', () => {
     const entries = [
       { draw: 1, back_no: '10', rider: 'Ann', horse: 'Old' },
       { draw: 2, back_no: '20', rider: 'Bo', horse: '' },
@@ -83,10 +83,8 @@ describe('a class on the sheet and the class of the show it is', () => {
     expect(got.entries).toEqual([
       { draw: 1, back_no: '30', rider: 'Cy', horse: 'Ace' },
       { draw: 3, back_no: '40', rider: 'Di', horse: 'Ace' },
-      // Not on the sheet: kept after the twelve places, and the horse they had is gone.
-      { draw: 13, back_no: '10', rider: 'Ann', horse: '' },
-      { draw: 14, back_no: '20', rider: 'Bo', horse: '' },
     ])
+    // Not on the sheet's draw: out of the class, and named so the page can say so.
     expect(got.added).toEqual(['40'])
     expect(got.missing).toEqual(['10', '20'])
   })

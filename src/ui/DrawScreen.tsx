@@ -506,7 +506,7 @@ export function DrawScreen({ showId }: { showId: string }) {
               ? ' No back numbers are typed on the sheet yet, so no rider has a horse. Read it again after the riders draw.'
               : '') +
           (newRiders.length > 0 ? ` Added from the sheet's draw, not in the class here before: ${some(newRiders)}.` : '') +
-          (notOnSheet.length > 0 ? ` In a class here and not on the sheet's draw for it, so left with no horse: ${some(notOnSheet)}.` : '') +
+          (notOnSheet.length > 0 ? ` Taken out of a class, because the sheet's draw for it does not have them: ${some(notOnSheet)}. If the sheet is still being typed, read it again when it is done.` : '') +
           (unmatched.length > 0 ? ` No class of this show is named as the sheet names ${some(unmatched)}, so those horses were not set.` : '') +
           ' The sheet was only read. Nothing in it was changed.',
       )

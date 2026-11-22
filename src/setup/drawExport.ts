@@ -87,9 +87,12 @@ export function classForSheet(meet: Meet, sheet: { classNo: number; name: string
  * at the coaches' meeting: each back number on its draw place, with the horse
  * the sheet has in that place. Nothing is drawn here.
  *
- * A rider the class already had who is not on the sheet stays, after the
- * others and with no horse, so a half-typed sheet drops nobody. A back number
- * the class did not have is added, named by `nameOf`.
+ * Once a class has been drawn, the sheet is the class: a rider the class had
+ * who is not on the sheet's draw has scratched or moved to another section,
+ * and comes out. `missing` names them, so the page can say who. A back number
+ * the class did not have is added, named by `nameOf`. Reading a half-typed
+ * sheet leaves out whoever is not typed yet, and reading it again when it is
+ * done puts them in.
  */
 export function takeSheetDraw(
   entries: Entry[],
@@ -106,8 +109,5 @@ export function takeSheetDraw(
     if (!had) added.push(backNo)
     out.push({ draw: i + 1, back_no: backNo, rider: had ? had.rider : nameOf(backNo), horse: sheet.places[i] ?? '' })
   })
-  const missing = entries.filter((e) => !seen.has(e.back_no))
-  const after = Math.max(SHEET_PLACES, sheet.backNos.length)
-  missing.forEach((e, k) => out.push({ ...e, draw: after + 1 + k, horse: '' }))
-  return { entries: out, added, missing: missing.map((e) => e.back_no) }
+  return { entries: out, added, missing: entries.filter((e) => !seen.has(e.back_no)).map((e) => e.back_no) }
 }
