@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { ShowFile } from '../data/fixture'
-import type { CloudBackend, CloudUser, PublicCard, PublicPlacing, RosterRider, SeatRole, SentRow, StableHorse } from './backend'
+import type { CloudBackend, CloudUser, HorseLimits, PublicCard, PublicPlacing, RosterRider, SeatRole, SentRow, StableHorse } from './backend'
 
 interface RiderRow {
   back_no: string
@@ -146,22 +146,34 @@ export function createSupabaseBackend(url: string, key: string): CloudBackend {
       if (error) throw new Error(error.message)
     },
     async listHorses() {
-      const { data, error } = await sb.from('horses').select('name, provider, takes_height, max_group').order('provider').order('name')
+      const { data, error } = await sb.from('horses').select('name, provider, takes_height, max_group, by_class').order('provider').order('name')
       if (error) throw new Error(error.message)
-      return (data ?? []).map(
-        (h: { name: string; provider: string; takes_height: boolean; max_group: number }): StableHorse => ({
-          name: String(h.name),
-          provider: String(h.provider ?? ''),
-          takesHeight: h.takes_height !== false,
-          maxGroup: h.max_group === 1 ? 1 : h.max_group === 2 ? 2 : 3,
-        }),
-      )
+      const limits = (v: { takes_height?: unknown; max_group?: unknown }): HorseLimits => ({ takesHeight: v.takes_height !== false, maxGroup: v.max_group === 1 ? 1 : v.max_group === 2 ? 2 : 3 })
+      return (data ?? []).map((h: { name: string; provider: string; takes_height: boolean; max_group: number; by_class: unknown }): StableHorse => {
+        const byClass: Record<string, HorseLimits> = {}
+        if (h.by_class && typeof h.by_class === 'object' && !Array.isArray(h.by_class)) {
+          for (const [classNo, v] of Object.entries(h.by_class as Record<string, unknown>)) {
+            if (v && typeof v === 'object') byClass[classNo] = limits(v as { takes_height?: unknown; max_group?: unknown })
+          }
+        }
+        return { name: String(h.name), provider: String(h.provider ?? ''), ...limits(h), byClass }
+      })
     },
     async putHorses(horses) {
       if (horses.length === 0) return
       const { error } = await sb
         .from('horses')
-        .upsert(horses.map((h) => ({ name: h.name, provider: h.provider, takes_height: h.takesHeight, max_group: h.maxGroup, updated_at: new Date().toISOString() })), { onConflict: 'name,provider' })
+        .upsert(
+          horses.map((h) => ({
+            name: h.name,
+            provider: h.provider,
+            takes_height: h.takesHeight,
+            max_group: h.maxGroup,
+            by_class: Object.fromEntries(Object.entries(h.byClass ?? {}).map(([classNo, v]) => [classNo, { takes_height: v.takesHeight, max_group: v.maxGroup }])),
+            updated_at: new Date().toISOString(),
+          })),
+          { onConflict: 'name,provider' },
+        )
       if (error) throw new Error(error.message)
     },
     async listTeams() {

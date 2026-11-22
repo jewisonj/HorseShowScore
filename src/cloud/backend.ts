@@ -95,8 +95,17 @@ export interface RosterRider {
 export interface StableHorse {
   name: string
   provider: string
+  /** False for a horse marked height restricted: a height rider cannot draw it. */
   takesHeight: boolean
   /** The heaviest weight group this horse carries. */
+  maxGroup: 1 | 2 | 3
+  /** Classes where this horse's limits differ from its usual ones, by IHSA class number ("17", "12B"). */
+  byClass?: Record<string, HorseLimits>
+}
+
+/** What a horse carries: its usual limits, or its limits in one class. */
+export interface HorseLimits {
+  takesHeight: boolean
   maxGroup: 1 | 2 | 3
 }
 

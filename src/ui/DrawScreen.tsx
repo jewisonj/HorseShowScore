@@ -7,7 +7,7 @@ import { saveShow, useUserShows } from '../data/shows'
 import { ruleSetFor } from '../rules/rulesets'
 import { loadDraw } from '../seed'
 import { finishShow } from '../setup/draft'
-import { addHorses, markOf, saveDrawBook, useDrawBook, type BookHorse, type DrawBook, type RiderMark } from '../setup/drawBook'
+import { addHorses, limitsIn, markOf, saveDrawBook, useDrawBook, type BookHorse, type DrawBook, type RiderMark } from '../setup/drawBook'
 import { drawCsv, runningNumber, sheetDraw } from '../setup/drawExport'
 import { drawClass, drawPlaces, fits, redrawOne, suggestSet, rideCounts, type DrawRider, type WeightGroup } from '../setup/horseDraw'
 import { rememberSheetLink, sheetLinkFor } from '../setup/sheetLink'
@@ -22,6 +22,11 @@ const GROUPS: WeightGroup[] = [1, 2, 3]
 /** True for a class that works the rail together, where no horse can go twice. */
 function isRailClass(cls: ShowClass): boolean {
   return ruleSetFor(cls.rule_set).extras.some((e) => e.id === 'rail')
+}
+
+/** "every section of Level I Horsemanship" for a class with sections, else "this class". Sections of one class share their limits. */
+function divisionWords(cls: ShowClass): string {
+  return cls.section ? `every section of ${cls.name.replace(/,?\s*sec(tion|\.)?\s*[a-z0-9]\s*$/i, '')}` : 'this class'
 }
 
 /** The horses of a class's set nobody is riding, keeping the order alternates were already in. */
@@ -53,6 +58,8 @@ export function DrawScreen({ showId }: { showId: string }) {
   // Lines copied for the sheet that the device would not copy by itself, shown to be copied by hand.
   const [toCopy, setToCopy] = useState<Record<string, string>>({})
   const [showRiders, setShowRiders] = useState(false)
+  // The classes whose list of per-class limits is open.
+  const [showLimits, setShowLimits] = useState<Record<string, boolean>>({})
   // The riders list on the server, by back number. Null where there is no server, or it could not be reached.
   const [roster, setRoster] = useState<Map<string, RosterRider> | null>(null)
   const [rosterNote, setRosterNote] = useState('')
@@ -201,12 +208,26 @@ export function DrawScreen({ showId }: { showId: string }) {
   /** This show's horses, each with the limits the horses list has for it. */
   const horsesNow: BookHorse[] = book.horses.map((h) => withListLimits(stable, h))
 
-  /** Change what a horse carries. It is kept on this computer and, where there is a server, on the horses list. */
-  async function setLimits(name: string, patch: Partial<Pick<BookHorse, 'takesHeight' | 'maxGroup'>>) {
+  /**
+   * Change what a horse carries: its usual limits, or its limits in one class
+   * when a class number is given. A class set back to the usual limits stops
+   * being a special case. Kept on this computer and, where there is a server,
+   * on the horses list.
+   */
+  async function setLimits(name: string, patch: Partial<Pick<BookHorse, 'takesHeight' | 'maxGroup'>>, classNo?: string) {
     const now = horsesNow.find((h) => h.name === name)
     if (!now) return
-    const next = { ...now, ...patch }
-    setBook({ ...book, horses: book.horses.map((h) => (h.name === name ? { ...h, ...patch, takesHeight: next.takesHeight, maxGroup: next.maxGroup } : h)) })
+    let next: BookHorse
+    if (classNo === undefined) next = { ...now, ...patch }
+    else {
+      const there = limitsIn(now, classNo)
+      const own = { takesHeight: patch.takesHeight ?? there.takesHeight, maxGroup: patch.maxGroup ?? there.maxGroup }
+      const byClass = { ...(now.byClass ?? {}) }
+      if (own.takesHeight === now.takesHeight && own.maxGroup === now.maxGroup) delete byClass[classNo]
+      else byClass[classNo] = own
+      next = { ...now, byClass }
+    }
+    setBook({ ...book, horses: book.horses.map((h) => (h.name === name ? { ...h, takesHeight: next.takesHeight, maxGroup: next.maxGroup, byClass: next.byClass ?? {} } : h)) })
     if (!stable) return
     const row = stableRow(stable, next)
     const before = stable
@@ -246,9 +267,10 @@ export function DrawScreen({ showId }: { showId: string }) {
     return cls.entries.map((e) => ({ backNo: e.back_no, ...markFor(e.back_no) }))
   }
 
-  function horsesOf(key: string): BookHorse[] {
+  /** The horses set for a class, each with its limits in that class. */
+  function horsesOf(key: string, classNo: string): BookHorse[] {
     const set = book.sets[key] ?? []
-    return horsesNow.filter((h) => set.includes(h.name))
+    return horsesNow.filter((h) => set.includes(h.name)).map((h) => limitsIn(h, classNo))
   }
 
   function setSet(key: string, cls: ShowClass, set: string[]) {
@@ -262,13 +284,14 @@ export function DrawScreen({ showId }: { showId: string }) {
     return places && places.some((p) => p !== '') ? places : null
   }
 
-  function bookHorse(name: string): BookHorse {
-    return horsesNow.find((h) => h.name === name) ?? { name, takesHeight: true, maxGroup: 3 }
+  function bookHorse(name: string, classNo: string): BookHorse {
+    const horse = horsesNow.find((h) => h.name === name)
+    return horse ? limitsIn(horse, classNo) : { name, takesHeight: true, maxGroup: 3 }
   }
 
   function draw(key: string, cls: ShowClass) {
     const places = placesOf(key)
-    const horses = horsesOf(key)
+    const horses = horsesOf(key, cls.class_no)
     if (!places && horses.length === 0) {
       note(key, 'Pick the horses for this class first.')
       return
@@ -276,7 +299,7 @@ export function DrawScreen({ showId }: { showId: string }) {
     if (cls.entries.some((e) => e.horse) && !window.confirm(`Draw ${cls.name} again? Every rider in it gets a new horse.`)) return
     if (places) {
       // The sheet has a horse beside each draw place. Every rider draws a place.
-      const result = drawPlaces(ridersOf(cls), places.map((name) => (name ? bookHorse(name) : null)))
+      const result = drawPlaces(ridersOf(cls), places.map((name) => (name ? bookHorse(name, cls.class_no) : null)))
       let after = places.length
       changeClass(key, (c) => ({
         ...c,
@@ -316,7 +339,7 @@ export function DrawScreen({ showId }: { showId: string }) {
       // Only a place nobody holds can be drawn again. Their own place goes back on the list.
       const held = new Set(cls.entries.filter((e) => e.back_no !== backNo && e.horse).map((e) => e.draw - 1))
       const mine = cls.entries.find((e) => e.back_no === backNo)
-      const free = places.map((name, i) => ({ name, i })).filter((p) => p.name && !held.has(p.i) && p.i !== (mine?.horse ? mine.draw - 1 : -1) && fits(rider, bookHorse(p.name)))
+      const free = places.map((name, i) => ({ name, i })).filter((p) => p.name && !held.has(p.i) && p.i !== (mine?.horse ? mine.draw - 1 : -1) && fits(rider, bookHorse(p.name, cls.class_no)))
       if (free.length === 0) {
         note(key, `There is no free horse on the sheet's list for ${backNo}. Give them a horse by hand.`)
         return
@@ -327,7 +350,7 @@ export function DrawScreen({ showId }: { showId: string }) {
       return
     }
     const horseOf = Object.fromEntries(cls.entries.filter((e) => e.horse).map((e) => [e.back_no, e.horse]))
-    const horse = redrawOne(rider, horsesOf(key), horseOf, { reuse: !isRailClass(cls) })
+    const horse = redrawOne(rider, horsesOf(key, cls.class_no), horseOf, { reuse: !isRailClass(cls) })
     if (horse === null) {
       note(key, `There is no other horse in this set for ${backNo}.`)
       return
@@ -420,12 +443,11 @@ export function DrawScreen({ showId }: { showId: string }) {
       </p>
 
       <h2>Horses</h2>
-      {stable && (
-        <p className="hint">
-          What each horse carries is kept on the horses list on the server, so it is here for the next show too. Only show
-          admins see it.
-        </p>
-      )}
+      <p className="hint">
+        These are each horse's usual limits. A height rider cannot draw a horse marked height restricted. A rider cannot
+        draw a horse that carries less than their weight group. Each class below can set its own limits for its horses.
+        {stable ? ' They are kept on the horses list on the server, so they are here for the next show too. Only show admins see them.' : ''}
+      </p>
       {book.horses.length === 0 ? (
         <p className="empty">No horses yet. Add them below.</p>
       ) : (
@@ -437,12 +459,8 @@ export function DrawScreen({ showId }: { showId: string }) {
                 <span className="muted">{used.get(h.name) ?? 0} rides</span>
               </span>
               <label className="draw-check">
-                <input
-                  type="checkbox"
-                  checked={h.takesHeight}
-                  onChange={(e) => void setLimits(h.name, { takesHeight: e.target.checked })}
-                />
-                <span>Takes height riders</span>
+                <input type="checkbox" checked={!h.takesHeight} onChange={(e) => void setLimits(h.name, { takesHeight: !e.target.checked })} />
+                <span>Height restricted</span>
               </label>
               <label className="draw-group">
                 <span>Carries up to group</span>
@@ -592,8 +610,13 @@ export function DrawScreen({ showId }: { showId: string }) {
         const set = book.sets[key] ?? []
         const rail = isRailClass(cls)
         const drawn = cls.entries.some((e) => e.horse)
-        const horses = horsesOf(key)
+        const horses = horsesOf(key, cls.class_no)
         const fromSheet = placesOf(key)
+        // The horses this class can use: the sheet's draw places and alternates, or the ones picked here.
+        const inClass = [...new Set(fromSheet ? [...fromSheet.filter(Boolean), ...(book.alts?.[key] ?? [])] : set)]
+          .map((name) => horsesNow.find((h) => h.name === name))
+          .filter((h): h is BookHorse => h !== undefined)
+        const changedHere = inClass.filter((h) => h.byClass?.[cls.class_no] !== undefined).length
         const forSheet = sheetDraw(meet, cls)
         return (
           <section key={key} className="panel draw-class" aria-label={`${cls.name}, ${meet.label}`}>
@@ -650,7 +673,7 @@ export function DrawScreen({ showId }: { showId: string }) {
                   <div className="row-actions">
                     <button
                       className="btn"
-                      onClick={() => setSet(key, cls, suggestSet(ridersOf(cls), horsesNow, used, rail ? cls.entries.length + 2 : cls.entries.length))}
+                      onClick={() => setSet(key, cls, suggestSet(ridersOf(cls), horsesNow.map((h) => limitsIn(h, cls.class_no)), used, rail ? cls.entries.length + 2 : cls.entries.length))}
                     >
                       Pick the least used
                     </button>
@@ -667,6 +690,62 @@ export function DrawScreen({ showId }: { showId: string }) {
                 </>
               )
             )}
+            {inClass.length > 0 && (
+              <>
+                <button className="btn" aria-expanded={showLimits[key] === true} onClick={() => setShowLimits({ ...showLimits, [key]: !showLimits[key] })}>
+                  {showLimits[key] ? 'Hide the limits for this class' : `Height and weight limits for this class (${changedHere} changed)`}
+                </button>
+                {showLimits[key] && (
+                  <>
+                    <p className="hint">
+                      Change a horse's limits for {divisionWords(cls)} only. The rest of the show keeps the horse's usual limits.
+                    </p>
+                    <ul className="list draw-horses">
+                      {inClass.map((h) => {
+                        const here = limitsIn(h, cls.class_no)
+                        const own = h.byClass?.[cls.class_no] !== undefined
+                        return (
+                          <li key={h.name} className="draw-horse">
+                            <span className="draw-horse-name">
+                              <strong>{h.name}</strong>
+                              <span className="muted">{own ? 'Set for this class' : 'Usual limits'}</span>
+                            </span>
+                            <label className="draw-check">
+                              <input
+                                type="checkbox"
+                                aria-label={`${h.name} is height restricted in ${cls.name}`}
+                                checked={!here.takesHeight}
+                                onChange={(e) => void setLimits(h.name, { takesHeight: !e.target.checked }, cls.class_no)}
+                              />
+                              <span>Height restricted</span>
+                            </label>
+                            <label className="draw-group">
+                              <span>Carries up to group</span>
+                              <select
+                                aria-label={`Heaviest weight group ${h.name} carries in ${cls.name}`}
+                                value={here.maxGroup}
+                                onChange={(e) => void setLimits(h.name, { maxGroup: Number(e.target.value) as WeightGroup }, cls.class_no)}
+                              >
+                                {GROUPS.map((g) => (
+                                  <option key={g} value={g}>
+                                    {g}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            {own && (
+                              <button className="textbtn" aria-label={`Use the usual limits for ${h.name} in ${cls.name}`} onClick={() => void setLimits(h.name, { takesHeight: h.takesHeight, maxGroup: h.maxGroup }, cls.class_no)}>
+                                Use the usual
+                              </button>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </>
+                )}
+              </>
+            )}
             {classNote[key] && (
               <p className="hint" role="status">
                 {classNote[key]}
@@ -680,7 +759,7 @@ export function DrawScreen({ showId }: { showId: string }) {
                   .sort((a, b) => a.draw - b.draw)
                   .map((e) => {
                     const mine = horsesNow.find((h) => h.name === e.horse)
-                    const misfit = mine !== undefined && !fits(markFor(e.back_no), mine)
+                    const misfit = mine !== undefined && !fits(markFor(e.back_no), limitsIn(mine, cls.class_no))
                     const options = [...new Set([...horses.map((h) => h.name), ...(fromSheet ? (book.alts?.[key] ?? []) : []), ...(e.horse ? [e.horse] : [])])]
                     return (
                       <li key={e.back_no} className="draw-row">

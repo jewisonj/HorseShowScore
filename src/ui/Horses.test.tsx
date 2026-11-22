@@ -21,7 +21,7 @@ const SUNDAY = 'evt-bhc-2026-11-22'
 const LINK = 'https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdefgh/edit?usp=sharing'
 let server: FakeBackend
 
-const horse = (name: string, provider = '', takesHeight = true, maxGroup: 1 | 2 | 3 = 3): StableHorse => ({ name, provider, takesHeight, maxGroup })
+const horse = (name: string, provider = '', takesHeight = true, maxGroup: 1 | 2 | 3 = 3, byClass: StableHorse['byClass'] = {}): StableHorse => ({ name, provider, takesHeight, maxGroup, byClass })
 
 beforeEach(() => {
   clearAll()
@@ -70,7 +70,7 @@ describe('matching a show’s horses to the horses list', () => {
   })
 
   it('gives a show’s horse the list’s limits, and saves over the row it matched', () => {
-    expect(withListLimits(list, { name: 'Ace', takesHeight: true, maxGroup: 1 })).toEqual({ name: 'Ace', takesHeight: false, maxGroup: 3 })
+    expect(withListLimits(list, { name: 'Ace', takesHeight: true, maxGroup: 1 })).toEqual({ name: 'Ace', takesHeight: false, maxGroup: 3, byClass: {} })
     expect(withListLimits(null, { name: 'Ace', takesHeight: true, maxGroup: 1 })).toEqual({ name: 'Ace', takesHeight: true, maxGroup: 1 })
     expect(stableRow(list, { name: 'Ace', takesHeight: true, maxGroup: 2 })).toEqual(horse('Ace', 'Example College', true, 2))
     // A row saved with no provider gets the provider once the show's sheet names it.
@@ -87,7 +87,8 @@ describe('the horses list on the server', () => {
     // Each new horse goes onto the list as it stands: takes height riders, carries any group.
     await waitFor(() => expect(server.horses.map((h) => h.name).sort()).toEqual(['Ace', 'Bo', 'Fig']))
     fireEvent.change(screen.getByLabelText('Heaviest weight group Ace carries'), { target: { value: '1' } })
-    fireEvent.click(within(screen.getByLabelText('Heaviest weight group Bo carries').closest('li')!).getByLabelText('Takes height riders'))
+    // Bo is marked height restricted: no height rider draws Bo.
+    fireEvent.click(within(screen.getByLabelText('Heaviest weight group Bo carries').closest('li')!).getByLabelText('Height restricted'))
     await waitFor(() => expect(server.horses.find((h) => h.name === 'Ace')).toEqual(horse('Ace', '', true, 1)))
     await waitFor(() => expect(server.horses.find((h) => h.name === 'Bo')).toEqual(horse('Bo', '', false, 3)))
     cleanup()
@@ -97,7 +98,7 @@ describe('the horses list on the server', () => {
     render(<DrawScreen showId={SUNDAY} />)
     addHorses(['Ace', 'Bo', 'Fig'])
     await waitFor(() => expect((screen.getByLabelText('Heaviest weight group Ace carries') as HTMLSelectElement).value).toBe('1'))
-    expect((within(screen.getByLabelText('Heaviest weight group Bo carries').closest('li')!).getByLabelText('Takes height riders') as HTMLInputElement).checked).toBe(false)
+    expect((within(screen.getByLabelText('Heaviest weight group Bo carries').closest('li')!).getByLabelText('Height restricted') as HTMLInputElement).checked).toBe(true)
     expect((screen.getByLabelText('Heaviest weight group Fig carries') as HTMLSelectElement).value).toBe('3')
     // The list was not written over with this computer's blank settings.
     expect(server.horses.find((h) => h.name === 'Ace')).toEqual(horse('Ace', '', true, 1))
@@ -179,5 +180,73 @@ describe('the horses page', () => {
     expect(screen.getByText(/Only a show admin sees the horses list/)).toBeTruthy()
     expect(screen.queryByText('Rocket')).toBeNull()
     expect(await server.listHorses()).toEqual([])
+  })
+})
+
+describe('limits that differ from class to class', () => {
+  it('a height rider never draws a horse marked height restricted, and the mark can be for one class only', async () => {
+    // 662 is a height rider. In Level I she rides in section B.
+    server.riders = [{ backNo: '662', rider: 'Korah Pinter', team: 'Example College', height: true, group: 1 }]
+    await asAdmin()
+    render(<DrawScreen showId={SUNDAY} />)
+    addHorses(['Ace', 'Bo', 'Cy', 'Dot', 'Eli'])
+    await waitFor(() => expect(server.horses).toHaveLength(5))
+    // Nothing is restricted to begin with.
+    for (const name of ['Ace', 'Bo', 'Cy', 'Dot', 'Eli']) {
+      expect((within(screen.getByLabelText(`Heaviest weight group ${name} carries`).closest('li')!).getByLabelText('Height restricted') as HTMLInputElement).checked).toBe(false)
+    }
+
+    const panel = screen.getByRole('region', { name: /Level I Horsemanship, Sec\. B/ })
+    fireEvent.click(within(panel).getByRole('button', { name: 'Pick all' }))
+    fireEvent.click(within(panel).getByRole('button', { name: 'Height and weight limits for this class (0 changed)' }))
+    expect(within(panel).getByText(/Change a horse's limits for every section of Level I Horsemanship only\./)).toBeTruthy()
+    // For Level I only, every horse but Eli is height restricted.
+    for (const name of ['Ace', 'Bo', 'Cy', 'Dot']) fireEvent.click(within(panel).getByLabelText(`${name} is height restricted in Level I Horsemanship, Sec. B`))
+    await waitFor(() => expect(server.horses.find((h) => h.name === 'Dot')!.byClass).toEqual({ '13': { takesHeight: false, maxGroup: 3 } }))
+    // The horse's usual limits are untouched.
+    expect(server.horses.find((h) => h.name === 'Dot')).toMatchObject({ takesHeight: true, maxGroup: 3 })
+    expect((within(screen.getAllByLabelText('Heaviest weight group Dot carries')[0].closest('li')!).getByLabelText('Height restricted') as HTMLInputElement).checked).toBe(false)
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    for (let i = 0; i < 12; i++) {
+      fireEvent.click(within(panel).getByRole('button', { name: /Draw (for this class|this class again)/ }))
+      expect(getClass('meet-6', '7')!.entries.find((e) => e.back_no === '662')!.horse).toBe('Eli')
+    }
+
+    // The other section of Level I shares the setting. Reining does not.
+    const sectionA = screen.getByRole('region', { name: /Level I Horsemanship, Sec\. A/ })
+    fireEvent.click(within(sectionA).getByRole('button', { name: 'Pick all' }))
+    expect(within(sectionA).getByRole('button', { name: 'Height and weight limits for this class (4 changed)' })).toBeTruthy()
+    const reining = screen.getByRole('region', { name: 'Reining, Sunday' })
+    fireEvent.click(within(reining).getByRole('button', { name: 'Pick all' }))
+    expect(within(reining).getByRole('button', { name: 'Height and weight limits for this class (0 changed)' })).toBeTruthy()
+
+    // Setting a class back to the usual limits stops it being a special case.
+    fireEvent.click(within(panel).getByRole('button', { name: 'Use the usual limits for Dot in Level I Horsemanship, Sec. B' }))
+    await waitFor(() => expect(server.horses.find((h) => h.name === 'Dot')!.byClass).toEqual({}))
+    vi.restoreAllMocks()
+  })
+
+  it('a weight limit for one class keeps a heavier rider off that horse in that class only', async () => {
+    // 125 is in weight group 3 and rides in Level I, Sec. B.
+    server.riders = [{ backNo: '125', rider: 'Paige Johnson', team: 'Example College', height: false, group: 3 }]
+    // Fig usually carries any rider, but only group 1 in Level I. The others carry group 2 everywhere but one.
+    server.horses = [horse('Ace', '', true, 2), horse('Bo', '', true, 2), horse('Cy', '', true, 2), horse('Dot', '', true, 2), horse('Eli', '', true, 3), horse('Fig', '', true, 3, { '13': { takesHeight: true, maxGroup: 1 } })]
+    await asAdmin()
+    render(<DrawScreen showId={SUNDAY} />)
+    addHorses(['Ace', 'Bo', 'Cy', 'Dot', 'Eli', 'Fig'])
+    await waitFor(() => expect((screen.getByLabelText('Heaviest weight group Ace carries') as HTMLSelectElement).value).toBe('2'))
+    await screen.findByRole('button', { name: /Show the 59 riders \(1 marked\)/ })
+    const panel = screen.getByRole('region', { name: /Level I Horsemanship, Sec\. B/ })
+    fireEvent.click(within(panel).getByRole('button', { name: 'Pick all' }))
+    fireEvent.click(within(panel).getByRole('button', { name: 'Height and weight limits for this class (1 changed)' }))
+    expect((within(panel).getByLabelText('Heaviest weight group Fig carries in Level I Horsemanship, Sec. B') as HTMLSelectElement).value).toBe('1')
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    for (let i = 0; i < 12; i++) {
+      fireEvent.click(within(panel).getByRole('button', { name: /Draw (for this class|this class again)/ }))
+      // In Level I only Eli carries group 3.
+      expect(getClass('meet-6', '7')!.entries.find((e) => e.back_no === '125')!.horse).toBe('Eli')
+    }
+    vi.restoreAllMocks()
   })
 })

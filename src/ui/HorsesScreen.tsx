@@ -76,8 +76,9 @@ export function HorsesScreen() {
   return (
     <Screen title="Horses" sub={horses ? `${horses.length} horses` : undefined} backTo="/" backLabel="Shows" wide>
       <p className="hint">
-        What each horse carries: whether it takes height riders, and the heaviest weight group. The horse draw uses this for
-        every show. A horse is added here the first time it is listed on a show's draw page. Only show admins see this list.
+        Each horse's usual limits. A height rider cannot draw a horse marked height restricted, and a rider cannot draw a
+        horse that carries less than their weight group. Limits for one class are set on a show's draw page. A horse is
+        added here the first time it is listed on a show's draw page. Only show admins see this list.
       </p>
       {problem && (
         <p className="warning" role="alert">
@@ -105,10 +106,11 @@ export function HorsesScreen() {
                 <li key={`${h.name}|${h.provider}`} className="draw-horse">
                   <span className="draw-horse-name">
                     <strong>{h.name}</strong>
+                    {Object.keys(h.byClass ?? {}).length > 0 && <span className="muted">Different limits in {Object.keys(h.byClass ?? {}).length === 1 ? '1 class' : `${Object.keys(h.byClass ?? {}).length} classes`}</span>}
                   </span>
                   <label className="draw-check">
-                    <input type="checkbox" checked={h.takesHeight} onChange={(e) => void change(h, { takesHeight: e.target.checked })} />
-                    <span>Takes height riders</span>
+                    <input type="checkbox" checked={!h.takesHeight} onChange={(e) => void change(h, { takesHeight: !e.target.checked })} />
+                    <span>Height restricted</span>
                   </label>
                   <label className="draw-group">
                     <span>Carries up to group</span>

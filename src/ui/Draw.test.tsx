@@ -79,11 +79,11 @@ describe('the horse draw in setup', () => {
   it('keeps to the fit rule, and keeps the marks out of the show', () => {
     render(<DrawScreen showId={SUNDAY} />)
     addHorses(['Ace', 'Bo', 'Cy', 'Dot', 'Eli', 'Fig'])
-    // Only Fig carries group 3 and only Eli takes height riders.
+    // Only Fig carries group 3, and every horse but Eli is height restricted.
     for (const name of ['Ace', 'Bo', 'Cy', 'Dot', 'Eli']) fireEvent.change(screen.getByLabelText(`Heaviest weight group ${name} carries`), { target: { value: '1' } })
     for (const name of ['Ace', 'Bo', 'Cy', 'Dot', 'Fig']) {
       const row = screen.getByLabelText(`Heaviest weight group ${name} carries`).closest('li')!
-      fireEvent.click(within(row).getByLabelText('Takes height riders'))
+      fireEvent.click(within(row).getByLabelText('Height restricted'))
     }
     // Level I, Sec. B has five riders. 125 is in group 3 and 662 is a height rider.
     fireEvent.click(screen.getByRole('button', { name: /Show the 59 riders \(0 marked\)/ }))

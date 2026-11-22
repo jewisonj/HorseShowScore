@@ -19,6 +19,14 @@ export interface BookHorse {
   takesHeight: boolean
   /** The heaviest weight group this horse carries. */
   maxGroup: WeightGroup
+  /** Classes where this horse's limits differ from its usual ones, by IHSA class number ("17", "12B"). Sections of a class share one. */
+  byClass?: Record<string, { takesHeight: boolean; maxGroup: WeightGroup }>
+}
+
+/** A horse as it stands in one class: its limits there, when the class has its own, else its usual ones. */
+export function limitsIn(horse: BookHorse, classNo: string): BookHorse {
+  const own = horse.byClass?.[classNo]
+  return own ? { ...horse, takesHeight: own.takesHeight, maxGroup: own.maxGroup } : horse
 }
 
 export interface RiderMark {

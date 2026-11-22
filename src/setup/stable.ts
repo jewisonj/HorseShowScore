@@ -22,7 +22,7 @@ export function findStable(list: StableHorse[], horse: { name: string; provider?
 /** A show's horse with the limits the list has for it, when it has any. */
 export function withListLimits(list: StableHorse[] | null, horse: BookHorse): BookHorse {
   const on = list ? findStable(list, horse) : undefined
-  return on ? { ...horse, takesHeight: on.takesHeight, maxGroup: on.maxGroup } : horse
+  return on ? { ...horse, takesHeight: on.takesHeight, maxGroup: on.maxGroup, byClass: on.byClass ?? {} } : horse
 }
 
 /** The row to save for a show's horse: over the row it matches, or a new one under its own name and provider. */
@@ -30,5 +30,5 @@ export function stableRow(list: StableHorse[], horse: BookHorse): StableHorse {
   const on = findStable(list, horse)
   // A row saved before the provider was known is replaced by one that names the provider.
   const provider = on && norm(on.provider) !== '' ? on.provider : (horse.provider ?? '').replace(/\s+/g, ' ').trim()
-  return { name: on ? on.name : horse.name, provider, takesHeight: horse.takesHeight, maxGroup: horse.maxGroup }
+  return { name: on ? on.name : horse.name, provider, takesHeight: horse.takesHeight, maxGroup: horse.maxGroup, byClass: horse.byClass ?? {} }
 }
